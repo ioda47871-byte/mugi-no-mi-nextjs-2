@@ -35,7 +35,7 @@ export default function AdminLoginPage() {
     }
 
     router.push(redirectTo);
-    router.refresh();
+    router.refresh();c:\Users\ioda0\Downloads\mugi-no-mi-nextjs_2\mugi-no-mi-nextjs\app\admin\login\page.tsx
   };
 
   return (
