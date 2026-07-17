@@ -1,0 +1,154 @@
+{
+  "categories": [
+    {
+      "id": "shokupan",
+      "label": "食パン"
+    },
+    {
+      "id": "savory",
+      "label": "惣菜パン"
+    },
+    {
+      "id": "sweet",
+      "label": "菓子パン"
+    },
+    {
+      "id": "meal-bread",
+      "label": "食事パン"
+    }
+  ],
+  "products": [
+    {
+      "id": "shokupan",
+      "categoryId": "shokupan",
+      "name": "麦の実 食パン",
+      "price": 1080,
+      "description": "石臼挽きの粉が香る、しっとりとした生成りの断面。何もつけずに、まず一枚。",
+      "image": "https://images.pexels.com/photos/34444367/pexels-photo-34444367.jpeg?auto=compress&cs=tinysrgb&w=900",
+      "tag": "定番",
+      "isPopular": true,
+      "isActive": true,
+      "isSeasonal": false
+    },
+    {
+      "id": "campagne",
+      "categoryId": "meal-bread",
+      "name": "全粒粉のカンパーニュ",
+      "price": 1320,
+      "description": "皮は香ばしく、中はもっちりと。ワインや熟成チーズと共に。",
+      "image": "https://images.pexels.com/photos/37256490/pexels-photo-37256490.jpeg?auto=compress&cs=tinysrgb&w=900",
+      "tag": null,
+      "isPopular": true,
+      "isActive": true,
+      "isSeasonal": true
+    },
+    {
+      "id": "mischbrot",
+      "categoryId": "meal-bread",
+      "name": "ライ麦のミッシュブロート",
+      "price": 1180,
+      "description": "どっしりと満足感のある一斤。薄く切って軽く炙るのがおすすめ。",
+      "image": "https://images.pexels.com/photos/30884566/pexels-photo-30884566.jpeg?auto=compress&cs=tinysrgb&w=300",
+      "tag": null,
+      "isPopular": false,
+      "isActive": true,
+      "isSeasonal": false
+    },
+    {
+      "id": "baguette",
+      "categoryId": "meal-bread",
+      "name": "バゲット・トラディション",
+      "price": 520,
+      "description": "皮のパリッとした音が楽しい、フランス伝統製法の一本。",
+      "image": "https://images.pexels.com/photos/34040748/pexels-photo-34040748.jpeg?auto=compress&cs=tinysrgb&w=300",
+      "tag": "人気",
+      "isPopular": false,
+      "isActive": true,
+      "isSeasonal": false
+    },
+    {
+      "id": "croissant",
+      "categoryId": "meal-bread",
+      "name": "発酵バターのクロワッサン",
+      "price": 480,
+      "description": "仏ノルマンディー産バターを幾重にも折り込み、香りだけで幸福になる一つ。",
+      "image": "https://images.pexels.com/photos/19296861/pexels-photo-19296861.jpeg?auto=compress&cs=tinysrgb&w=900",
+      "tag": "人気",
+      "isPopular": true,
+      "isActive": true,
+      "isSeasonal": false
+    },
+    {
+      "id": "pain-au-chocolat",
+      "categoryId": "meal-bread",
+      "name": "パン・オ・ショコラ",
+      "price": 520,
+      "description": "カカオ分70%のビターチョコレートをたっぷりと。",
+      "image": "https://images.pexels.com/photos/16026716/pexels-photo-16026716.jpeg?auto=compress&cs=tinysrgb&w=300",
+      "tag": null,
+      "isPopular": false,
+      "isActive": true,
+      "isSeasonal": false
+    },
+    {
+      "id": "almond-croissant",
+      "categoryId": "meal-bread",
+      "name": "アーモンドクロワッサン",
+      "price": 560,
+      "description": "二度焼きしたクロワッサンに、自家製アーモンドクリーム。",
+      "image": "https://images.pexels.com/photos/12951912/pexels-photo-12951912.jpeg?auto=compress&cs=tinysrgb&w=300",
+      "tag": null,
+      "isPopular": false,
+      "isActive": true,
+      "isSeasonal": false
+    },
+    {
+      "id": "bacon-sandwich",
+      "categoryId": "savory",
+      "name": "炙りベーコンのカンパーニュサンド",
+      "price": 780,
+      "description": "厚切りベーコンと自家製マスタードで、軽い食事にも。",
+      "image": "https://images.pexels.com/photos/20448779/pexels-photo-20448779.jpeg?auto=compress&cs=tinysrgb&w=300",
+      "tag": null,
+      "isPopular": false,
+      "isActive": true,
+      "isSeasonal": false
+    },
+    {
+      "id": "quiche-lorraine",
+      "categoryId": "savory",
+      "name": "キッシュ・ロレーヌ",
+      "price": 680,
+      "description": "ベーコンとグリュイエールチーズの、しっかりとした一皿。",
+      "image": "https://images.pexels.com/photos/20374546/pexels-photo-20374546.jpeg?auto=compress&cs=tinysrgb&w=300",
+      "tag": null,
+      "isPopular": false,
+      "isActive": true,
+      "isSeasonal": false
+    },
+    {
+      "id": "gift-set",
+      "categoryId": "sweet",
+      "name": "麦の実 ギフトセット",
+      "price": 3600,
+      "description": "人気3種の詰め合わせ。木箱入りで贈り物にも。",
+      "image": "https://images.pexels.com/photos/17301616/pexels-photo-17301616.jpeg?auto=compress&cs=tinysrgb&w=300",
+      "tag": "数量限定",
+      "isPopular": false,
+      "isActive": true,
+      "isSeasonal": false
+    },
+    {
+      "id": "fruit-danish",
+      "categoryId": "sweet",
+      "name": "季節のフルーツデニッシュ",
+      "price": 620,
+      "description": "その時期に一番美味しい果実だけをのせて。",
+      "image": "https://images.pexels.com/photos/19296863/pexels-photo-19296863.jpeg?auto=compress&cs=tinysrgb&w=300",
+      "tag": null,
+      "isPopular": false,
+      "isActive": true,
+      "isSeasonal": true
+    }
+  ]
+}

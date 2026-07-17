@@ -1,0 +1,40 @@
+{
+  "posts": [
+    {
+      "id": "post-1",
+      "image": "https://images.pexels.com/photos/1287277/pexels-photo-1287277.jpeg?auto=compress&cs=tinysrgb&w=500",
+      "caption": "今朝もカンパーニュが焼き上がりました。",
+      "permalink": null
+    },
+    {
+      "id": "post-2",
+      "image": "https://images.pexels.com/photos/34040748/pexels-photo-34040748.jpeg?auto=compress&cs=tinysrgb&w=500",
+      "caption": "バゲットの焼き色、今日はいい感じです。",
+      "permalink": null
+    },
+    {
+      "id": "post-3",
+      "image": "https://images.pexels.com/photos/12951912/pexels-photo-12951912.jpeg?auto=compress&cs=tinysrgb&w=500",
+      "caption": "クロワッサンの断面、幾層にも。",
+      "permalink": null
+    },
+    {
+      "id": "post-4",
+      "image": "https://images.pexels.com/photos/16026716/pexels-photo-16026716.jpeg?auto=compress&cs=tinysrgb&w=500",
+      "caption": "本日の店内の様子です。",
+      "permalink": null
+    },
+    {
+      "id": "post-5",
+      "image": "https://images.pexels.com/photos/20448779/pexels-photo-20448779.jpeg?auto=compress&cs=tinysrgb&w=500",
+      "caption": "季節のサンドイッチ、始まりました。",
+      "permalink": null
+    },
+    {
+      "id": "post-6",
+      "image": "https://images.pexels.com/photos/19296863/pexels-photo-19296863.jpeg?auto=compress&cs=tinysrgb&w=500",
+      "caption": "フルーツデニッシュの仕込み中。",
+      "permalink": null
+    }
+  ]
+}

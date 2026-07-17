@@ -1,0 +1,93 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+@layer base {
+  body {
+    @apply bg-ivory text-ink font-body font-light tracking-wide;
+    line-height: 1.9;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display font-medium tracking-wide text-ink;
+  }
+  ::selection {
+    @apply bg-brand-pale text-ink;
+  }
+  :focus-visible {
+    outline: 2px solid theme('colors.brand.deep');
+    outline-offset: 3px;
+  }
+}
+
+@layer components {
+  /* 写真フレーム: 本番写真が無いときの上品なグラデーションプレースホルダー */
+  .photo-frame-bg {
+    background: linear-gradient(150deg, #efe6d2, #d8b45e 55%, #7c5a32);
+  }
+
+  .eyebrow {
+    @apply inline-flex items-center gap-3 font-accent italic text-[15px] tracking-[0.18em] text-kura uppercase;
+  }
+  .eyebrow::before {
+    content: '';
+    @apply inline-block h-px w-[34px] bg-gold;
+  }
+
+  .link-gold {
+    @apply relative pb-[3px] text-sm tracking-wide;
+  }
+  .link-gold::after {
+    content: '';
+    @apply absolute left-0 bottom-0 h-px w-full origin-left scale-x-[0.3] bg-gold transition-transform duration-500 ease-signature;
+  }
+  .link-gold:hover::after {
+    @apply scale-x-100;
+  }
+}
+
+@keyframes heroZoom {
+  0% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(1.05);
+  }
+}
+.hero-zoom {
+  animation: heroZoom 10s ease-out 1 forwards;
+  transform-origin: center;
+}
+
+@keyframes cueDrop {
+  0% {
+    top: -54px;
+  }
+  60% {
+    top: 54px;
+  }
+  100% {
+    top: 54px;
+  }
+}
+.animate-cue-drop {
+  animation: cueDrop 2.4s ease-in-out infinite;
+}
