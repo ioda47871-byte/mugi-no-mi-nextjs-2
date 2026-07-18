@@ -1,18 +1,15 @@
-import { PhotoFrame } from '@/components/ui/PhotoFrame';
 import { RevealOnScroll } from '@/components/ui/RevealOnScroll';
 import { InstagramEmbedPost } from './InstagramEmbedPost';
-import { getLatestInstagramPosts } from '@/lib/instagram';
 import { siteContent } from '@/lib/placeholder-content';
 
 /**
  * About = Instagramと連携したページ。
  * - 公式oEmbed(実投稿URLがある場合)またはプレースホルダーカード
- * - 最新投稿一覧(仮データ。本番はInstagram Graph APIに差し替え)
  * - 「焼きたて情報はこちら」バナー
  * - フォローボタン
+ * 実際の投稿写真・キャプションは確認できていないため、投稿一覧グリッドは表示していません。
  */
 export function InstagramFeed() {
-  const posts = getLatestInstagramPosts(6);
   const hasFeaturedPost = Boolean(siteContent.instagramFeaturedPostUrl.value);
 
   return (
@@ -56,22 +53,6 @@ export function InstagramFeed() {
                 </p>
               </div>
             )}
-          </div>
-        </RevealOnScroll>
-
-        {/* 最新投稿一覧(仮データ) */}
-        <RevealOnScroll>
-          <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-            {posts.map((post) => (
-              <a
-                key={post.id}
-                href={post.permalink ?? siteContent.instagramUrl.value}
-                aria-label={post.caption}
-                className="group"
-              >
-                <PhotoFrame src={post.image} alt={`${post.caption}(仮写真)`} aspect="aspect-square" />
-              </a>
-            ))}
           </div>
         </RevealOnScroll>
 

@@ -6,7 +6,7 @@ import { siteContent } from '@/lib/placeholder-content';
 
 export const metadata: Metadata = {
   title: 'About',
-  description: '麦の実 -Mugi no Mi- Boulangerieのこだわりと、Instagramでの日々の焼き上がりの様子。',
+  description: `${siteConfig.name}(${siteConfig.nameJa})のご紹介と、Instagramでの最新情報。`,
   alternates: { canonical: '/about' },
   openGraph: {
     title: `About | ${siteConfig.name}`,
@@ -14,9 +14,9 @@ export const metadata: Metadata = {
 };
 
 /**
- * About = ブランドの想い(簡潔なテキスト)+ Instagram連携。
- * 詳しいこだわりの工程(粉・水・発酵)や職人の経歴は、実店舗の情報量が
- * 確定次第、このページに追記していく想定です。
+ * About = 店舗紹介文(依頼者から提供された紹介文をベースにした第三者紹介トーン)
+ * + Instagram連携。実在の代表者名・製法・素材などは確認が取れていないため、
+ * 個人名の記載や工程の詳細説明は行っていません。
  */
 export default function AboutPage() {
   return (
@@ -24,12 +24,8 @@ export default function AboutPage() {
       <div className="mx-auto max-w-container px-8 pb-20 text-center max-[640px]:px-5">
         <RevealOnScroll>
           <span className="eyebrow justify-center">About</span>
-          <h1 className="mt-[18px] text-[clamp(34px,5vw,58px)]">素材と時間に、多くを委ねる。</h1>
-          <p className="mx-auto mt-6 max-w-lg text-[14.5px] text-kura">
-            特別な技術より、丁寧な手間を選びました。石臼で挽く小麦、月に一度汲みに向かう湧水、
-            18時間の低温発酵。{siteContent.founderName.value}が大切にしているのは、
-            「{siteContent.founderQuote.value}」という、ただそれだけの言葉です。
-          </p>
+          <h1 className="mt-[18px] text-[clamp(34px,5vw,58px)]">柳の木の奥にある、小さなベーカリー。</h1>
+          <p className="mx-auto mt-6 max-w-lg text-[14.5px] text-kura">{siteContent.founderQuote.value}</p>
         </RevealOnScroll>
       </div>
 

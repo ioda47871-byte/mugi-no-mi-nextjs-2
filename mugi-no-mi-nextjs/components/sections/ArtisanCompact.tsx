@@ -4,11 +4,11 @@ import { RevealOnScroll } from '@/components/ui/RevealOnScroll';
 import { siteContent } from '@/lib/placeholder-content';
 
 /**
- * 職人紹介(Home = 短縮版)。
- * founderPortrait.value が null の場合は、写真なし・中央寄せ・余白主体の
- * レイアウトに自動的に切り替わります。実店舗の写真が用意でき次第、
- * lib/placeholder-content.ts の founderPortrait.value にURL(またはpublic/images内のパス)
- * を設定すれば、2カラムの写真ありレイアウトになります。
+ * 店舗紹介(Home = 短縮版)。
+ * 実在の代表者名は確認できていないため、個人の顔写真・名前つきの
+ * 「職人紹介」形式ではなく、店舗紹介文(第三者紹介トーン)を表示しています。
+ * founderPortrait.value にURL(またはpublic/images内のパス)を設定すれば、
+ * 2カラムの写真ありレイアウトに切り替わります(現状は写真なし)。
  */
 export function ArtisanCompact() {
   const hasPhoto = Boolean(siteContent.founderPortrait.value);
@@ -19,12 +19,12 @@ export function ArtisanCompact() {
         <RevealOnScroll>
           {hasPhoto ? (
             <div className="mx-auto grid max-w-3xl grid-cols-[0.6fr_1fr] items-center gap-12 max-[700px]:grid-cols-1 max-[700px]:text-center">
-              <PhotoFrame src={siteContent.founderPortrait.value} alt={`${siteContent.founderName.value}のポートレート`} aspect="aspect-[3/4]" />
-              <ArtisanText />
+              <PhotoFrame src={siteContent.founderPortrait.value} alt="店舗の写真" aspect="aspect-[3/4]" />
+              <IntroText />
             </div>
           ) : (
             <div className="mx-auto max-w-xl text-center">
-              <ArtisanText />
+              <IntroText />
             </div>
           )}
         </RevealOnScroll>
@@ -33,20 +33,14 @@ export function ArtisanCompact() {
   );
 }
 
-function ArtisanText() {
+function IntroText() {
   return (
     <div>
-      <blockquote className="font-display text-[clamp(21px,2.8vw,27px)] leading-loose">
-        「{siteContent.founderQuote.value}」
-      </blockquote>
-      <p className="mt-5 text-[15px] text-kura">
-        {siteContent.founderName.value}
-        <span className="mt-1 block font-accent text-[13.5px] italic text-brand-deep">
-          {siteContent.founderRole.value}
-        </span>
+      <p className="font-display text-[clamp(19px,2.4vw,23px)] leading-loose">
+        {siteContent.founderQuote.value}
       </p>
-      <div className="mt-5">
-        <Link href="/about" className="link-gold">職人の想いをもっと読む →</Link>
+      <div className="mt-6">
+        <Link href="/about" className="link-gold">Brot yanagiについてもっと読む →</Link>
       </div>
     </div>
   );

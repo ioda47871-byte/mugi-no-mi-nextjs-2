@@ -20,7 +20,8 @@ export function MenuSection({ products, className = '' }: MenuSectionProps) {
           <div className="mb-14 text-center">
             <h2 className="font-display text-[clamp(30px,4vw,44px)]">Menu</h2>
             <p className="mx-auto mt-4 max-w-md text-[14.5px] text-kura">
-              毎朝焼き上げるパンをご紹介します。
+              食事に寄り添うパンから、軽いおやつに楽しめるパンまで、店頭にはさまざまな種類が並びます。
+              商品の内容や販売状況は日によって異なります。
             </p>
           </div>
         </RevealOnScroll>

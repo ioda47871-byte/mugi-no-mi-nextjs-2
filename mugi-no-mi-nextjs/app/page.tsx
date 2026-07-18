@@ -9,7 +9,6 @@ import { getAllProducts } from '@/lib/products';
 import { siteConfig } from '@/lib/site-config';
 
 export const metadata: Metadata = {
-  title: `${siteConfig.name} | 焼きたての一斤に、朝がひとつ生まれる。`,
   description: siteConfig.defaultDescription,
   alternates: { canonical: '/' },
 };

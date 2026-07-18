@@ -3,9 +3,8 @@ import { RevealOnScroll } from '@/components/ui/RevealOnScroll';
 import { Button } from '@/components/ui/Button';
 import { siteContent } from '@/lib/placeholder-content';
 
-// PLACEHOLDER: 住所・電話番号・営業時間・地図は仮設定です(lib/placeholder-content.ts参照)。
-const VISIT_IMAGE =
-  'https://images.pexels.com/photos/30692762/pexels-photo-30692762.jpeg?auto=compress&cs=tinysrgb&w=800';
+// 実店舗の外観・内観写真が未確認のため、写真なしプレースホルダーを表示しています。
+// 実写真が用意でき次第、srcにURL(またはpublic/images内のパス)を設定してください。
 
 export function VisitUs() {
   return (
@@ -13,7 +12,7 @@ export function VisitUs() {
       <div className="mx-auto max-w-container">
         <RevealOnScroll>
           <div className="grid grid-cols-[0.9fr_1.1fr] items-center gap-16 max-[860px]:grid-cols-1 max-[860px]:gap-9">
-            <PhotoFrame src={VISIT_IMAGE} alt="店舗外観・内観(仮写真)" aspect="aspect-[4/5]" />
+            <PhotoFrame src={null} alt="" caption="店舗写真は近日公開予定です" aspect="aspect-[4/5]" />
 
             <div>
               <span className="eyebrow">Visit Us</span>
@@ -35,10 +34,13 @@ export function VisitUs() {
                   </tr>
                 </tbody>
               </table>
+              <p className="mt-3 text-[12.5px] text-kura">
+                ※パンが売り切れ次第、営業終了となります。最新の営業情報はInstagramをご確認ください。
+              </p>
 
               <div className="mt-6 overflow-hidden rounded-2xl border border-line shadow-lg shadow-ink/5">
                 <iframe
-                  title="麦の実 簡易地図"
+                  title={`${siteContent.brandName.value} 簡易地図`}
                   loading="lazy"
                   src={siteContent.mapEmbedUrl.value}
                   className="h-[180px] w-full grayscale-[15%] sepia-[8%]"

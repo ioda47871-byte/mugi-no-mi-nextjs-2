@@ -48,7 +48,7 @@ function AdminLoginForm() {
 
   return (
     <div className="w-full max-w-sm rounded-[2px] border border-line bg-white p-8">
-      <h1 className="mb-1 font-display text-xl text-ink">麦の実 管理画面</h1>
+      <h1 className="mb-1 font-display text-xl text-ink">Brot yanagi 管理画面</h1>
       <p className="mb-7 text-sm text-kura">スタッフ用ログイン</p>
 
       {error && (

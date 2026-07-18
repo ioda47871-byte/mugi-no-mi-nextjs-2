@@ -5,11 +5,10 @@ import { siteConfig } from '@/lib/site-config';
 
 export const metadata: Metadata = {
   title: 'Menu',
-  description: '麦の実の商品一覧。食パン、惣菜パン、菓子パン、食事パン、季節限定まで、価格と共にご紹介します。',
+  description: `${siteConfig.name}の店頭に並ぶパンをカテゴリー別にご紹介します。商品の内容や販売状況は日によって異なります。`,
   alternates: { canonical: '/menu' },
   openGraph: {
     title: `Menu | ${siteConfig.name}`,
-    description: '毎朝焼き上がる、麦の実の全商品ラインナップ。',
   },
 };
 

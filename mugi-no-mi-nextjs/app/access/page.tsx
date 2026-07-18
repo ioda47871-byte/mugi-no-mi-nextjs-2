@@ -5,33 +5,34 @@ import { siteConfig } from '@/lib/site-config';
 
 export const metadata: Metadata = {
   title: 'Access',
-  description: '麦の実 -Mugi no Mi- Boulangerieの営業時間、住所、駐車場情報、アクセス方法をご案内します。',
+  description: `${siteConfig.name}の営業時間・住所・アクセス方法をご案内します。`,
   alternates: { canonical: '/access' },
   openGraph: {
     title: `Access | ${siteConfig.name}`,
   },
 };
 
-// PLACEHOLDER: 住所・電話番号・営業時間・駐車場・地図は仮設定です(実店舗情報チェックリスト参照)。
 export default function AccessPage() {
   return (
     <div className="pt-[200px]">
       <div className="mx-auto max-w-container px-8 pb-24 text-center max-[640px]:px-5">
         <span className="eyebrow justify-center">Access</span>
         <h1 className="mt-[18px] text-[clamp(34px,5vw,58px)]">店舗のご案内</h1>
-        <p className="mx-auto mt-5 max-w-lg text-[14.5px] text-kura">ご来店を心よりお待ちしております。</p>
+        <p className="mx-auto mt-5 max-w-lg text-[14.5px] text-kura">
+          営業時間や臨時休業は変更される場合がございます。最新の営業情報はInstagramをご確認ください。
+        </p>
       </div>
 
       <section className="px-8 pb-20 max-[640px]:px-5">
         <div className="mx-auto grid max-w-container grid-cols-2 items-center gap-16 max-[860px]:grid-cols-1 max-[860px]:gap-9">
           <table className="w-full border-collapse">
             <tbody>
-              <Row label="店舗名">{siteContent.brandName.value} -{siteContent.brandNameEn.value}- Boulangerie</Row>
+              <Row label="店舗名">{siteContent.brandName.value}({siteContent.brandNameEn.value})</Row>
               <Row label="住所">{siteContent.address.value}</Row>
               <Row label="営業時間">
                 {siteContent.hours.value}
                 <br />
-                <span className="text-[13px] text-kura">※パンが無くなり次第、閉店する場合がございます</span>
+                <span className="text-[13px] text-kura">※パンが売り切れ次第、営業終了となります</span>
               </Row>
               <Row label="定休日">{siteContent.closedDay.value}</Row>
               <Row label="電話番号">
@@ -42,20 +43,16 @@ export default function AccessPage() {
                   {siteContent.phone.value}
                 </a>
               </Row>
-              <Row label="駐車場">
-                {siteContent.parking.value}
-                <br />
-                <span className="text-[13px] text-kura">満車の際は近隣コインパーキングをご利用ください</span>
-              </Row>
               <Row label="アクセス">{siteContent.accessNote.value}</Row>
+              <Row label="Instagram">
+                <a href={siteContent.instagramUrl.value} className="link-gold">
+                  {siteContent.instagramHandle.value}
+                </a>
+              </Row>
             </tbody>
           </table>
 
-          <PhotoFrame
-            src="https://images.pexels.com/photos/30926140/pexels-photo-30926140.jpeg?auto=compress&cs=tinysrgb&w=800"
-            alt="外観・看板(仮写真)"
-            aspect="aspect-[4/5]"
-          />
+          <PhotoFrame src={null} alt="" caption="店舗写真は近日公開予定です" aspect="aspect-[4/5]" />
         </div>
       </section>
 
@@ -65,11 +62,16 @@ export default function AccessPage() {
           <h2 className="mt-3.5 text-2xl">地図</h2>
           <div className="mt-8 overflow-hidden rounded-2xl border border-line shadow-lg shadow-ink/5">
             <iframe
-              title="麦の実 地図"
+              title={`${siteContent.brandName.value} 地図`}
               loading="lazy"
               src={siteContent.mapEmbedUrl.value}
               className="h-[380px] w-full grayscale-[15%] sepia-[8%]"
             />
+          </div>
+          <div className="mt-5 text-center">
+            <a href={siteContent.mapViewUrl.value} className="link-gold" target="_blank" rel="noreferrer">
+              Google Mapで見る →
+            </a>
           </div>
         </div>
       </section>

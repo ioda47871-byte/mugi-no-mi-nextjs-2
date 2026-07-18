@@ -30,7 +30,7 @@ export function Footer() {
           </li>
         </ul>
 
-        <p className="mt-1 text-xs text-kura/60">&copy; 2026 {siteContent.brandNameEn.value} Boulangerie</p>
+        <p className="mt-1 text-xs text-kura/60">&copy; 2026 {siteContent.brandName.value}</p>
       </div>
     </footer>
   );

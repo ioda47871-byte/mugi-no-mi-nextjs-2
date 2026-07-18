@@ -20,7 +20,7 @@ export default async function AdminProtectedLayout({ children }: { children: Rea
       <header className="sticky top-0 z-10 border-b border-line bg-ivory/95 backdrop-blur-sm">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-5 py-4">
           <Link href="/admin" className="min-w-0 truncate font-display text-lg tracking-wide text-ink">
-            麦の実 <span className="text-sm text-kura">管理画面</span>
+            Brot yanagi <span className="text-sm text-kura">管理画面</span>
           </Link>
           <div className="flex shrink-0 items-center gap-3">
             <span

@@ -51,7 +51,7 @@ export function MenuBrowser({ products }: MenuBrowserProps) {
 
       {filtered.length === 0 ? (
         <p className="py-16 text-center text-sm text-kura">
-          該当する商品は準備中です。
+          個別の商品情報は準備中です。店頭にてぜひご覧ください。
         </p>
       ) : (
         <div className="grid grid-cols-3 gap-x-8 gap-y-12 max-[900px]:grid-cols-2 max-[900px]:gap-x-6 max-[560px]:grid-cols-1">

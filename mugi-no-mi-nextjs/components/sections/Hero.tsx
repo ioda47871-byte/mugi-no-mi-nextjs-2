@@ -5,7 +5,8 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/Button';
 import { siteContent } from '@/lib/placeholder-content';
 
-// PLACEHOLDER: Hero写真は仮写真です(Pexelsフリー素材)。本番写真に差し替えてください。
+// 実店舗の写真が未確認のため、雰囲気を伝えるイメージ写真(Pexelsフリー素材)を
+// 一時的に使用しています。実店舗の写真が用意でき次第、差し替えてください。
 const HERO_IMAGE =
   'https://images.pexels.com/photos/1287278/pexels-photo-1287278.jpeg?auto=compress&cs=tinysrgb&w=1600';
 
@@ -51,7 +52,7 @@ export function Hero() {
       <div className="absolute inset-0">
         <Image
           src={HERO_IMAGE}
-          alt="朝日の中、焼きたてのパンが並ぶ様子(仮写真)"
+          alt="パンのイメージ写真(実店舗の写真ではありません)"
           fill
           priority
           sizes="100vw"
@@ -69,13 +70,13 @@ export function Hero() {
         <p className="font-accent text-sm italic uppercase tracking-[0.3em] text-brand-pale">
           Since the first light of morning
         </p>
-        <h1 className="mt-4 max-w-3xl text-[clamp(38px,6.4vw,84px)] leading-tight text-white drop-shadow-[0_2px_18px_rgba(0,0,0,0.25)]">
+        <h1 className="mt-4 max-w-3xl whitespace-pre-line text-[clamp(38px,6.4vw,84px)] leading-tight text-white drop-shadow-[0_2px_18px_rgba(0,0,0,0.25)]">
           {siteContent.heroHeadline.value}
         </h1>
         <p className="mt-6 max-w-md text-[15px] text-white/90">{siteContent.heroSubcopy.value}</p>
         <div className="mt-10 flex flex-wrap gap-[18px]">
-          <Button href="/menu" variant="primary">本日のパンを見る</Button>
-          <Button href="/access" variant="outline-inverse">店舗のご案内</Button>
+          <Button href="/menu" variant="primary">パンを見る</Button>
+          <Button href="/access" variant="outline-inverse">店舗情報を見る</Button>
         </div>
       </div>
 

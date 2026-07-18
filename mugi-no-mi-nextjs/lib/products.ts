@@ -135,10 +135,25 @@ function getFromJsonFallback(): Product[] {
 }
 
 /**
+ * ENABLE_PRODUCT_LISTINGが'true'の場合のみ商品一覧を取得する。
+ *
+ * Brot yanagiへのリブランド時点では、Supabaseのproductsテーブルに
+ * 旧「麦の実」の架空商品データが残っている可能性があるが、
+ * Supabase側のデータは削除・変更しない方針のため、公開ページ側で
+ * 商品取得そのものを既定で無効化している。実際の商品データが確認でき、
+ * 表示してよい状態になったら、環境変数を 'true' に設定してください。
+ */
+const PRODUCT_LISTING_ENABLED = process.env.ENABLE_PRODUCT_LISTING === 'true';
+
+/**
  * 公開中(isActive: true)の全商品を表示順(displayOrder)で取得する。
  * Supabaseが未設定の場合は data/products.json にフォールバックする。
  */
 export async function getAllProducts(): Promise<Product[]> {
+  if (!PRODUCT_LISTING_ENABLED) {
+    return [];
+  }
+
   const supabase = getSupabaseClient();
 
   if (!supabase) {

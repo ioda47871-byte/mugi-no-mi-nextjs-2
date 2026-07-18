@@ -1,15 +1,12 @@
 /**
- * PLACEHOLDER CONTENT REGISTRY
+ * SITE CONTENT REGISTRY
  * ----------------------------------------------------------------
- * このファイルに、まだ実店舗の情報に差し替えていない「仮データ」を
- * すべて集約しています。各項目は `isPlaceholder: true` を持ち、
- * scripts/check-placeholders.mjs がビルド時にこのファイルを解析して
- * 一覧を警告として出力します。
+ * 実店舗「Brot yanagi(ブロット ヤナギ)」向けの店舗情報を集約しています。
+ * 各項目の `isPlaceholder` は、依頼者から確認が取れていない(=まだ仮の値の)
+ * 項目にのみ `true` を付けています。`false` の項目は確認済みの情報です。
  *
- * 実データが確定したら、value を書き換えて isPlaceholder を false に
- * してください。false のまま出荷して問題ありません(警告は消えます)。
- *
- * 詳細な差し替えチェックリストは「実店舗情報チェックリスト.md」を参照してください。
+ * scripts/check-placeholders.mjs がビルド時にこのファイルを解析し、
+ * isPlaceholder: true が残っている項目を一覧で警告表示します。
  * ----------------------------------------------------------------
  */
 
@@ -22,6 +19,7 @@ export interface PlaceholderField<T> {
 
 export interface SiteContent {
   brandName: PlaceholderField<string>;
+  /** Brot yanagiの日本語表記(「ブロット ヤナギ」)。Header/Footerで小さく併記する */
   brandNameEn: PlaceholderField<string>;
   tagline: PlaceholderField<string>;
   heroHeadline: PlaceholderField<string>;
@@ -29,12 +27,13 @@ export interface SiteContent {
 
   founderName: PlaceholderField<string>;
   founderRole: PlaceholderField<string>;
+  /** 店舗紹介文(第三者紹介トーン)。ArtisanCompact / Aboutページで使用 */
   founderQuote: PlaceholderField<string>;
   founderPortrait: PlaceholderField<string | null>;
 
   address: PlaceholderField<string>;
-  phone: PlaceholderField<string>; // 表示用 (例: 0566-00-0000)
-  phoneHref: PlaceholderField<string>; // tel:リンク用 (例: 0566000000)
+  phone: PlaceholderField<string>;
+  phoneHref: PlaceholderField<string>;
   hours: PlaceholderField<string>;
   closedDay: PlaceholderField<string>;
   parking: PlaceholderField<string>;
@@ -50,55 +49,76 @@ export interface SiteContent {
   contactFormRecipient: PlaceholderField<string | null>;
 }
 
+// 住所は表示用とGoogleマップ検索用の両方で使うため、ここで一度だけ定義する。
+const ADDRESS_DISPLAY = '〒456-0018 愛知県名古屋市熱田区新尾頭3-3-10';
+const ADDRESS_FOR_MAP_QUERY = 'Brot yanagi 愛知県名古屋市熱田区新尾頭3-3-10';
+
+// 正しいGoogleビジネスプロフィールの共有URLが確認できていないため、
+// 住所(+店名)を使ったGoogle Maps検索URLを組み立てている(ユーザー指示に基づく方針)。
+const MAP_QUERY_URL = `https://www.google.com/maps?q=${encodeURIComponent(ADDRESS_FOR_MAP_QUERY)}`;
+
 export const siteContent: SiteContent = {
-  brandName: { value: '麦の実', isPlaceholder: true, note: '架空の店名。正式な屋号に差し替えてください。' },
-  brandNameEn: { value: 'Mugi no Mi', isPlaceholder: true },
-  tagline: { value: '毎日のパンに、静かな贅沢を。', isPlaceholder: true },
-  heroHeadline: { value: '焼きたての一斤に、朝がひとつ、生まれる。', isPlaceholder: true },
+  brandName: { value: 'Brot yanagi', isPlaceholder: false },
+  brandNameEn: { value: 'ブロット ヤナギ', isPlaceholder: false },
+  tagline: {
+    value: '金山の住宅街に佇むベーカリー。',
+    isPlaceholder: false,
+  },
+  heroHeadline: { value: '柳の木の奥で、\n今日のパンを焼いています。', isPlaceholder: false },
   heroSubcopy: {
-    value: '小麦と水、そして時間だけで仕上げる一斤。派手さのない、静かな贅沢を毎日の食卓へ。',
-    isPlaceholder: true,
+    value: '金山の住宅街に佇むベーカリー。今日並ぶパンとの出会いをお楽しみください。',
+    isPlaceholder: false,
   },
 
-  founderName: { value: '桐山 誠一郎', isPlaceholder: true, note: '架空の人物名です。' },
-  founderRole: { value: 'Founder / Head Baker', isPlaceholder: true },
-  founderQuote: { value: 'パンは、待つことでしか生まれない。', isPlaceholder: true },
+  // 実在の代表者名・肩書きは確認できていないため、個人名としては記載しない
+  // (ArtisanCompact / Aboutページでは、以下の founderQuote を店舗紹介文として
+  // 第三者紹介のトーンで表示し、個人への帰属は行っていない)。
+  founderName: { value: '', isPlaceholder: false, note: '実在の代表者名が未確認のため、個人名は記載していません。' },
+  founderRole: { value: '', isPlaceholder: false },
+  founderQuote: {
+    value:
+      'Brot yanagiは、名古屋・金山の住宅街にあるベーカリーです。柳の木が目印の店先には、日々さまざまなパンが並びます。朝の一品から、昼食、おやつ、手土産まで。その日に出会えるパンを、ぜひ店頭でお楽しみください。',
+    isPlaceholder: false,
+    note: '依頼者から提供された店舗紹介文をベースにしています。',
+  },
   founderPortrait: {
     value: null,
     isPlaceholder: true,
-    note: '本番写真が用意できない場合は null のままで問題ありません。ArtisanCompactコンポーネントは写真なしレイアウトに自動対応します。',
+    note: '実店舗の写真が未確認のため、写真なしレイアウトのままにしています。',
   },
 
-  address: { value: '〒444-0000 愛知県安城市桜町1-2-3', isPlaceholder: true },
-  phone: { value: '0566-00-0000', isPlaceholder: true },
-  phoneHref: { value: '0566000000', isPlaceholder: true },
-  hours: { value: '8:00 - 19:00', isPlaceholder: true },
-  closedDay: { value: '毎週火曜日・年末年始', isPlaceholder: true },
-  parking: { value: '専用駐車場 5台完備', isPlaceholder: true },
-  accessNote: { value: '名鉄西尾線 新安城駅より徒歩12分', isPlaceholder: true },
+  address: { value: ADDRESS_DISPLAY, isPlaceholder: false },
+  phone: { value: '052-880-2474', isPlaceholder: false },
+  phoneHref: { value: '0528802474', isPlaceholder: false },
+  hours: { value: '8:00〜17:00', isPlaceholder: false },
+  closedDay: { value: '月曜日・火曜日', isPlaceholder: false },
+  // 駐車場情報は確認できていないため、値を空にし、表示側(Accessページ)でも
+  // この項目自体を表示しないようにしている。
+  parking: { value: '', isPlaceholder: true, note: '駐車場情報が未確認のため非表示にしています。' },
+  accessNote: { value: '金山駅南口から徒歩約5〜6分', isPlaceholder: false },
   mapEmbedUrl: {
-    value: 'https://www.google.com/maps?q=Anjo,Aichi,Japan&output=embed',
+    value: `${MAP_QUERY_URL}&output=embed`,
     isPlaceholder: true,
-    note: '実店舗のGoogleビジネスプロフィールが確定したら、共有用の埋め込みURLに差し替えてください。',
+    note: '正式なGoogleビジネスプロフィールの共有URLが確認でき次第、差し替えてください。',
   },
   mapViewUrl: {
-    value: 'https://www.google.com/maps?q=Anjo,Aichi,Japan',
+    value: MAP_QUERY_URL,
     isPlaceholder: true,
-    note: '「Google Mapで見る」リンク先。Googleビジネスプロフィールの共有URLに差し替えてください。',
+    note: '正式なGoogleビジネスプロフィールの共有URLが確認でき次第、差し替えてください。',
   },
 
-  instagramHandle: { value: '@muginomi_boulangerie', isPlaceholder: true },
-  instagramUrl: { value: 'https://instagram.com/', isPlaceholder: true },
+  instagramHandle: { value: '@brot_yanagi', isPlaceholder: false },
+  instagramUrl: { value: 'https://www.instagram.com/brot_yanagi/', isPlaceholder: false },
   instagramFeaturedPostUrl: {
     value: null,
     isPlaceholder: true,
-    note: '実際の投稿URLを設定すると、AboutページにInstagram公式の埋め込み(oEmbed)が表示されます。nullの間はプレースホルダーカードを表示します。',
+    note: '特定の投稿URLが確認でき次第、Aboutページに公式oEmbedとして埋め込まれます。',
   },
   twitterUrl: { value: null, isPlaceholder: true },
 
   contactFormRecipient: {
     value: null,
     isPlaceholder: true,
-    note: '第二段階でフォーム送信APIを実装する際に、受信先メールアドレスを設定してください。',
+    note: '受信先はlib/contact/email.tsの環境変数(CONTACT_FORM_TO_EMAIL等)で管理しています。',
   },
 };
