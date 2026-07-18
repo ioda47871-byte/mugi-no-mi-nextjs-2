@@ -5,7 +5,7 @@ import { siteContent } from '@/lib/placeholder-content';
 /**
  * About = Instagramと連携したページ。
  * - 公式oEmbed(実投稿URLがある場合)またはプレースホルダーカード
- * - 「焼きたて情報はこちら」バナー
+ * - 「最新情報はこちら」バナー
  * - フォローボタン
  * 実際の投稿写真・キャプションは確認できていないため、投稿一覧グリッドは表示していません。
  */
@@ -25,14 +25,14 @@ export function InstagramFeed() {
           </div>
         </RevealOnScroll>
 
-        {/* 焼きたて情報はこちら バナー */}
+        {/* 最新情報はこちら バナー */}
         <RevealOnScroll>
           <a
             href={siteContent.instagramUrl.value}
             className="mb-14 flex flex-col items-center justify-between gap-4 rounded-2xl border border-brand/40 bg-white px-8 py-6 text-center transition-colors hover:border-brand max-[640px]:px-6 sm:flex-row sm:text-left"
           >
             <div>
-              <p className="font-display text-lg">焼きたて情報はこちら</p>
+              <p className="font-display text-lg">最新情報はこちら</p>
               <p className="mt-1.5 text-[13.5px] text-kura">今日焼いたパンや、売り切れ状況をリアルタイムでお知らせしています。</p>
             </div>
             <span className="link-gold shrink-0 text-sm">Instagramを見る →</span>

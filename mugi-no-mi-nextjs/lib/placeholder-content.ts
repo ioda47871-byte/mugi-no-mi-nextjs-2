@@ -64,7 +64,9 @@ export const siteContent: SiteContent = {
     value: '金山の住宅街に佇むベーカリー。',
     isPlaceholder: false,
   },
-  heroHeadline: { value: '柳の木の奥で、\n今日のパンを焼いています。', isPlaceholder: false },
+  // 「焼いています」は店内製造を断定する表現になり、製法が未確認のため、
+  // 断定しない表現(「出会う」)に変更している。
+  heroHeadline: { value: '柳の木の奥で、\n今日のパンに出会う。', isPlaceholder: false },
   heroSubcopy: {
     value: '金山の住宅街に佇むベーカリー。今日並ぶパンとの出会いをお楽しみください。',
     isPlaceholder: false,
