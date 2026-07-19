@@ -1,30 +1,23 @@
-import { unstable_cache } from 'next/cache';
+import 'server-only';
+import { unstable_cache, revalidateTag } from 'next/cache';
+import { resolveAccessToken } from './token-store';
 
 /**
  * Instagram投稿データ層(Instagram Graph API連携)
  * ----------------------------------------------------------------
- * INSTAGRAM_ACCESS_TOKEN / INSTAGRAM_USER_ID を使い、Instagram Graph APIから
- * 実際の最新投稿を取得します。値はコード内にハードコードせず、必ず環境変数から
- * 取得してください(.env.example参照)。
- *
- * 【アクセストークンの種類】
- * INSTAGRAM_ACCESS_TOKEN には長期アクセストークン(Long-lived Access Token。
- * 有効期間は発行から約60日間)を設定する前提です。短期アクセストークン
- * (Short-lived Access Token、有効期間は約1時間)を直接設定する運用は
- * 想定していません(1時間ごとに手動で環境変数を更新するのは非現実的なため)。
- * このファイルには自動更新(トークンリフレッシュ)の仕組みは実装していないため、
- * 60日の有効期限が切れる前に、運用担当者が手動でトークンを再発行し、
- * Vercelの環境変数を更新・再デプロイしてください。期限切れの間は、
- * 下記【フォールバック】の通り自動的に案内表示へ切り替わるため、
- * サイトが壊れることはありません。
+ * INSTAGRAM_USER_ID(環境変数)と、Supabaseに保存されたアクセストークン
+ * (無ければ INSTAGRAM_INITIAL_ACCESS_TOKEN。resolveAccessToken参照)を使い、
+ * Instagram Graph APIから実際の最新投稿を取得します。
  *
  * 【キャッシュ】
  * unstable_cache で約1時間(REVALIDATE_SECONDS)キャッシュしています。
  * ページ側(app/page.tsx)には商品データ用の `export const revalidate = 60` が
  * 既に設定されていますが、unstable_cacheはそれとは独立した有効期限を持つため、
- * Instagram APIへは実際には約1時間に1回しかアクセスしません
- * (`export const revalidate` はページ全体の再検証間隔であり、
- * unstable_cacheの中身の鮮度はそれとは別に管理されます)。
+ * Instagram APIへは実際には約1時間に1回しかアクセスしません。
+ *
+ * キャッシュタグ(INSTAGRAM_POSTS_CACHE_TAG)を設定しており、
+ * Cronでのトークン更新が成功した直後は revalidateInstagramPostsCache() を
+ * 呼び出すことで、最大1時間待たずに最新のトークンでの取得へ切り替えられます。
  *
  * 【フォールバック】
  * 取得に失敗した場合はエラーを投げず、空配列を返します。
@@ -35,6 +28,9 @@ import { unstable_cache } from 'next/cache';
 
 /** 表示する投稿数。将来 6→9→12 のように変更する場合はここだけを直せばよい。 */
 export const INSTAGRAM_POST_COUNT = 6;
+
+/** unstable_cacheのキャッシュタグ。トークン更新後の即時revalidateに使用する。 */
+export const INSTAGRAM_POSTS_CACHE_TAG = 'instagram-posts';
 
 const INSTAGRAM_API_VERSION = 'v21.0';
 const REVALIDATE_SECONDS = 60 * 60; // 約1時間
@@ -79,11 +75,16 @@ function mapToPost(item: InstagramMediaItem): InstagramPost | null {
 
 /** Instagram Graph APIへ実際にアクセスする処理(キャッシュ無し)。 */
 async function fetchLatestInstagramPosts(limit: number): Promise<InstagramPost[]> {
-  const accessToken = process.env.INSTAGRAM_ACCESS_TOKEN;
   const userId = process.env.INSTAGRAM_USER_ID;
+  if (!userId) {
+    throw new Error('INSTAGRAM_USER_ID が未設定です。');
+  }
 
-  if (!accessToken || !userId) {
-    throw new Error('INSTAGRAM_ACCESS_TOKEN / INSTAGRAM_USER_ID が未設定です。');
+  const accessToken = await resolveAccessToken();
+  if (!accessToken) {
+    throw new Error(
+      'Instagramアクセストークンを取得できません(Supabase未登録・INSTAGRAM_INITIAL_ACCESS_TOKEN未設定)。',
+    );
   }
 
   const url = `https://graph.instagram.com/${INSTAGRAM_API_VERSION}/${userId}/media?fields=${FIELDS}&limit=${limit}&access_token=${accessToken}`;
@@ -112,7 +113,7 @@ async function fetchLatestInstagramPosts(limit: number): Promise<InstagramPost[]
 const getCachedInstagramPosts = unstable_cache(
   (limit: number) => fetchLatestInstagramPosts(limit),
   ['instagram-latest-posts'],
-  { revalidate: REVALIDATE_SECONDS },
+  { revalidate: REVALIDATE_SECONDS, tags: [INSTAGRAM_POSTS_CACHE_TAG] },
 );
 
 /** 最新投稿を取得する。取得に失敗した場合は空配列を返す(エラーを投げない)。 */
@@ -123,4 +124,13 @@ export async function getLatestInstagramPosts(limit: number = INSTAGRAM_POST_COU
     console.error('[instagram] 投稿取得に失敗しました:', err instanceof Error ? err.message : 'unknown error');
     return [];
   }
+}
+
+/**
+ * Instagram投稿一覧のキャッシュを即時に無効化する。
+ * トークン更新(Cron)が成功した直後に呼び出すことで、最大1時間待たずに
+ * 新しいトークンでの取得へ切り替わる(app/api/cron/refresh-instagram-token参照)。
+ */
+export function revalidateInstagramPostsCache(): void {
+  revalidateTag(INSTAGRAM_POSTS_CACHE_TAG);
 }
