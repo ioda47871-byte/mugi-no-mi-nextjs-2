@@ -65,18 +65,18 @@ export function MobileActionBar() {
     >
       <a
         href={`tel:${siteContent.phoneHref.value}`}
-        className="flex flex-col items-center gap-1 rounded-full bg-brand px-[18px] py-2 text-[10px] tracking-wide text-ink"
+        className="flex flex-col items-center gap-1 rounded-full bg-brand px-[18px] py-2 text-[10px] tracking-wide text-ink max-[640px]:text-[11px]"
       >
         <PhoneIcon />
         電話
       </a>
-      <a href="/access" className="flex flex-col items-center gap-1 rounded-full px-[18px] py-2 text-[10px] tracking-wide text-ink">
+      <a href="/access" className="flex flex-col items-center gap-1 rounded-full px-[18px] py-2 text-[10px] tracking-wide text-ink max-[640px]:text-[11px]">
         <MapIcon />
         地図
       </a>
       <a
         href={siteContent.instagramUrl.value}
-        className="flex flex-col items-center gap-1 rounded-full px-[18px] py-2 text-[10px] tracking-wide text-ink"
+        className="flex flex-col items-center gap-1 rounded-full px-[18px] py-2 text-[10px] tracking-wide text-ink max-[640px]:text-[11px]"
       >
         <InstagramIcon />
         Instagram

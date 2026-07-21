@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 
 export default function AccessPage() {
   return (
-    <div className="pt-[200px]">
+    <div className="pt-[200px] max-[640px]:pt-[130px]">
       <div className="mx-auto max-w-container px-8 pb-24 text-center max-[640px]:px-5">
         <span className="eyebrow justify-center">Access</span>
         <h1 className="mt-[18px] text-[clamp(34px,5vw,58px)]">店舗のご案内</h1>
@@ -82,7 +82,9 @@ export default function AccessPage() {
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <tr className="border-b border-line">
-      <td className="w-[140px] py-[18px] align-top font-accent text-sm italic text-brand-deep">{label}</td>
+      <td className="w-[140px] py-[18px] align-top font-accent text-sm italic text-brand-deep max-[640px]:w-[90px]">
+        {label}
+      </td>
       <td className="py-[18px] align-top text-[14.5px]">{children}</td>
     </tr>
   );

@@ -48,7 +48,10 @@ export function Hero() {
   }, []);
 
   return (
-    <section data-hero className="relative flex h-screen min-h-[640px] items-end overflow-hidden">
+    <section
+      data-hero
+      className="relative flex h-screen min-h-[640px] items-end overflow-hidden max-[640px]:h-[100dvh]"
+    >
       <div className="absolute inset-0">
         <Image
           src={HERO_IMAGE}

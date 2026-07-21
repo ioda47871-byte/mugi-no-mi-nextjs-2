@@ -17,7 +17,7 @@ export const metadata: Metadata = {
  */
 export default function GalleryPage() {
   return (
-    <div className="pt-[200px]">
+    <div className="pt-[200px] max-[640px]:pt-[130px]">
       <div className="mx-auto max-w-container px-8 pb-32 text-center max-[640px]:px-5">
         <span className="eyebrow justify-center">Gallery</span>
         <h1 className="mt-[18px] text-[clamp(34px,5vw,58px)]">光と、香りと、時間の記録</h1>

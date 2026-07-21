@@ -25,13 +25,15 @@ export default function ContactPage() {
   const formEnabled = isContactFormConfigured();
 
   return (
-    <div className="pt-[200px]">
+    <div className="pt-[200px] max-[640px]:pt-[130px]">
       <div className="mx-auto max-w-container px-8 pb-16 text-center max-[640px]:px-5">
         <span className="eyebrow justify-center">Contact</span>
         <h1 className="mt-[18px] text-[clamp(34px,5vw,58px)]">お問い合わせ</h1>
-        <p className="mx-auto mt-6 max-w-lg text-[14.5px] text-kura">
-          お問い合わせや最新情報は、お電話またはInstagramからもご確認いただけます。
-        </p>
+        {formEnabled && (
+          <p className="mx-auto mt-6 max-w-lg text-[14.5px] text-kura">
+            お問い合わせや最新情報は、お電話またはInstagramからもご確認いただけます。
+          </p>
+        )}
       </div>
       <div className="mx-auto max-w-container px-8 pb-24 max-[640px]:px-5">
         {formEnabled ? <ContactForm /> : <ContactFallback />}

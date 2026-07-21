@@ -26,7 +26,7 @@ export function CraftMiniCards() {
           />
         </RevealOnScroll>
         <RevealOnScroll>
-          <div className="grid grid-cols-3 gap-7 max-[760px]:grid-cols-1">
+          <div className="grid grid-cols-3 gap-7 max-[760px]:min-[641px]:grid-cols-1 max-[640px]:grid-cols-2 max-[640px]:gap-4">
             {items.map((item) => (
               <div key={item.num} className="rounded-[2px] border border-line bg-white p-8">
                 <span className="font-accent text-[13px] tracking-wide text-gold">{item.num}</span>

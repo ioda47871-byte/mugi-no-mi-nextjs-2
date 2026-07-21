@@ -20,7 +20,7 @@ export const metadata: Metadata = {
  */
 export default function AboutPage() {
   return (
-    <div className="pt-[200px]">
+    <div className="pt-[200px] max-[640px]:pt-[130px]">
       <div className="mx-auto max-w-container px-8 pb-20 text-center max-[640px]:px-5">
         <RevealOnScroll>
           <span className="eyebrow justify-center">About</span>

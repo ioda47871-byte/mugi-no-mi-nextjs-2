@@ -57,7 +57,7 @@ export function Header() {
         </nav>
 
         <button
-          className="flex flex-col gap-1.5 p-2 min-[861px]:hidden"
+          className="flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-1.5 min-[861px]:hidden"
           aria-label="メニューを開く"
           aria-expanded={mobileOpen}
           onClick={() => setMobileOpen((v) => !v)}

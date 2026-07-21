@@ -39,22 +39,14 @@ export function InstagramFeed() {
           </a>
         </RevealOnScroll>
 
-        {/* 公式oEmbed または プレースホルダー */}
-        <RevealOnScroll>
-          <div className="mb-14">
-            {hasFeaturedPost ? (
+        {/* 公式oEmbed(特定の投稿URLが確定している場合のみ表示。未確定の間は何も表示しない) */}
+        {hasFeaturedPost && (
+          <RevealOnScroll>
+            <div className="mb-14">
               <InstagramEmbedPost url={siteContent.instagramFeaturedPostUrl.value as string} />
-            ) : (
-              <div className="mx-auto max-w-md rounded-2xl border border-dashed border-kura/30 bg-white/60 px-8 py-12 text-center">
-                <p className="text-sm text-kura">
-                  ここに、実際のInstagram投稿(公式埋め込み)が表示されます。
-                  <br />
-                  投稿URLが確定したら、<code className="text-xs">instagramFeaturedPostUrl</code> に設定してください。
-                </p>
-              </div>
-            )}
-          </div>
-        </RevealOnScroll>
+            </div>
+          </RevealOnScroll>
+        )}
 
         {/* フォローボタン */}
         <RevealOnScroll>

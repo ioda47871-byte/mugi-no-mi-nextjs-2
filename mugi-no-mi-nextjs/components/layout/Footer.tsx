@@ -14,7 +14,7 @@ export function Footer() {
           <span className="font-accent text-sm italic text-kura">{siteContent.brandNameEn.value}</span>
         </div>
 
-        <ul className="flex flex-wrap items-center justify-center gap-x-8 gap-y-2.5 text-[13.5px] text-kura">
+        <ul className="flex flex-wrap items-center justify-center gap-x-8 gap-y-2.5 text-[13.5px] text-kura max-[640px]:text-[14.5px]">
           <li>{siteContent.hours.value}</li>
           <li>{siteContent.address.value}</li>
           <li>
@@ -30,7 +30,7 @@ export function Footer() {
           </li>
         </ul>
 
-        <p className="mt-1 text-xs text-kura/60">&copy; 2026 {siteContent.brandName.value}</p>
+        <p className="mt-1 text-xs text-kura/60 max-[640px]:text-[13px]">&copy; 2026 {siteContent.brandName.value}</p>
       </div>
     </footer>
   );

@@ -19,7 +19,7 @@ export default async function MenuPage() {
   const products = await getAllProducts();
 
   return (
-    <div className="pt-[200px]">
+    <div className="pt-[200px] max-[640px]:pt-[130px]">
       <MenuSection products={products} />
     </div>
   );
