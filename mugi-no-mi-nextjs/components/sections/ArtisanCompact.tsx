@@ -7,8 +7,8 @@ import { siteContent } from '@/lib/placeholder-content';
  * 店舗紹介(Home = 短縮版)。
  * 実在の代表者名は確認できていないため、個人の顔写真・名前つきの
  * 「職人紹介」形式ではなく、店舗紹介文(第三者紹介トーン)を表示しています。
- * founderPortrait.value にURL(またはpublic/images内のパス)を設定すれば、
- * 2カラムの写真ありレイアウトに切り替わります(現状は写真なし)。
+ * founderPortrait.value(現在は店内写真)が設定されている間は、
+ * 2カラムの写真ありレイアウトで表示されます。
  */
 export function ArtisanCompact() {
   const hasPhoto = Boolean(siteContent.founderPortrait.value);
@@ -19,7 +19,7 @@ export function ArtisanCompact() {
         <RevealOnScroll>
           {hasPhoto ? (
             <div className="mx-auto grid max-w-3xl grid-cols-[0.6fr_1fr] items-center gap-12 max-[700px]:grid-cols-1 max-[700px]:text-center">
-              <PhotoFrame src={siteContent.founderPortrait.value} alt="店舗の写真" aspect="aspect-[3/4]" />
+              <PhotoFrame src={siteContent.founderPortrait.value} alt="Brot yanagiの店内" aspect="aspect-[3/4]" />
               <IntroText />
             </div>
           ) : (

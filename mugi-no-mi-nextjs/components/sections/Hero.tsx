@@ -5,10 +5,9 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/Button';
 import { siteContent } from '@/lib/placeholder-content';
 
-// 実店舗の写真が未確認のため、雰囲気を伝えるイメージ写真(Pexelsフリー素材)を
-// 一時的に使用しています。実店舗の写真が用意でき次第、差し替えてください。
-const HERO_IMAGE =
-  'https://images.pexels.com/photos/1287278/pexels-photo-1287278.jpeg?auto=compress&cs=tinysrgb&w=1600';
+// 店舗外観写真(柳の木が目印)。見出し「柳の木の奥で、今日のパンに出会う。」と
+// 直接呼応するよう、Heroの背景にはショーケース写真ではなく外観写真を採用している。
+const HERO_IMAGE = '/images/exterior.jpg';
 
 export function Hero() {
   const [fade, setFade] = useState(1);
@@ -55,7 +54,7 @@ export function Hero() {
       <div className="absolute inset-0">
         <Image
           src={HERO_IMAGE}
-          alt="パンのイメージ写真(実店舗の写真ではありません)"
+          alt="柳の木とBrot yanagiの外観"
           fill
           priority
           sizes="100vw"

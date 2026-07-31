@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { PhotoFrame } from '@/components/ui/PhotoFrame';
+import { PhotoBlock } from '@/components/ui/PhotoBlock';
 import { siteContent } from '@/lib/placeholder-content';
 import { siteConfig } from '@/lib/site-config';
 
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 export default function AccessPage() {
   return (
     <div className="pt-[200px] max-[640px]:pt-[130px]">
-      <div className="mx-auto max-w-container px-8 pb-24 text-center max-[640px]:px-5">
+      <div className="mx-auto max-w-container px-8 pb-14 text-center max-[640px]:px-5">
         <span className="eyebrow justify-center">Access</span>
         <h1 className="mt-[18px] text-[clamp(34px,5vw,58px)]">店舗のご案内</h1>
         <p className="mx-auto mt-5 max-w-lg text-[14.5px] text-kura">
@@ -23,8 +23,19 @@ export default function AccessPage() {
         </p>
       </div>
 
+      <div className="px-8 pb-20 max-[640px]:px-5">
+        <PhotoBlock
+          src="/images/exterior.jpg"
+          alt="柳の木とBrot yanagiの外観"
+          width={1200}
+          height={1500}
+          priority
+          className="mx-auto max-w-2xl"
+        />
+      </div>
+
       <section className="px-8 pb-20 max-[640px]:px-5">
-        <div className="mx-auto grid max-w-container grid-cols-2 items-center gap-16 max-[860px]:grid-cols-1 max-[860px]:gap-9">
+        <div className="mx-auto max-w-2xl">
           <table className="w-full border-collapse">
             <tbody>
               <Row label="店舗名">{siteContent.brandName.value}({siteContent.brandNameEn.value})</Row>
@@ -51,8 +62,6 @@ export default function AccessPage() {
               </Row>
             </tbody>
           </table>
-
-          <PhotoFrame src={null} alt="" caption="店舗写真は近日公開予定です" aspect="aspect-[4/5]" />
         </div>
       </section>
 

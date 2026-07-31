@@ -3,16 +3,13 @@ import { RevealOnScroll } from '@/components/ui/RevealOnScroll';
 import { Button } from '@/components/ui/Button';
 import { siteContent } from '@/lib/placeholder-content';
 
-// 実店舗の外観・内観写真が未確認のため、写真なしプレースホルダーを表示しています。
-// 実写真が用意でき次第、srcにURL(またはpublic/images内のパス)を設定してください。
-
 export function VisitUs() {
   return (
     <section className="bg-white px-8 py-24 max-[640px]:px-5 max-[640px]:py-16">
       <div className="mx-auto max-w-container">
         <RevealOnScroll>
           <div className="grid grid-cols-[0.9fr_1.1fr] items-center gap-16 max-[860px]:grid-cols-1 max-[860px]:gap-9">
-            <PhotoFrame src={null} alt="" caption="店舗写真は近日公開予定です" aspect="aspect-[4/5]" />
+            <PhotoFrame src="/images/entrance.jpg" alt="Brot yanagiの入口" aspect="aspect-[4/5]" />
 
             <div>
               <span className="eyebrow">Visit Us</span>

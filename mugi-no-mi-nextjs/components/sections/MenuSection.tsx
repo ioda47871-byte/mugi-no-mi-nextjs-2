@@ -1,4 +1,5 @@
 import { MenuBrowser } from '@/components/sections/MenuBrowser';
+import { PhotoBlock } from '@/components/ui/PhotoBlock';
 import { RevealOnScroll } from '@/components/ui/RevealOnScroll';
 import type { Product } from '@/lib/products';
 
@@ -24,6 +25,16 @@ export function MenuSection({ products, className = '' }: MenuSectionProps) {
               商品の内容や販売状況は日によって異なります。
             </p>
           </div>
+        </RevealOnScroll>
+
+        <RevealOnScroll>
+          <PhotoBlock
+            src="/images/showcase.jpg"
+            alt="焼きたてのパンが並ぶBrot yanagiのショーケース"
+            width={1600}
+            height={1067}
+            className="mx-auto mb-14 max-w-container"
+          />
         </RevealOnScroll>
 
         <RevealOnScroll>

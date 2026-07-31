@@ -14,16 +14,6 @@ function getSupabaseStorageHostname() {
 const supabaseHostname = getSupabaseStorageHostname();
 
 const remotePatterns = [
-  // 仮素材として使用しているストック写真サービス。
-  {
-    protocol: 'https',
-    hostname: 'images.pexels.com',
-    pathname: '/photos/**',
-  },
-  {
-    protocol: 'https',
-    hostname: 'images.unsplash.com',
-  },
   // Instagram投稿画像(Instagram Graph API経由。components/sections/InstagramGrid.tsx参照)。
   // Instagram/FacebookのCDNは投稿ごと・リージョンごとに異なる多数のサブドメイン
   // (例: scontent-xxx1-1.cdninstagram.com)を使うため、個別列挙が不可能で、
@@ -61,7 +51,6 @@ const nextConfig = {
     // (**.cdninstagram.com 等)を使用しています(理由は下記該当箇所のコメント参照)。
     //
     // 内訳:
-    //   - images.pexels.com / images.unsplash.com: 仮素材(ストック写真)用
     //   - **.cdninstagram.com / **.fbcdn.net: Instagram Graph API経由の投稿画像用
     //   - {NEXT_PUBLIC_SUPABASE_URLのホスト}: 管理画面からアップロードした
     //     商品画像(Supabase Storage / products-images バケットの公開URL)用
