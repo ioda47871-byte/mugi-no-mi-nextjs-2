@@ -5,11 +5,17 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/Button';
 import { siteContent } from '@/lib/placeholder-content';
 
-// 店舗外観写真(柳の木が目印)。見出し「柳の木の奥で、今日のパンに出会う。」と
-// 直接呼応するよう、Heroの背景にはショーケース写真ではなく外観写真を採用している。
-const HERO_IMAGE = '/images/exterior.jpg';
+interface HeroProps {
+  imageUrl: string;
+  imageAlt: string;
+}
 
-export function Hero() {
+// 見出し「柳の木の奥で、今日のパンに出会う。」と直接呼応するよう、
+// Heroの背景にはショーケース写真ではなく外観写真を採用している(採用理由は
+// 管理画面のHeroスロットとは独立して設定可能。既定は外観と同じ写真)。
+// 'use client'のためサーバーからのデータ取得はできず、imageUrl/imageAltは
+// 親(app/page.tsx)がlib/site-photos.ts経由で取得してpropsで渡している。
+export function Hero({ imageUrl, imageAlt }: HeroProps) {
   const [fade, setFade] = useState(1);
 
   useEffect(() => {
@@ -53,8 +59,8 @@ export function Hero() {
     >
       <div className="absolute inset-0">
         <Image
-          src={HERO_IMAGE}
-          alt="柳の木とBrot yanagiの外観"
+          src={imageUrl}
+          alt={imageAlt}
           fill
           priority
           sizes="100vw"

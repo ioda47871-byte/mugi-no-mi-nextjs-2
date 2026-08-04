@@ -2,14 +2,16 @@ import { PhotoFrame } from '@/components/ui/PhotoFrame';
 import { RevealOnScroll } from '@/components/ui/RevealOnScroll';
 import { Button } from '@/components/ui/Button';
 import { siteContent } from '@/lib/placeholder-content';
+import { getSitePhoto } from '@/lib/site-photos';
 
-export function VisitUs() {
+export async function VisitUs() {
+  const entrancePhoto = await getSitePhoto('entrance');
   return (
     <section className="bg-white px-8 py-24 max-[640px]:px-5 max-[640px]:py-16">
       <div className="mx-auto max-w-container">
         <RevealOnScroll>
           <div className="grid grid-cols-[0.9fr_1.1fr] items-center gap-16 max-[860px]:grid-cols-1 max-[860px]:gap-9">
-            <PhotoFrame src="/images/entrance.jpg" alt="Brot yanagiの入口" aspect="aspect-[4/5]" />
+            <PhotoFrame src={entrancePhoto.url} alt={entrancePhoto.alt} aspect="aspect-[4/5]" />
 
             <div>
               <span className="eyebrow">Visit Us</span>
@@ -18,15 +20,15 @@ export function VisitUs() {
               <table className="mt-1 w-full border-collapse">
                 <tbody>
                   <tr className="border-b border-line">
-                    <td className="w-[110px] py-3 align-top font-accent text-sm italic text-brand-deep">住所</td>
+                    <td className="w-[110px] py-3 align-top font-accent text-sm italic text-brand-text">住所</td>
                     <td className="py-3 align-top text-sm">{siteContent.address.value}</td>
                   </tr>
                   <tr className="border-b border-line">
-                    <td className="w-[110px] py-3 align-top font-accent text-sm italic text-brand-deep">営業時間</td>
+                    <td className="w-[110px] py-3 align-top font-accent text-sm italic text-brand-text">営業時間</td>
                     <td className="py-3 align-top text-sm">{siteContent.hours.value}</td>
                   </tr>
                   <tr className="border-b border-line">
-                    <td className="w-[110px] py-3 align-top font-accent text-sm italic text-brand-deep">定休日</td>
+                    <td className="w-[110px] py-3 align-top font-accent text-sm italic text-brand-text">定休日</td>
                     <td className="py-3 align-top text-sm">{siteContent.closedDay.value}</td>
                   </tr>
                 </tbody>

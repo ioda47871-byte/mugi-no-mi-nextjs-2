@@ -1,18 +1,30 @@
 import type { Metadata } from 'next';
 import { ContactForm } from '@/components/sections/ContactForm';
 import { Button } from '@/components/ui/Button';
-import { siteConfig } from '@/lib/site-config';
+import { pageOpenGraph, siteConfig } from '@/lib/site-config';
 import { siteContent } from '@/lib/placeholder-content';
 import { isContactFormConfigured } from '@/lib/contact/config';
+import { getSitePhoto } from '@/lib/site-photos';
 
-export const metadata: Metadata = {
-  title: 'Contact',
-  description: `${siteConfig.name}へのお問い合わせはこちらから。`,
-  alternates: { canonical: '/contact' },
-  openGraph: {
-    title: `Contact | ${siteConfig.name}`,
-  },
-};
+const CONTACT_DESCRIPTION = `${siteConfig.name}へのお問い合わせはこちらから。`;
+
+// サイト写真(Supabase)は60秒ごとに再取得する(ISR)。
+export const revalidate = 60;
+
+export async function generateMetadata(): Promise<Metadata> {
+  const showcasePhoto = await getSitePhoto('showcase');
+  return {
+    title: 'Contact',
+    description: CONTACT_DESCRIPTION,
+    alternates: { canonical: '/contact' },
+    openGraph: pageOpenGraph({
+      title: 'Contact',
+      description: CONTACT_DESCRIPTION,
+      image: showcasePhoto.url,
+      imageAlt: showcasePhoto.alt,
+    }),
+  };
+}
 
 /**
  * お問い合わせフォームの送信に必要な環境変数(Resend / Upstash / 受信先)が

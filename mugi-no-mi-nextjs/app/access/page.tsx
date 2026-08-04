@@ -1,18 +1,32 @@
 import type { Metadata } from 'next';
 import { PhotoBlock } from '@/components/ui/PhotoBlock';
 import { siteContent } from '@/lib/placeholder-content';
-import { siteConfig } from '@/lib/site-config';
+import { pageOpenGraph, siteConfig } from '@/lib/site-config';
+import { getSitePhoto } from '@/lib/site-photos';
 
-export const metadata: Metadata = {
-  title: 'Access',
-  description: `${siteConfig.name}の営業時間・住所・アクセス方法をご案内します。`,
-  alternates: { canonical: '/access' },
-  openGraph: {
-    title: `Access | ${siteConfig.name}`,
-  },
-};
+const ACCESS_DESCRIPTION = `${siteConfig.name}の営業時間・住所・アクセス方法をご案内します。`;
 
-export default function AccessPage() {
+// サイト写真(Supabase)は60秒ごとに再取得する(ISR)。
+export const revalidate = 60;
+
+export async function generateMetadata(): Promise<Metadata> {
+  const exteriorPhoto = await getSitePhoto('exterior');
+  return {
+    title: 'Access',
+    description: ACCESS_DESCRIPTION,
+    alternates: { canonical: '/access' },
+    openGraph: pageOpenGraph({
+      title: 'Access',
+      description: ACCESS_DESCRIPTION,
+      image: exteriorPhoto.url,
+      imageAlt: exteriorPhoto.alt,
+    }),
+  };
+}
+
+export default async function AccessPage() {
+  const exteriorPhoto = await getSitePhoto('exterior');
+
   return (
     <div className="pt-[200px] max-[640px]:pt-[130px]">
       <div className="mx-auto max-w-container px-8 pb-14 text-center max-[640px]:px-5">
@@ -25,8 +39,8 @@ export default function AccessPage() {
 
       <div className="px-8 pb-20 max-[640px]:px-5">
         <PhotoBlock
-          src="/images/exterior.jpg"
-          alt="柳の木とBrot yanagiの外観"
+          src={exteriorPhoto.url}
+          alt={exteriorPhoto.alt}
           width={1200}
           height={1500}
           priority
@@ -91,7 +105,7 @@ export default function AccessPage() {
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <tr className="border-b border-line">
-      <td className="w-[140px] py-[18px] align-top font-accent text-sm italic text-brand-deep max-[640px]:w-[90px]">
+      <td className="w-[140px] py-[18px] align-top font-accent text-sm italic text-brand-text max-[640px]:w-[90px]">
         {label}
       </td>
       <td className="py-[18px] align-top text-[14.5px]">{children}</td>

@@ -6,10 +6,15 @@ import { Footer } from '@/components/layout/Footer';
 import { MobileActionBar } from '@/components/layout/MobileActionBar';
 import { siteConfig } from '@/lib/site-config';
 import { siteContent } from '@/lib/placeholder-content';
+import { getSitePhoto } from '@/lib/site-photos';
 
+// weight 700は現在サイト内のどこでも使用していないため含めていない
+// (h1〜h4はfont-medium(500)、それ以外は継承されたfont-light(300)から
+// 最も近いウェイトとして400にフォールバックする)。太字を新たに使う場合は
+// weight配列に'700'を追加してください。
 const zenOldMincho = Zen_Old_Mincho({
   subsets: ['latin'],
-  weight: ['400', '500', '700'],
+  weight: ['400', '500'],
   variable: '--font-zen-old-mincho',
   display: 'swap',
 });
@@ -33,61 +38,71 @@ const notoSansJp = Noto_Sans_JP({
 // ローカルなど未設定の場合は、提案・デモ用サイトとして安全側に倒す)。
 const isProductionEnv = process.env.VERCEL_ENV === 'production';
 
-export const metadata: Metadata = {
-  metadataBase: new URL(siteConfig.url),
-  title: {
-    default: `${siteConfig.name}｜名古屋・金山のベーカリー`,
-    template: `%s | ${siteConfig.name}`,
-  },
-  description: siteConfig.defaultDescription,
-  // Preview/Development環境では検索エンジンに登録されないよう、
-  // <meta name="robots" content="noindex, nofollow"> を出力する
-  // (app/robots.ts のクロール禁止設定と合わせた二重の対策)。
-  ...(isProductionEnv ? {} : { robots: { index: false, follow: false } }),
-  openGraph: {
-    type: 'website',
-    locale: siteConfig.locale,
-    siteName: siteConfig.name,
-    title: siteConfig.name,
-    description: siteConfig.defaultDescription,
-  },
-  twitter: {
-    card: 'summary_large_image',
-  },
-};
+// サイト写真(Supabase)は60秒ごとに再取得する(ISR)。
+export const revalidate = 60;
 
-/**
- * 構造化データ(JSON-LD)。確認できている情報(店名・住所・電話番号・営業時間・
- * 定休日・Instagram)のみを記載しており、緯度経度・価格帯・評価・予約可否などの
- * 未確認情報は含めていない。
- */
-const jsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'Bakery',
-  name: siteContent.brandName.value,
-  alternateName: siteContent.brandNameEn.value,
-  url: siteConfig.url,
-  telephone: '+81-52-880-2474',
-  address: {
-    '@type': 'PostalAddress',
-    streetAddress: '新尾頭3-3-10',
-    addressLocality: '名古屋市熱田区',
-    addressRegion: '愛知県',
-    postalCode: '456-0018',
-    addressCountry: 'JP',
-  },
-  openingHoursSpecification: [
-    {
-      '@type': 'OpeningHoursSpecification',
-      dayOfWeek: ['Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-      opens: '08:00',
-      closes: '17:00',
+export async function generateMetadata(): Promise<Metadata> {
+  const showcasePhoto = await getSitePhoto('showcase');
+
+  return {
+    metadataBase: new URL(siteConfig.url),
+    title: {
+      default: `${siteConfig.name}｜名古屋・金山のベーカリー`,
+      template: `%s | ${siteConfig.name}`,
     },
-  ],
-  sameAs: [siteContent.instagramUrl.value],
-};
+    description: siteConfig.defaultDescription,
+    // Preview/Development環境では検索エンジンに登録されないよう、
+    // <meta name="robots" content="noindex, nofollow"> を出力する
+    // (app/robots.ts のクロール禁止設定と合わせた二重の対策)。
+    ...(isProductionEnv ? {} : { robots: { index: false, follow: false } }),
+    openGraph: {
+      type: 'website',
+      locale: siteConfig.locale,
+      siteName: siteConfig.name,
+      title: siteConfig.name,
+      description: siteConfig.defaultDescription,
+      images: [{ url: showcasePhoto.url, alt: showcasePhoto.alt }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      images: [showcasePhoto.url],
+    },
+  };
+}
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const exteriorPhoto = await getSitePhoto('exterior');
+
+  // 構造化データ(JSON-LD)。確認できている情報(店名・住所・電話番号・営業時間・
+  // 定休日・Instagram)のみを記載しており、緯度経度・価格帯・評価・予約可否などの
+  // 未確認情報は含めていない。
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Bakery',
+    name: siteContent.brandName.value,
+    alternateName: siteContent.brandNameEn.value,
+    url: siteConfig.url,
+    telephone: '+81-52-880-2474',
+    image: exteriorPhoto.url.startsWith('http') ? exteriorPhoto.url : `${siteConfig.url}${exteriorPhoto.url}`,
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: '新尾頭3-3-10',
+      addressLocality: '名古屋市熱田区',
+      addressRegion: '愛知県',
+      postalCode: '456-0018',
+      addressCountry: 'JP',
+    },
+    openingHoursSpecification: [
+      {
+        '@type': 'OpeningHoursSpecification',
+        dayOfWeek: ['Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+        opens: '08:00',
+        closes: '17:00',
+      },
+    ],
+    sameAs: [siteContent.instagramUrl.value],
+  };
+
   return (
     <html lang="ja" className={`${zenOldMincho.variable} ${cormorant.variable} ${notoSansJp.variable}`}>
       <body>

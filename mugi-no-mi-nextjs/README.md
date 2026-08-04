@@ -504,4 +504,57 @@ Vercelは、プロジェクトに `CRON_SECRET` が設定されている場合�
 - 上記いずれの場合も、サイトの他の機能(商品一覧・お問い合わせ・管理画面など)には
   一切影響しません。Instagramセクションのみがフォールバック表示に切り替わります。
 
+## 10. サイト写真アップロード機能(Hero・外観・入口・店内・ショーケース・雑貨・ディスプレイ)
+
+`public/images/`への静的ファイル配置に代えて、管理画面(`/admin/site-photos`)から
+7つの固定スロットの写真をアップロードできます。Supabase Storage(`site-photos`
+バケット)に保存され、Git pushや再デプロイなしで公開サイトへ反映されます
+(最大60秒のISR + アップロード直後のオンデマンド再検証)。
+
+### 10-1. Supabaseマイグレーションの適用方法
+
+`supabase/site-photos-setup.sql` の内容を、SupabaseダッシュボードのSQL Editorで
+そのまま実行してください(`admin-setup.sql` が実行済みであることが前提)。実行内容:
+
+1. `site_photos` テーブルの作成・7行の初期シード
+2. `anon`/`authenticated` への明示的な権限付与(SELECT公開・UPDATE管理者限定)
+3. RLSポリシー(公開SELECT・管理者限定UPDATE。INSERT/DELETEポリシーは意図的に
+   作成していません)
+4. `site-photos` バケットの作成(公開バケット、`file_size_limit` 10MB・
+   `allowed_mime_types` jpeg/png/webpを設定)
+5. Storageポリシー(公開SELECT・管理者限定INSERT/DELETE)
+
+同ファイルの末尾にロールバック用SQL(コメントアウト状態)も用意しています。
+
+### 10-2. アップロードの仕組み
+
+1. ブラウザがTUS(再開可能アップロード)でSupabase Storageへ直接アップロード
+   (`temp/{slot}/original-{uuid}.{ext}`)
+2. アップロード完了後、Server Action(`finalizeSitePhotoUploadAction`)が
+   サーバー側でダウンロード→検証(サイズ・実フォーマット・アニメーション有無)→
+   EXIF補正→長辺3000pxリサイズ→WebP変換→再アップロード(`{slot}/optimized-{uuid}.webp`)
+   →DB更新を行う
+3. 公開サイトは常に最適化済み(WebP)のURLのみを参照する
+
+### 10-3. 孤立ファイルの自動削除(Cron)
+
+`app/api/cron/cleanup-orphaned-site-photos/route.ts` が、`site_photos` テーブルの
+どの行からも参照されておらず、作成から24時間以上経過したStorageオブジェクトを
+毎日自動削除します(`vercel.json` の `schedule: "0 3 * * *"`、毎日3:00 UTC)。
+
+**重要: Vercel CronはProductionデプロイURLに対してのみ実行されます。**
+Previewだけを運用している間(本番ドメインが未確定・本番公開前)は、この
+Cronは自動実行されません。本番公開前に孤立ファイルの状況を確認したい場合は、
+以下のように手動実行してください(削除は行わず候補件数のみ返す `dryRun` モード
+での確認を推奨します):
+
+```bash
+curl -H "Authorization: Bearer {CRON_SECRETの値}" \
+  "https://{Previewのデプロイ URL}/api/cron/cleanup-orphaned-site-photos?dryRun=true"
+```
+
+`dryRun=true` を外すと実際に削除が実行されます。レスポンスにはファイルパスなどの
+詳細は含まれず、件数(`scannedCount` / `candidateCount` / `deletedCount` /
+`failedCount`)のみが返ります。
+
 

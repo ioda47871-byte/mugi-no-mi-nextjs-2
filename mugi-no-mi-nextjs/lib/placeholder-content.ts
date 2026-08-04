@@ -29,7 +29,6 @@ export interface SiteContent {
   founderRole: PlaceholderField<string>;
   /** 店舗紹介文(第三者紹介トーン)。ArtisanCompact / Aboutページで使用 */
   founderQuote: PlaceholderField<string>;
-  founderPortrait: PlaceholderField<string | null>;
 
   address: PlaceholderField<string>;
   phone: PlaceholderField<string>;
@@ -83,12 +82,6 @@ export const siteContent: SiteContent = {
     isPlaceholder: false,
     note: '依頼者から提供された店舗紹介文をベースにしています。',
   },
-  founderPortrait: {
-    value: '/images/interior.jpg',
-    isPlaceholder: false,
-    note: '店内の写真(2026年7月撮影)。ArtisanCompact(Home)で使用。',
-  },
-
   address: { value: ADDRESS_DISPLAY, isPlaceholder: false },
   phone: { value: '052-880-2474', isPlaceholder: false },
   phoneHref: { value: '0528802474', isPlaceholder: false },

@@ -1,18 +1,27 @@
 import type { Metadata } from 'next';
 import { MenuSection } from '@/components/sections/MenuSection';
 import { getAllProducts } from '@/lib/products';
-import { siteConfig } from '@/lib/site-config';
+import { pageOpenGraph, siteConfig } from '@/lib/site-config';
+import { getSitePhoto } from '@/lib/site-photos';
 
-export const metadata: Metadata = {
-  title: 'Menu',
-  description: `${siteConfig.name}の店頭に並ぶパンをカテゴリー別にご紹介します。商品の内容や販売状況は日によって異なります。`,
-  alternates: { canonical: '/menu' },
-  openGraph: {
-    title: `Menu | ${siteConfig.name}`,
-  },
-};
+const MENU_DESCRIPTION = `${siteConfig.name}の店頭に並ぶパンをカテゴリー別にご紹介します。商品の内容や販売状況は日によって異なります。`;
 
-// Supabaseの商品データは60秒ごとに再取得する(ISR)。
+export async function generateMetadata(): Promise<Metadata> {
+  const showcasePhoto = await getSitePhoto('showcase');
+  return {
+    title: 'Menu',
+    description: MENU_DESCRIPTION,
+    alternates: { canonical: '/menu' },
+    openGraph: pageOpenGraph({
+      title: 'Menu',
+      description: MENU_DESCRIPTION,
+      image: showcasePhoto.url,
+      imageAlt: showcasePhoto.alt,
+    }),
+  };
+}
+
+// Supabaseの商品データ・サイト写真は60秒ごとに再取得する(ISR)。
 export const revalidate = 60;
 
 export default async function MenuPage() {
@@ -20,7 +29,7 @@ export default async function MenuPage() {
 
   return (
     <div className="pt-[200px] max-[640px]:pt-[130px]">
-      <MenuSection products={products} />
+      <MenuSection products={products} headingLevel="h1" />
     </div>
   );
 }

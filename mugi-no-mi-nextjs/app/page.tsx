@@ -6,6 +6,7 @@ import { ArtisanCompact } from '@/components/sections/ArtisanCompact';
 import { VisitUs } from '@/components/sections/VisitUs';
 import { InstagramGrid } from '@/components/sections/InstagramGrid';
 import { getAllProducts } from '@/lib/products';
+import { getSitePhoto } from '@/lib/site-photos';
 import { siteConfig } from '@/lib/site-config';
 
 export const metadata: Metadata = {
@@ -13,17 +14,17 @@ export const metadata: Metadata = {
   alternates: { canonical: '/' },
 };
 
-// Supabaseの商品データは60秒ごとに再取得する(ISR)。
-// 管理者がSupabase上で価格や商品を変更しても、再デプロイなしで
+// Supabaseの商品データ・サイト写真は60秒ごとに再取得する(ISR)。
+// 管理者がSupabase上で価格・商品・写真を変更しても、再デプロイなしで
 // 最大60秒以内にサイトへ反映される。
 export const revalidate = 60;
 
 export default async function HomePage() {
-  const products = await getAllProducts();
+  const [products, heroPhoto] = await Promise.all([getAllProducts(), getSitePhoto('hero')]);
 
   return (
     <>
-      <Hero />
+      <Hero imageUrl={heroPhoto.url} imageAlt={heroPhoto.alt} />
       <MenuSection products={products} />
       <CraftMiniCards />
       <ArtisanCompact />

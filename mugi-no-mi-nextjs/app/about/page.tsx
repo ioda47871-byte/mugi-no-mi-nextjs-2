@@ -3,17 +3,30 @@ import Link from 'next/link';
 import { InstagramFeed } from '@/components/sections/InstagramFeed';
 import { PhotoBlock } from '@/components/ui/PhotoBlock';
 import { RevealOnScroll } from '@/components/ui/RevealOnScroll';
-import { siteConfig } from '@/lib/site-config';
+import { pageOpenGraph, siteConfig } from '@/lib/site-config';
 import { siteContent } from '@/lib/placeholder-content';
+import { getSitePhotos } from '@/lib/site-photos';
 
-export const metadata: Metadata = {
-  title: 'About',
-  description: `${siteConfig.name}(${siteConfig.nameJa})の店構えと店内、Instagramでの最新情報。`,
-  alternates: { canonical: '/about' },
-  openGraph: {
-    title: `About | ${siteConfig.name}`,
-  },
-};
+const ABOUT_DESCRIPTION = `${siteConfig.name}(${siteConfig.nameJa})の店構えと店内、Instagramでの最新情報。`;
+
+// サイト写真(Supabase)は60秒ごとに再取得する(ISR)。管理画面でのアップロードが
+// 再デプロイなしで最大60秒以内に反映される。
+export const revalidate = 60;
+
+export async function generateMetadata(): Promise<Metadata> {
+  const photos = await getSitePhotos();
+  return {
+    title: 'About',
+    description: ABOUT_DESCRIPTION,
+    alternates: { canonical: '/about' },
+    openGraph: pageOpenGraph({
+      title: 'About',
+      description: ABOUT_DESCRIPTION,
+      image: photos.interior.url,
+      imageAlt: photos.interior.alt,
+    }),
+  };
+}
 
 /**
  * About = 店舗紹介文(依頼者から提供された紹介文をベースにした第三者紹介トーン)
@@ -21,8 +34,12 @@ export const metadata: Metadata = {
  * 素材などは確認が取れていないため、個人名の記載や工程の詳細説明は行っていません。
  * 写真に添えるキャプションも、写真に写っているものを説明する範囲にとどめ、
  * 未確認の店の方針・こだわりなどは記載していません。
+ * 写真はlib/site-photos.ts経由(管理画面のアップロードが無ければ既存の静的
+ * ファイルにフォールバック)で取得しています。
  */
-export default function AboutPage() {
+export default async function AboutPage() {
+  const photos = await getSitePhotos();
+
   return (
     <div className="pt-[200px] max-[640px]:pt-[130px]">
       <div className="mx-auto max-w-container px-8 pb-14 text-center max-[640px]:px-5">
@@ -36,8 +53,8 @@ export default function AboutPage() {
       <div className="px-8 pb-24 max-[640px]:px-5 max-[640px]:pb-16">
         <RevealOnScroll className="mx-auto max-w-2xl">
           <PhotoBlock
-            src="/images/exterior.jpg"
-            alt="柳の木とBrot yanagiの外観"
+            src={photos.exterior.url}
+            alt={photos.exterior.alt}
             width={1200}
             height={1500}
             caption="柳の木を目印に"
@@ -50,12 +67,7 @@ export default function AboutPage() {
         <div className="mx-auto max-w-container">
           <RevealOnScroll>
             <div className="grid grid-cols-2 items-center gap-16 max-[860px]:grid-cols-1 max-[860px]:gap-9">
-              <PhotoBlock
-                src="/images/interior.jpg"
-                alt="Brot yanagiの店内の様子"
-                width={1500}
-                height={1125}
-              />
+              <PhotoBlock src={photos.interior.url} alt={photos.interior.alt} width={1500} height={1125} />
               <div className="max-[860px]:text-center">
                 <span className="eyebrow">Space</span>
                 <h2 className="mt-3.5 text-2xl">落ち着いた店内。</h2>
@@ -87,12 +99,7 @@ export default function AboutPage() {
                 </div>
               </div>
               <div className="order-1 max-[860px]:order-1">
-                <PhotoBlock
-                  src="/images/entrance.jpg"
-                  alt="Brot yanagiの入口"
-                  width={1200}
-                  height={1500}
-                />
+                <PhotoBlock src={photos.entrance.url} alt={photos.entrance.alt} width={1200} height={1500} />
               </div>
             </div>
           </RevealOnScroll>
@@ -102,8 +109,8 @@ export default function AboutPage() {
       <div className="px-8 pb-24 max-[640px]:px-5 max-[640px]:pb-16">
         <RevealOnScroll className="mx-auto max-w-md">
           <PhotoBlock
-            src="/images/display-accent.jpg"
-            alt="店先の小物のディスプレイ"
+            src={photos['display-accent'].url}
+            alt={photos['display-accent'].alt}
             width={1200}
             height={1500}
             caption="パンだけではない、店先のしつらえ"

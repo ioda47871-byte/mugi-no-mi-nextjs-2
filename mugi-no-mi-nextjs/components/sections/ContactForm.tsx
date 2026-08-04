@@ -94,7 +94,7 @@ function Field({
     <div>
       <label htmlFor={name} className="mb-2.5 block text-[12.5px] tracking-wide text-kura">
         {label}
-        {required && <span className="ml-1 text-brand-deep">必須</span>}
+        {required && <span className="ml-1 text-brand-text">必須</span>}
       </label>
       <input id={name} name={name} type={type} required={required} className={fieldBase(error)} />
       {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
@@ -107,7 +107,7 @@ function SelectField({ label, name, error }: { label: string; name: string; erro
     <div>
       <label htmlFor={name} className="mb-2.5 block text-[12.5px] tracking-wide text-kura">
         {label}
-        <span className="ml-1 text-brand-deep">必須</span>
+        <span className="ml-1 text-brand-text">必須</span>
       </label>
       <select id={name} name={name} required className={fieldBase(error)} defaultValue="">
         <option value="" disabled>選択してください</option>
@@ -136,7 +136,7 @@ function TextareaField({
     <div className={className}>
       <label htmlFor={name} className="mb-2.5 block text-[12.5px] tracking-wide text-kura">
         {label}
-        <span className="ml-1 text-brand-deep">必須</span>
+        <span className="ml-1 text-brand-text">必須</span>
       </label>
       <textarea id={name} name={name} rows={6} required className={`${fieldBase(error)} resize-y`} />
       {error && <p className="mt-2 text-xs text-red-500">{error}</p>}

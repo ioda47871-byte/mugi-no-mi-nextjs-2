@@ -32,6 +32,10 @@ export default async function AdminProtectedLayout({ children }: { children: Rea
             <LogoutButton />
           </div>
         </div>
+        <nav className="mx-auto flex max-w-5xl gap-6 px-5 pb-3 text-[13px] tracking-wide text-kura">
+          <Link href="/admin" className="hover:text-ink">商品一覧</Link>
+          <Link href="/admin/site-photos" className="hover:text-ink">サイト写真</Link>
+        </nav>
       </header>
       <main className="mx-auto max-w-5xl px-5 py-8">{children}</main>
     </div>

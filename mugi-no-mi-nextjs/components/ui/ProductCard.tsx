@@ -52,7 +52,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
 
       <div className="flex items-baseline justify-between gap-3">
         <h3 className="text-xl leading-snug">{product.name}</h3>
-        <span className="shrink-0 font-accent text-[22px] text-brand-deep">
+        <span className="shrink-0 font-accent text-[22px] text-brand-text">
           ¥{product.price.toLocaleString()}
         </span>
       </div>

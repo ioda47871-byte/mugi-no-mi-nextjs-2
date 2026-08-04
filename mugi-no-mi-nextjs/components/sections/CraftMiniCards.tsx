@@ -30,7 +30,7 @@ export function CraftMiniCards() {
             {items.map((item) => (
               <div key={item.num} className="rounded-[2px] border border-line bg-white p-8">
                 <span className="font-accent text-[13px] tracking-wide text-gold">{item.num}</span>
-                <h4 className="mt-2.5 font-display text-[17px] leading-relaxed">{item.title}</h4>
+                <h3 className="mt-2.5 font-display text-[17px] leading-relaxed">{item.title}</h3>
                 <p className="mt-3 text-[13.5px] text-kura">{item.text}</p>
               </div>
             ))}
