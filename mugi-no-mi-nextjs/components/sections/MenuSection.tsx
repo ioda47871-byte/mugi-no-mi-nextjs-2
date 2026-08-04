@@ -1,4 +1,5 @@
-import { MenuBrowser } from '@/components/sections/MenuBrowser';
+import { Suspense } from 'react';
+import { MenuBrowser, MenuBrowserSkeleton } from '@/components/sections/MenuBrowser';
 import { PhotoBlock } from '@/components/ui/PhotoBlock';
 import { RevealOnScroll } from '@/components/ui/RevealOnScroll';
 import type { Product } from '@/lib/products';
@@ -29,7 +30,7 @@ export async function MenuSection({ products, className = '', headingLevel = 'h2
         <RevealOnScroll>
           <div className="mb-14 text-center">
             <Heading className="font-display text-[clamp(30px,4vw,44px)]">Menu</Heading>
-            <p className="mx-auto mt-4 max-w-md text-[14.5px] text-kura">
+            <p className="mx-auto mt-4 max-w-lg text-[14.5px] text-kura">
               食事に寄り添うパンから、軽いおやつに楽しめるパンまで、店頭にはさまざまな種類が並びます。
               商品の内容や販売状況は日によって異なります。
             </p>
@@ -47,7 +48,9 @@ export async function MenuSection({ products, className = '', headingLevel = 'h2
         </RevealOnScroll>
 
         <RevealOnScroll>
-          <MenuBrowser products={products} />
+          <Suspense fallback={<MenuBrowserSkeleton />}>
+            <MenuBrowser products={products} />
+          </Suspense>
         </RevealOnScroll>
       </div>
     </section>

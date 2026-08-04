@@ -68,6 +68,22 @@ export function matchesMenuFilter(product: Product, key: MenuFilterKey): boolean
   return product.categoryId === key;
 }
 
+const MENU_FILTER_KEY_VALUES = MENU_FILTERS.map((f) => f.key) as string[];
+
+/**
+ * URLクエリパラメータ(?category=...)などの外部入力を検証し、
+ * 有効なMenuFilterKeyであればそれを、そうでなければ'all'を返す。
+ * トップページのカテゴリーカード(CraftMiniCards)から/menuへの遷移で、
+ * 不正・存在しないcategory値が渡された場合に「すべて」へ安全に
+ * フォールバックするために使用する。
+ */
+export function parseMenuFilterKey(value: string | null | undefined): MenuFilterKey {
+  if (value && MENU_FILTER_KEY_VALUES.includes(value)) {
+    return value as MenuFilterKey;
+  }
+  return 'all';
+}
+
 interface SupabaseProductRow {
   id: string;
   category_id: string;

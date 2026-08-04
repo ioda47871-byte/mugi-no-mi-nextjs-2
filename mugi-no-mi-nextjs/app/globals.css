@@ -20,14 +20,20 @@ html {
 
 @layer base {
   body {
-    @apply bg-ivory text-ink font-body font-light tracking-wide;
+    /* break-keep(word-break:keep-all)で日本語の単語(漢字の熟語など)の
+       途中で不自然に折り返らないようにし、break-words(overflow-wrap:break-word)を
+       安全弁として併用することで、万一の長い連続文字列(URLなど)による
+       横スクロールも防ぐ。text-prettyは段落の最終行に単語が1つだけ
+       取り残される「orphan」を減らす。 */
+    @apply bg-ivory text-ink font-body font-light tracking-wide break-keep break-words text-pretty;
     line-height: 1.9;
   }
   h1,
   h2,
   h3,
   h4 {
-    @apply font-display font-medium tracking-wide text-ink;
+    /* text-balanceで見出しの行の長さを均等化し、極端に短い最終行を防ぐ */
+    @apply font-display font-medium tracking-wide text-ink text-balance;
   }
   ::selection {
     @apply bg-brand-pale text-ink;
