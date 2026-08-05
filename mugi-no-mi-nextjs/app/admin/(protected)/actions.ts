@@ -84,12 +84,18 @@ export async function deleteProductAction(id: string): Promise<void> {
 }
 
 // ----------------------------------------------------------------------------
-// 一覧画面からのワンクリック切り替え(公開 / 人気 / 季節限定 / 売り切れ)
+// 一覧画面からのワンクリック切り替え(公開 / 人気 / 季節限定 / 売り切れ / おすすめ)
 // ----------------------------------------------------------------------------
 
-export type ToggleField = 'is_active' | 'is_popular' | 'is_sold_out' | 'is_seasonal';
+export type ToggleField = 'is_active' | 'is_popular' | 'is_sold_out' | 'is_seasonal' | 'is_featured_home';
 
-const VALID_TOGGLE_FIELDS: ToggleField[] = ['is_active', 'is_popular', 'is_sold_out', 'is_seasonal'];
+const VALID_TOGGLE_FIELDS: ToggleField[] = [
+  'is_active',
+  'is_popular',
+  'is_sold_out',
+  'is_seasonal',
+  'is_featured_home',
+];
 
 export interface ToggleResult {
   ok: boolean;
@@ -100,8 +106,9 @@ export interface ToggleResult {
  * 一覧画面のトグルボタンから直接呼び出す。redirectはせず結果オブジェクトを返す
  * (呼び出し側のクライアントコンポーネントが画面遷移なしで楽観的更新を行うため)。
  *
- * is_active / is_popular / is_sold_out / is_seasonal はすべて products テーブルの
- * 専用boolean列です。tag列(表示用タグ: 定番/人気/数量限定など)には一切触れません。
+ * is_active / is_popular / is_sold_out / is_seasonal / is_featured_home はすべて
+ * products テーブルの専用boolean列です。tag列(表示用タグ: 定番/人気/数量限定など)
+ * には一切触れません。
  */
 export async function toggleProductFlagAction(
   id: string,

@@ -38,6 +38,7 @@ export interface Product {
   isActive: boolean;
   isSoldOut: boolean;
   isSeasonal: boolean;
+  isFeaturedHome: boolean;
   displayOrder: number;
 }
 
@@ -96,6 +97,7 @@ interface SupabaseProductRow {
   is_active: boolean;
   is_sold_out: boolean;
   is_seasonal: boolean;
+  is_featured_home: boolean;
   display_order: number;
 }
 
@@ -115,6 +117,7 @@ function mapRow(row: SupabaseProductRow): Product {
     isActive: row.is_active,
     isSoldOut: row.is_sold_out,
     isSeasonal: row.is_seasonal,
+    isFeaturedHome: row.is_featured_home,
     displayOrder: row.display_order,
   };
 }
@@ -131,6 +134,7 @@ interface JsonRawProduct {
   isActive: boolean;
   isSoldOut?: boolean;
   isSeasonal?: boolean;
+  isFeaturedHome?: boolean;
   displayOrder?: number;
 }
 
@@ -146,8 +150,19 @@ function getFromJsonFallback(): Product[] {
     tag: p.tag ?? undefined,
     isSoldOut: p.isSoldOut ?? false,
     isSeasonal: p.isSeasonal ?? false,
+    isFeaturedHome: p.isFeaturedHome ?? false,
     displayOrder: p.displayOrder ?? index,
   }));
+}
+
+/**
+ * トップページの「おすすめ商品セクション」用に、is_featured_home=trueの商品を
+ * 表示順(displayOrder)で最大6件返す。既にgetAllProducts()で取得済みの
+ * (is_active=trueの)商品リストに対して絞り込むだけで、追加のSupabase問い合わせは
+ * 行わない。
+ */
+export function getFeaturedHomeProducts(products: Product[], limit = 6): Product[] {
+  return products.filter((p) => p.isFeaturedHome).slice(0, limit);
 }
 
 /**
@@ -197,7 +212,7 @@ export async function getAllProducts(): Promise<Product[]> {
   const { data, error } = await supabase
     .from('products')
     .select(
-      'id, category_id, name, price, description, image, tag, is_popular, is_active, is_sold_out, is_seasonal, display_order',
+      'id, category_id, name, price, description, image, tag, is_popular, is_active, is_sold_out, is_seasonal, is_featured_home, display_order',
     )
     .eq('is_active', true)
     .order('display_order', { ascending: true });

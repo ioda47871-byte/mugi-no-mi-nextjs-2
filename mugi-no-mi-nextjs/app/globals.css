@@ -20,13 +20,23 @@ html {
 
 @layer base {
   body {
-    /* break-keep(word-break:keep-all)で日本語の単語(漢字の熟語など)の
-       途中で不自然に折り返らないようにし、break-words(overflow-wrap:break-word)を
-       安全弁として併用することで、万一の長い連続文字列(URLなど)による
-       横スクロールも防ぐ。text-prettyは段落の最終行に単語が1つだけ
-       取り残される「orphan」を減らす。 */
-    @apply bg-ivory text-ink font-body font-light tracking-wide break-keep break-words text-pretty;
+    /* break-words(overflow-wrap:break-word)は「他に折り返す場所が無く、
+       このままだとコンテナからはみ出す」場合にのみ発動する安全網のため、
+       電話番号・URL・メールアドレス・管理画面の識別子などを含め、
+       サイト全体に適用しても副作用がほとんど無い。実際に日本語の
+       折り返し挙動を変えるword-break:keep-allは、下のp要素にのみ
+       適用し、管理画面のテーブル・ボタン・バッジ等(pタグを使わない
+       箇所)には影響しないようにしている。 */
+    @apply bg-ivory text-ink font-body font-light tracking-wide break-words;
     line-height: 1.9;
+  }
+  p {
+    /* break-keep(word-break:keep-all)で日本語の単語(漢字の熟語など)の
+       途中で不自然に折り返らないようにする。text-prettyは段落の最終行に
+       単語が1つだけ取り残される「orphan」を減らす。本文(pタグ)にのみ
+       適用し、URL・メールアドレス・電話番号・管理画面のテーブル/ボタン
+       などpタグを使わない箇所には影響しない。 */
+    @apply break-keep text-pretty;
   }
   h1,
   h2,

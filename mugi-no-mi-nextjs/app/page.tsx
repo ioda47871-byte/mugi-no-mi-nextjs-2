@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
 import { Hero } from '@/components/sections/Hero';
-import { MenuSection } from '@/components/sections/MenuSection';
+import { FeaturedProducts } from '@/components/sections/FeaturedProducts';
 import { CraftMiniCards } from '@/components/sections/CraftMiniCards';
 import { ArtisanCompact } from '@/components/sections/ArtisanCompact';
 import { VisitUs } from '@/components/sections/VisitUs';
 import { InstagramGrid } from '@/components/sections/InstagramGrid';
-import { getAllProducts } from '@/lib/products';
+import { getAllProducts, getFeaturedHomeProducts } from '@/lib/products';
 import { getSitePhoto } from '@/lib/site-photos';
 import { siteConfig } from '@/lib/site-config';
 
@@ -19,13 +19,20 @@ export const metadata: Metadata = {
 // 最大60秒以内にサイトへ反映される。
 export const revalidate = 60;
 
+/**
+ * トップページの役割は「おすすめ商品で興味を引く」→「カテゴリー導線から
+ * 探しやすくする」の2段構成(FeaturedProducts→CraftMiniCards)。
+ * 全商品の閲覧・絞り込みはMenuページ(/menu)の役割のため、以前ここに
+ * 埋め込んでいたMenuSection(フィルター付き全商品グリッド)は廃止した。
+ */
 export default async function HomePage() {
   const [products, heroPhoto] = await Promise.all([getAllProducts(), getSitePhoto('hero')]);
+  const featuredProducts = getFeaturedHomeProducts(products);
 
   return (
     <>
       <Hero imageUrl={heroPhoto.url} imageAlt={heroPhoto.alt} />
-      <MenuSection products={products} />
+      <FeaturedProducts products={featuredProducts} />
       <CraftMiniCards />
       <ArtisanCompact />
       <VisitUs />

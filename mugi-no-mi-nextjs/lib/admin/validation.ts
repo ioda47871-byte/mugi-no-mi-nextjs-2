@@ -33,6 +33,7 @@ export interface ProductWriteData {
   is_active: boolean;
   is_sold_out: boolean;
   is_seasonal: boolean;
+  is_featured_home: boolean;
   display_order: number;
 }
 
@@ -88,6 +89,7 @@ export function parseProductForm(formData: FormData): ValidationResult {
   const isActive = formData.get('is_active') === 'on';
   const isSoldOut = formData.get('is_sold_out') === 'on';
   const isSeasonal = formData.get('is_seasonal') === 'on';
+  const isFeaturedHome = formData.get('is_featured_home') === 'on';
 
   if (Object.keys(fieldErrors).length > 0) {
     return { values: null, fieldErrors };
@@ -105,6 +107,7 @@ export function parseProductForm(formData: FormData): ValidationResult {
       is_active: isActive,
       is_sold_out: isSoldOut,
       is_seasonal: isSeasonal,
+      is_featured_home: isFeaturedHome,
       display_order: displayOrder,
     },
     fieldErrors: {},
