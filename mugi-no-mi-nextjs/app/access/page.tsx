@@ -76,6 +76,12 @@ export default async function AccessPage() {
               </Row>
             </tbody>
           </table>
+
+          <div className="mt-10 border-t border-line pt-10">
+            <span className="eyebrow">Parking</span>
+            <h2 className="mt-3.5 text-2xl">駐車場について</h2>
+            <p className="mt-4 text-[14.5px] leading-loose text-kura">{siteContent.parking.value}</p>
+          </div>
         </div>
       </section>
 

@@ -87,9 +87,11 @@ export const siteContent: SiteContent = {
   phoneHref: { value: '0528802474', isPlaceholder: false },
   hours: { value: '8:00〜17:00', isPlaceholder: false },
   closedDay: { value: '月曜日・火曜日', isPlaceholder: false },
-  // 駐車場情報は確認できていないため、値を空にし、表示側(Accessページ)でも
-  // この項目自体を表示しないようにしている。
-  parking: { value: '', isPlaceholder: true, note: '駐車場情報が未確認のため非表示にしています。' },
+  parking: {
+    value:
+      '当店専用の駐車場はございません。お車でお越しの際は、近隣のコインパーキングをご利用くださいますようお願いいたします。',
+    isPlaceholder: false,
+  },
   accessNote: { value: '金山駅南口から徒歩約5〜6分', isPlaceholder: false },
   mapEmbedUrl: {
     value: `${MAP_QUERY_URL}&output=embed`,

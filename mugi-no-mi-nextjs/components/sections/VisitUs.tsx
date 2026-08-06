@@ -31,6 +31,11 @@ export async function VisitUs() {
                     <td className="w-[110px] py-3 align-top font-accent text-sm italic text-brand-text">定休日</td>
                     <td className="py-3 align-top text-sm">{siteContent.closedDay.value}</td>
                   </tr>
+                  {/* siteContent.parkingの要約版。全文は/accessの「駐車場について」参照 */}
+                  <tr className="border-b border-line">
+                    <td className="w-[110px] py-3 align-top font-accent text-sm italic text-brand-text">駐車場</td>
+                    <td className="py-3 align-top text-sm">近隣のコインパーキングをご利用ください</td>
+                  </tr>
                 </tbody>
               </table>
               <p className="mt-3 text-[12.5px] text-kura">
