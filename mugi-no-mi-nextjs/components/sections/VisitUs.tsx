@@ -31,13 +31,14 @@ export async function VisitUs() {
                     <td className="w-[110px] py-3 align-top font-accent text-sm italic text-brand-text">定休日</td>
                     <td className="py-3 align-top text-sm">{siteContent.closedDay.value}</td>
                   </tr>
-                  {/* siteContent.parkingの要約版。全文は/accessの「駐車場について」参照 */}
-                  <tr className="border-b border-line">
-                    <td className="w-[110px] py-3 align-top font-accent text-sm italic text-brand-text">駐車場</td>
-                    <td className="py-3 align-top text-sm">近隣のコインパーキングをご利用ください</td>
-                  </tr>
                 </tbody>
               </table>
+
+              <div className="mt-5 rounded-[8px] border border-line bg-ivory px-5 py-4">
+                <p className="font-accent text-sm italic tracking-wide text-brand-text">駐車場のご案内</p>
+                <p className="mt-1.5 text-[13.5px] leading-relaxed text-kura">{siteContent.parking.value}</p>
+              </div>
+
               <p className="mt-3 text-[12.5px] text-kura">
                 ※パンが売り切れ次第、営業終了となります。最新の営業情報はInstagramをご確認ください。
               </p>
