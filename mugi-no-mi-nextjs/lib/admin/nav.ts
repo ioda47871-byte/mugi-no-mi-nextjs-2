@@ -17,6 +17,4 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { href: '/admin/products', label: '商品管理', description: '商品の追加・編集・公開設定' },
   { href: '/admin/site-photos', label: 'サイト写真', description: '公開サイトに使われる写真の差し替え' },
   { href: '/admin/announcements', label: 'お知らせ管理', description: '営業日・臨時休業などのお知らせ', comingSoon: true },
-  { href: '/admin/store', label: '店舗情報', description: '住所・営業時間などの店舗情報', comingSoon: true },
-  { href: '/admin/settings', label: '設定', description: '管理画面の各種設定', comingSoon: true },
 ];
