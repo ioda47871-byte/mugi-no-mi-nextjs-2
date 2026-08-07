@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useFormState, useFormStatus } from 'react-dom';
-import { submitContactAction } from '@/app/contact/actions';
+import { submitContactAction } from '@/app/(site)/contact/actions';
 import { initialContactFormState } from '@/lib/contact/state';
 
 export function ContactForm() {

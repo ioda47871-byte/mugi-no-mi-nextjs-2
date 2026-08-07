@@ -15,6 +15,7 @@ function revalidatePublicPages() {
   revalidatePath('/');
   revalidatePath('/menu');
   revalidatePath('/admin');
+  revalidatePath('/admin/products');
 }
 
 /** 商品追加 */
@@ -39,7 +40,7 @@ export async function createProductAction(
   }
 
   revalidatePublicPages();
-  redirect('/admin?msg=created');
+  redirect('/admin/products?msg=created');
 }
 
 /** 商品更新 */
@@ -64,7 +65,7 @@ export async function updateProductAction(
   }
 
   revalidatePublicPages();
-  redirect('/admin?msg=updated');
+  redirect('/admin/products?msg=updated');
 }
 
 /** 商品削除 */
@@ -76,11 +77,11 @@ export async function deleteProductAction(id: string): Promise<void> {
 
   if (error) {
     console.error('[admin] deleteProductAction失敗:', error.message);
-    redirect('/admin?msg=delete_failed');
+    redirect('/admin/products?msg=delete_failed');
   }
 
   revalidatePublicPages();
-  redirect('/admin?msg=deleted');
+  redirect('/admin/products?msg=deleted');
 }
 
 // ----------------------------------------------------------------------------

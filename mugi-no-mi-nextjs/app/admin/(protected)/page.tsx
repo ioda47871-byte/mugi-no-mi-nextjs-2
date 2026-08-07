@@ -1,52 +1,46 @@
 import Link from 'next/link';
 import { getAdminProducts } from '@/lib/admin/products';
-import { CATEGORY_OPTIONS } from '@/lib/admin/validation';
-import { AdminProductsTable } from '@/components/admin/AdminProductsTable';
+import { getAdminSitePhotos } from '@/lib/admin/site-photos';
+import { ADMIN_NAV_ITEMS } from '@/lib/admin/nav';
 
 export const dynamic = 'force-dynamic';
 
-const CATEGORY_LABEL_MAP = Object.fromEntries(CATEGORY_OPTIONS.map((c) => [c.id, c.label]));
+export default async function AdminDashboardPage() {
+  const [products, sitePhotos] = await Promise.all([getAdminProducts(), getAdminSitePhotos()]);
+  const filledPhotoCount = sitePhotos.filter((photo) => photo.imageUrl).length;
 
-const FLASH_MESSAGES: Record<string, { text: string; tone: 'success' | 'error' }> = {
-  created: { text: '商品を追加しました。', tone: 'success' },
-  updated: { text: '商品を更新しました。', tone: 'success' },
-  deleted: { text: '商品を削除しました。', tone: 'success' },
-  delete_failed: { text: '削除に失敗しました。時間をおいて再度お試しください。', tone: 'error' },
-};
+  const summaryByHref: Record<string, string> = {
+    '/admin/products': `${products.length}件`,
+    '/admin/site-photos': `${filledPhotoCount} / ${sitePhotos.length}枚 設定済み`,
+  };
 
-export default async function AdminProductsPage({
-  searchParams,
-}: {
-  searchParams: { msg?: string };
-}) {
-  const products = await getAdminProducts();
-  const flash = searchParams.msg ? FLASH_MESSAGES[searchParams.msg] : undefined;
+  const cards = ADMIN_NAV_ITEMS.filter((item) => item.href !== '/admin');
 
   return (
     <div>
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="font-display text-2xl text-ink">商品一覧</h1>
-        <Link
-          href="/admin/products/new"
-          className="inline-flex min-h-[48px] items-center rounded-[2px] bg-brand px-6 text-[13px] tracking-[0.12em] text-ink transition-all duration-300 hover:bg-brand-deep"
-        >
-          + 商品を追加
-        </Link>
+      <h1 className="mb-2 font-display text-2xl text-ink">ダッシュボード</h1>
+      <p className="mb-8 text-sm text-kura">各メニューへはこちらから移動できます。</p>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {cards.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="rounded-[4px] border border-line bg-white px-5 py-4 transition-colors hover:border-ink"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <span className="font-accent text-sm italic tracking-wide text-brand-text">{item.label}</span>
+              {item.comingSoon && (
+                <span className="shrink-0 rounded-full border border-line px-2 py-0.5 text-[11px] tracking-wide text-kura">
+                  準備中
+                </span>
+              )}
+            </div>
+            <p className="mt-2 text-[13px] leading-relaxed text-kura">{item.description}</p>
+            {summaryByHref[item.href] && <p className="mt-3 text-[13px] text-ink">{summaryByHref[item.href]}</p>}
+          </Link>
+        ))}
       </div>
-
-      {flash && (
-        <p
-          className={`mb-6 rounded-[2px] border px-4 py-3 text-sm ${
-            flash.tone === 'success'
-              ? 'border-brand/50 bg-brand-pale text-ink'
-              : 'border-red-300 bg-red-50 text-red-700'
-          }`}
-        >
-          {flash.text}
-        </p>
-      )}
-
-      <AdminProductsTable initialProducts={products} categoryLabelMap={CATEGORY_LABEL_MAP} />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
-import Link from 'next/link';
 import { requireAdmin } from '@/lib/admin/auth';
-import { LogoutButton } from '@/components/admin/LogoutButton';
+import { AdminSidebar } from '@/components/admin/AdminSidebar';
+import { AdminMobileNav } from '@/components/admin/AdminMobileNav';
 
 export const metadata = {
   title: '管理画面',
@@ -11,42 +11,15 @@ export const metadata = {
 export default async function AdminProtectedLayout({ children }: { children: ReactNode }) {
   // /admin以下の全ページで、ログイン済み かつ admin_users登録済み であることを確認する。
   // 満たさない場合はrequireAdmin内でリダイレクトされる。
-  // ※ ここで取得している user はrequireAdmin()の認証チェックのためだけに使用しており、
-  //   画面には表示しません(メールアドレス表示によるレイアウト崩れを避けるため)。
   await requireAdmin();
 
   return (
-    <div className="min-h-screen bg-ivory">
-      <header className="sticky top-0 z-10 border-b border-line bg-ivory/95 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-5 py-4">
-          <Link href="/admin" className="min-w-0 truncate font-display text-lg tracking-wide text-ink">
-            Brot yanagi <span className="text-sm text-kura">管理画面</span>
-          </Link>
-          <div className="flex shrink-0 items-center gap-3">
-            <span
-              aria-hidden
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-line text-kura"
-            >
-              <UserIcon />
-            </span>
-            <LogoutButton />
-          </div>
-        </div>
-        <nav className="mx-auto flex max-w-5xl gap-6 px-5 pb-3 text-[13px] tracking-wide text-kura">
-          <Link href="/admin" className="hover:text-ink">商品一覧</Link>
-          <Link href="/admin/site-photos" className="hover:text-ink">サイト写真</Link>
-        </nav>
-      </header>
-      <main className="mx-auto max-w-5xl px-5 py-8">{children}</main>
+    <div className="min-h-screen bg-ivory min-[861px]:flex">
+      <AdminSidebar />
+      <AdminMobileNav />
+      <main className="min-w-0 flex-1 px-5 py-8 min-[861px]:px-10 min-[861px]:py-10">
+        <div className="mx-auto max-w-5xl">{children}</div>
+      </main>
     </div>
-  );
-}
-
-function UserIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-      <circle cx="12" cy="7" r="4" />
-    </svg>
   );
 }

@@ -1,9 +1,6 @@
 import type { Metadata } from 'next';
 import { Zen_Old_Mincho, Cormorant_Garamond, Noto_Sans_JP } from 'next/font/google';
 import './globals.css';
-import { Header } from '@/components/layout/Header';
-import { Footer } from '@/components/layout/Footer';
-import { MobileActionBar } from '@/components/layout/MobileActionBar';
 import { siteConfig } from '@/lib/site-config';
 import { siteContent } from '@/lib/placeholder-content';
 import { getSitePhoto } from '@/lib/site-photos';
@@ -112,21 +109,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           // ユーザー入力は含まれない
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
-        <a
-          href="#main"
-          className="fixed left-[-999px] top-0 z-[1000] bg-ink px-5 py-3.5 text-brand-pale focus:left-5 focus:top-5"
-        >
-          本文へスキップ
-        </a>
         {!isProductionEnv && (
           <div className="pointer-events-none fixed bottom-4 left-4 z-[200] rounded-full bg-ink/85 px-4 py-1.5 text-[10px] tracking-[0.08em] text-brand-pale shadow-lg backdrop-blur-sm">
             サイトリニューアル提案用デモ
           </div>
         )}
-        <Header />
-        <main id="main">{children}</main>
-        <MobileActionBar />
-        <Footer />
+        {children}
       </body>
     </html>
   );
