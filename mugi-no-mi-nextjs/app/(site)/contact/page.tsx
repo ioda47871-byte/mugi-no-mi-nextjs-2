@@ -47,9 +47,57 @@ export default function ContactPage() {
           </p>
         )}
       </div>
+
+      <div className="mx-auto max-w-container px-8 pb-14 max-[640px]:px-5">
+        <PhoneReservationNotice />
+      </div>
+
       <div className="mx-auto max-w-container px-8 pb-24 max-[640px]:px-5">
+        <h2 className="mb-8 text-center font-display text-2xl text-ink">その他のお問い合わせ</h2>
         {formEnabled ? <ContactForm /> : <ContactFallback />}
       </div>
+    </div>
+  );
+}
+
+/**
+ * パンのご予約・お取り置きは電話受付のみで、Webフォーム(下のContactForm)からは
+ * 受け付けていない。formEnabledの状態に関わらず常に表示し、フォームより前に
+ * 置くことで、フォームに予約内容を書いてしまう誤解を防ぐ。
+ */
+function PhoneReservationNotice() {
+  return (
+    <div className="mx-auto max-w-2xl rounded-[10px] border border-brand/30 border-l-[3px] border-l-brand bg-ivory px-7 py-7 text-center max-[640px]:px-5 max-[640px]:py-6">
+      <h2 className="font-display text-xl text-ink sm:text-2xl">パンのご予約・お取り置き</h2>
+      <p className="mx-auto mt-3 max-w-md text-[14.5px] leading-relaxed text-kura">
+        パンのご予約・お取り置きは、お電話にて承っております。
+      </p>
+
+      <div className="mx-auto mt-6 max-w-xs text-left">
+        <p className="font-accent text-sm italic tracking-wide text-brand-text">ご予約の際にお伝えください</p>
+        <ul className="mt-2.5 space-y-2 text-[14px] text-kura">
+          <li className="flex items-start gap-2.5">
+            <span aria-hidden className="mt-2 h-1 w-1 shrink-0 rounded-full bg-gold" />
+            ご希望の商品・個数
+          </li>
+          <li className="flex items-start gap-2.5">
+            <span aria-hidden className="mt-2 h-1 w-1 shrink-0 rounded-full bg-gold" />
+            お名前
+          </li>
+          <li className="flex items-start gap-2.5">
+            <span aria-hidden className="mt-2 h-1 w-1 shrink-0 rounded-full bg-gold" />
+            お電話番号
+          </li>
+        </ul>
+      </div>
+
+      <Button
+        href={`tel:${siteContent.phoneHref.value}`}
+        variant="primary"
+        className="mt-7 max-[640px]:w-full max-[640px]:justify-center"
+      >
+        電話で予約する
+      </Button>
     </div>
   );
 }

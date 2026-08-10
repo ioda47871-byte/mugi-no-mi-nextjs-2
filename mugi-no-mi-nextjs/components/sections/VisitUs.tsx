@@ -39,6 +39,20 @@ export async function VisitUs() {
                 <p className="mt-1.5 text-[13.5px] leading-relaxed text-kura">{siteContent.parking.value}</p>
               </div>
 
+              <div className="mt-4 rounded-[8px] border border-brand/30 border-l-[3px] border-l-brand bg-ivory px-5 py-4">
+                <p className="font-accent text-sm italic tracking-wide text-brand-text">パンのご予約・お取り置き</p>
+                <p className="mt-1.5 text-[13.5px] leading-relaxed text-kura">
+                  パンのご予約・お取り置きは、お電話にて承っております。ご希望の商品・個数、お名前、お電話番号をお伝えください。
+                </p>
+                <Button
+                  href={`tel:${siteContent.phoneHref.value}`}
+                  variant="primary"
+                  className="mt-4 max-[860px]:w-full max-[860px]:justify-center"
+                >
+                  電話で予約する
+                </Button>
+              </div>
+
               <p className="mt-3 text-[12.5px] text-kura">
                 ※パンが売り切れ次第、営業終了となります。最新の営業情報はInstagramをご確認ください。
               </p>
