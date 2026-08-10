@@ -3,8 +3,9 @@ import Link from 'next/link';
 import { InstagramFeed } from '@/components/sections/InstagramFeed';
 import { PhotoBlock } from '@/components/ui/PhotoBlock';
 import { RevealOnScroll } from '@/components/ui/RevealOnScroll';
+import { NoBreakText } from '@/components/ui/NoBreakText';
 import { pageOpenGraph, siteConfig } from '@/lib/site-config';
-import { siteContent } from '@/lib/placeholder-content';
+import { siteContent, FOUNDER_QUOTE_PROTECTED_PHRASES } from '@/lib/placeholder-content';
 import { getSitePhotos } from '@/lib/site-photos';
 
 const ABOUT_DESCRIPTION = `${siteConfig.name}(${siteConfig.nameJa})の店構えと店内、Instagramでの最新情報。`;
@@ -45,8 +46,14 @@ export default async function AboutPage() {
       <div className="mx-auto max-w-container px-8 pb-14 text-center max-[640px]:px-5">
         <RevealOnScroll>
           <span className="eyebrow justify-center">About</span>
-          <h1 className="mt-[18px] text-[clamp(34px,5vw,58px)]">柳の木の奥にある、小さなベーカリー。</h1>
-          <p className="mx-auto mt-6 max-w-lg text-[14.5px] text-kura">{siteContent.founderQuote.value}</p>
+          <h1 className="mx-auto mt-[18px] max-w-2xl text-[clamp(34px,5vw,58px)] leading-snug">
+            柳の木の奥にある、
+            <br />
+            小さなベーカリー。
+          </h1>
+          <p className="mx-auto mt-6 max-w-lg text-[14.5px] text-kura">
+            <NoBreakText text={siteContent.founderQuote.value} phrases={FOUNDER_QUOTE_PROTECTED_PHRASES} />
+          </p>
         </RevealOnScroll>
       </div>
 

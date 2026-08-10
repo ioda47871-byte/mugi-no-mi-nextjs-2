@@ -64,8 +64,11 @@ export const siteContent: SiteContent = {
     isPlaceholder: false,
   },
   heroHeadline: { value: '柳の木の奥で', isPlaceholder: false },
+  // 「Brot yanagi。」で一文が完結するため、その直後で明示的に改行する
+  // (Hero本文はコピー内容が固定の2文構成のため、ブラウザ任せの折り返しではなく
+  // 明示的な改行位置を使う。表示側はwhitespace-pre-lineで\nを改行として扱う)。
   heroSubcopy: {
-    value: '金山の住宅街にあるBrot yanagi。ひとつひとつ、丁寧にパンを焼き上げています。',
+    value: '金山の住宅街にあるBrot yanagi。\nひとつひとつ、丁寧にパンを焼き上げています。',
     isPlaceholder: false,
   },
 
@@ -80,6 +83,7 @@ export const siteContent: SiteContent = {
     isPlaceholder: false,
     note: '依頼者から提供された店舗紹介文をベースにしています。',
   },
+
   address: { value: ADDRESS_DISPLAY, isPlaceholder: false },
   phone: { value: '052-880-2474', isPlaceholder: false },
   phoneHref: { value: '0528802474', isPlaceholder: false },
@@ -117,3 +121,10 @@ export const siteContent: SiteContent = {
     note: '受信先はlib/contact/email.tsの環境変数(CONTACT_FORM_TO_EMAIL等)で管理しています。',
   },
 };
+
+/**
+ * founderQuote.value内で、途中改行させたくない固有名詞。
+ * components/ui/NoBreakText.tsx と組み合わせて使う
+ * (ArtisanCompact.tsx / about/page.tsx の両方でfounderQuoteを表示する際に使用)。
+ */
+export const FOUNDER_QUOTE_PROTECTED_PHRASES = ['Brot yanagi', '名古屋・金山', '柳の木'];

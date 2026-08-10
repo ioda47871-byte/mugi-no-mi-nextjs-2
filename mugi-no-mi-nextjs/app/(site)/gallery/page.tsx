@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { PhotoBlock } from '@/components/ui/PhotoBlock';
 import { RevealOnScroll } from '@/components/ui/RevealOnScroll';
+import { NoBreakText } from '@/components/ui/NoBreakText';
 import { pageOpenGraph, siteConfig } from '@/lib/site-config';
 import { getSitePhotos } from '@/lib/site-photos';
 import type { SitePhotoSlot } from '@/lib/admin/storage';
@@ -59,7 +60,9 @@ export default async function GalleryPage() {
         <span className="eyebrow justify-center">Gallery</span>
         <h1 className="mt-[18px] text-[clamp(34px,5vw,58px)]">光と、香りと、時間の記録</h1>
         <p className="mx-auto mt-6 max-w-lg text-[14.5px] text-kura">
-          店先の柳の木から、店内、焼きたてが並ぶ様子まで。Brot yanagiでの時間を写真でご紹介します。
+          <NoBreakText text="店先の柳の木から、店内、焼きたてが並ぶ様子まで。" phrases={['柳の木']} />
+          <br />
+          <NoBreakText text="Brot yanagiでの時間を写真でご紹介します。" phrases={['Brot yanagi']} />
         </p>
       </div>
 

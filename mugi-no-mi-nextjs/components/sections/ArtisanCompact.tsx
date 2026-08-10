@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { PhotoFrame } from '@/components/ui/PhotoFrame';
 import { RevealOnScroll } from '@/components/ui/RevealOnScroll';
-import { siteContent } from '@/lib/placeholder-content';
+import { NoBreakText } from '@/components/ui/NoBreakText';
+import { siteContent, FOUNDER_QUOTE_PROTECTED_PHRASES } from '@/lib/placeholder-content';
 import { getSitePhoto } from '@/lib/site-photos';
 
 /**
@@ -32,7 +33,7 @@ function IntroText() {
   return (
     <div>
       <p className="font-display text-[clamp(19px,2.4vw,23px)] leading-loose">
-        {siteContent.founderQuote.value}
+        <NoBreakText text={siteContent.founderQuote.value} phrases={FOUNDER_QUOTE_PROTECTED_PHRASES} />
       </p>
       <div className="mt-6">
         <Link href="/about" className="link-gold">Brot yanagiについてもっと読む →</Link>

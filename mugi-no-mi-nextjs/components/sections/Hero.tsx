@@ -81,7 +81,9 @@ export function Hero({ imageUrl, imageAlt }: HeroProps) {
         <h1 className="mt-5 max-w-3xl text-[clamp(40px,6vw,76px)] font-medium leading-tight text-ivory">
           {siteContent.heroHeadline.value}
         </h1>
-        <p className="mt-8 max-w-md text-[13.5px] text-ivory/80">{siteContent.heroSubcopy.value}</p>
+        <p className="mt-8 max-w-md whitespace-pre-line text-[13.5px] text-ivory/80">
+          {siteContent.heroSubcopy.value}
+        </p>
         <div className="mt-10 flex flex-wrap gap-[18px]">
           <Button href="/menu" variant="primary">パンを見る</Button>
           <Button href="/access" variant="outline-inverse">店舗情報を見る</Button>
