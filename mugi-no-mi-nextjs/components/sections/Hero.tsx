@@ -10,7 +10,7 @@ interface HeroProps {
   imageAlt: string;
 }
 
-// 見出し「今日も、柳の木の奥で。」と直接呼応するよう、
+// 見出し「柳の木の奥で」と直接呼応するよう、
 // Heroの背景にはショーケース写真ではなく外観写真を採用している(採用理由は
 // 管理画面のHeroスロットとは独立して設定可能。既定は外観と同じ写真)。
 // 'use client'のためサーバーからのデータ取得はできず、imageUrl/imageAltは
@@ -78,23 +78,10 @@ export function Hero({ imageUrl, imageAlt }: HeroProps) {
         <p className="font-accent text-[11px] italic uppercase tracking-[0.34em] text-brand-pale/85">
           Since the first light of morning
         </p>
-        <h1 className="mt-4 max-w-3xl leading-[1.05]">
-          {/* 「今日も、」は前振りとして小さく軽く、「柳の木の奥で。」を主役として
-              大きく見せる。既存の読み込み済みウェイト(400/500)のみを使い分け、
-              新しいフォント/ウェイトは追加しない。 */}
-          {(() => {
-            const [lead, main] = siteContent.heroHeadline.value.split('\n');
-            return (
-              <>
-                <span className="block font-normal text-[clamp(20px,2.8vw,30px)] tracking-[0.08em] text-ivory/80">
-                  {lead}
-                </span>
-                <span className="block font-medium text-[clamp(40px,6vw,76px)] text-ivory">{main}</span>
-              </>
-            );
-          })()}
+        <h1 className="mt-5 max-w-3xl text-[clamp(40px,6vw,76px)] font-medium leading-tight text-ivory">
+          {siteContent.heroHeadline.value}
         </h1>
-        <p className="mt-7 max-w-md text-[13.5px] text-ivory/75">{siteContent.heroSubcopy.value}</p>
+        <p className="mt-8 max-w-md text-[13.5px] text-ivory/80">{siteContent.heroSubcopy.value}</p>
         <div className="mt-10 flex flex-wrap gap-[18px]">
           <Button href="/menu" variant="primary">パンを見る</Button>
           <Button href="/access" variant="outline-inverse">店舗情報を見る</Button>

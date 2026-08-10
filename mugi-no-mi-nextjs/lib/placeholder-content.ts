@@ -63,11 +63,7 @@ export const siteContent: SiteContent = {
     value: '金山の住宅街に佇むベーカリー。',
     isPlaceholder: false,
   },
-  // 見出しは大きなclamp()フォントサイズのため、自動改行に任せると
-  // 「柳の木」の語の途中で割れてしまうことがある。読点の位置で明示的に
-  // 改行し、どのビューポート幅でも「今日も、」/「柳の木の奥で。」の
-  // 2行に収まるようにしている。
-  heroHeadline: { value: '今日も、\n柳の木の奥で。', isPlaceholder: false },
+  heroHeadline: { value: '柳の木の奥で', isPlaceholder: false },
   heroSubcopy: {
     value: '金山の住宅街にあるBrot yanagi。ひとつひとつ、丁寧にパンを焼き上げています。',
     isPlaceholder: false,
