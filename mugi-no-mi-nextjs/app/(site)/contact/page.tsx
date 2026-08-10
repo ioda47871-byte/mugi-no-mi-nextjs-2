@@ -72,6 +72,12 @@ function PhoneReservationNotice() {
       <p className="mx-auto mt-3 max-w-md text-[14.5px] leading-relaxed text-kura">
         パンのご予約・お取り置きは、お電話にて承っております。
       </p>
+      <a
+        href={`tel:${siteContent.phoneHref.value}`}
+        className="mt-3 inline-block font-accent text-[21px] font-medium tracking-wide text-brand-text transition-colors hover:text-brand-deep"
+      >
+        {siteContent.phone.value}
+      </a>
 
       <div className="mx-auto mt-6 max-w-xs text-left">
         <p className="font-accent text-sm italic tracking-wide text-brand-text">ご予約の際にお伝えください</p>

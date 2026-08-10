@@ -42,7 +42,16 @@ export async function VisitUs() {
               <div className="mt-4 rounded-[8px] border border-brand/30 border-l-[3px] border-l-brand bg-ivory px-5 py-4">
                 <p className="font-accent text-sm italic tracking-wide text-brand-text">パンのご予約・お取り置き</p>
                 <p className="mt-1.5 text-[13.5px] leading-relaxed text-kura">
-                  パンのご予約・お取り置きは、お電話にて承っております。ご希望の商品・個数、お名前、お電話番号をお伝えください。
+                  パンのご予約・お取り置きは、お電話にて承っております。
+                </p>
+                <a
+                  href={`tel:${siteContent.phoneHref.value}`}
+                  className="mt-2 inline-block font-accent text-[18px] font-medium tracking-wide text-brand-text transition-colors hover:text-brand-deep"
+                >
+                  {siteContent.phone.value}
+                </a>
+                <p className="mt-2 text-[13.5px] leading-relaxed text-kura">
+                  ご希望の商品・個数、お名前、お電話番号をお伝えください。
                 </p>
                 <Button
                   href={`tel:${siteContent.phoneHref.value}`}
