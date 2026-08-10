@@ -7,27 +7,28 @@ interface AnnouncementBannerProps {
 }
 
 /**
- * Hero直後に置く、控えめなお知らせ1件表示。
- * おすすめ商品セクションより主張しないよう、大きな見出し・写真は使わず、
- * 細い横長カード1枚のみで構成する(0件の場合はセクション自体を非表示にする)。
+ * Hero直後に置く、お知らせ1件表示。臨時休業などの重要情報が
+ * 「おすすめ商品」より先に自然と目に入る程度に強調しつつ、
+ * 左のゴールドアクセントと控えめな影のみで主張し、赤・警告色は使わない
+ * (0件の場合はセクション自体を非表示にする)。
  */
 export function AnnouncementBanner({ announcement }: AnnouncementBannerProps) {
   if (!announcement) return null;
 
   return (
-    <section className="bg-ivory px-8 py-8 max-[640px]:px-5 max-[640px]:py-6">
+    <section className="bg-ivory px-8 py-10 max-[640px]:px-5 max-[640px]:py-7">
       <div className="mx-auto max-w-container">
         <RevealOnScroll>
-          <div className="mx-auto flex max-w-2xl flex-col gap-2 rounded-[8px] border border-line bg-white px-6 py-5 text-center sm:flex-row sm:items-start sm:gap-5 sm:text-left">
-            <span className="shrink-0 font-accent text-sm italic tracking-wide text-brand-text">
-              {formatIsoToJstDisplay(announcement.publishedAt)}
-            </span>
-            <div className="min-w-0">
-              <p className="font-display text-base text-ink">{announcement.title}</p>
-              <p className="mt-1.5 whitespace-pre-line text-[13.5px] leading-relaxed text-kura">
-                {announcement.body}
-              </p>
+          <div className="mx-auto max-w-2xl rounded-[10px] border border-brand/25 border-l-[3px] border-l-brand bg-white px-7 py-6 shadow-[0_6px_24px_rgba(43,36,29,0.06)] max-[640px]:px-5 max-[640px]:py-5">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className="inline-flex items-center gap-2 font-accent text-xs italic uppercase tracking-[0.16em] text-brand-text">
+                <span aria-hidden className="inline-block h-px w-5 bg-gold" />
+                お知らせ
+              </span>
+              <span className="text-[11px] text-kura/70">{formatIsoToJstDisplay(announcement.publishedAt)}</span>
             </div>
+            <p className="mt-3 font-display text-xl leading-snug text-ink sm:text-[23px]">{announcement.title}</p>
+            <p className="mt-2.5 whitespace-pre-line text-[14px] leading-relaxed text-kura">{announcement.body}</p>
           </div>
         </RevealOnScroll>
       </div>

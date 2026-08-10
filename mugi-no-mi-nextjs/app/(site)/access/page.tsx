@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
 import { PhotoBlock } from '@/components/ui/PhotoBlock';
+import { AnnouncementNotice } from '@/components/sections/AnnouncementNotice';
 import { siteContent } from '@/lib/placeholder-content';
 import { pageOpenGraph, siteConfig } from '@/lib/site-config';
 import { getSitePhoto } from '@/lib/site-photos';
+import { getLatestPublishedAnnouncement } from '@/lib/announcements';
 
 const ACCESS_DESCRIPTION = `${siteConfig.name}の営業時間・住所・アクセス方法をご案内します。`;
 
@@ -25,7 +27,10 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function AccessPage() {
-  const exteriorPhoto = await getSitePhoto('exterior');
+  const [exteriorPhoto, announcement] = await Promise.all([
+    getSitePhoto('exterior'),
+    getLatestPublishedAnnouncement(),
+  ]);
 
   return (
     <div className="pt-[200px] max-[640px]:pt-[130px]">
@@ -35,6 +40,7 @@ export default async function AccessPage() {
         <p className="mx-auto mt-5 max-w-lg text-[14.5px] text-kura">
           営業時間や臨時休業は変更される場合がございます。最新の営業情報はInstagramをご確認ください。
         </p>
+        <AnnouncementNotice announcement={announcement} />
       </div>
 
       <div className="px-8 pb-20 max-[640px]:px-5">
