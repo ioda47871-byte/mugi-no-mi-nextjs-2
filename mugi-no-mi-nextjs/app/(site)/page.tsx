@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Hero } from '@/components/sections/Hero';
+import { AnnouncementBanner } from '@/components/sections/AnnouncementBanner';
 import { FeaturedProducts } from '@/components/sections/FeaturedProducts';
 import { CraftMiniCards } from '@/components/sections/CraftMiniCards';
 import { ArtisanCompact } from '@/components/sections/ArtisanCompact';
@@ -7,6 +8,7 @@ import { VisitUs } from '@/components/sections/VisitUs';
 import { InstagramGrid } from '@/components/sections/InstagramGrid';
 import { getAllProducts, getFeaturedHomeProducts } from '@/lib/products';
 import { getSitePhoto } from '@/lib/site-photos';
+import { getLatestPublishedAnnouncement } from '@/lib/announcements';
 import { siteConfig } from '@/lib/site-config';
 
 export const metadata: Metadata = {
@@ -26,12 +28,17 @@ export const revalidate = 60;
  * 埋め込んでいたMenuSection(フィルター付き全商品グリッド)は廃止した。
  */
 export default async function HomePage() {
-  const [products, heroPhoto] = await Promise.all([getAllProducts(), getSitePhoto('hero')]);
+  const [products, heroPhoto, announcement] = await Promise.all([
+    getAllProducts(),
+    getSitePhoto('hero'),
+    getLatestPublishedAnnouncement(),
+  ]);
   const featuredProducts = getFeaturedHomeProducts(products);
 
   return (
     <>
       <Hero imageUrl={heroPhoto.url} imageAlt={heroPhoto.alt} />
+      <AnnouncementBanner announcement={announcement} />
       <FeaturedProducts products={featuredProducts} />
       <CraftMiniCards />
       <ArtisanCompact />

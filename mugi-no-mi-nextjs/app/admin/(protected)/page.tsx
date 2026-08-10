@@ -1,17 +1,25 @@
 import Link from 'next/link';
 import { getAdminProducts } from '@/lib/admin/products';
 import { getAdminSitePhotos } from '@/lib/admin/site-photos';
+import { getAdminAnnouncements } from '@/lib/admin/announcements';
+import { computeAnnouncementStatus } from '@/lib/admin/announcement-status';
 import { ADMIN_NAV_ITEMS } from '@/lib/admin/nav';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminDashboardPage() {
-  const [products, sitePhotos] = await Promise.all([getAdminProducts(), getAdminSitePhotos()]);
+  const [products, sitePhotos, announcements] = await Promise.all([
+    getAdminProducts(),
+    getAdminSitePhotos(),
+    getAdminAnnouncements(),
+  ]);
   const filledPhotoCount = sitePhotos.filter((photo) => photo.imageUrl).length;
+  const activeAnnouncementCount = announcements.filter((a) => computeAnnouncementStatus(a) === 'active').length;
 
   const summaryByHref: Record<string, string> = {
     '/admin/products': `${products.length}件`,
     '/admin/site-photos': `${filledPhotoCount} / ${sitePhotos.length}枚 設定済み`,
+    '/admin/announcements': `公開中 ${activeAnnouncementCount}件 / 全${announcements.length}件`,
   };
 
   const cards = ADMIN_NAV_ITEMS.filter((item) => item.href !== '/admin');
