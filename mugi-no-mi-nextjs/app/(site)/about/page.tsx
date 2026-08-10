@@ -41,6 +41,13 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function AboutPage() {
   const photos = await getSitePhotos();
 
+  // Aboutページの紹介文のみ、意味のまとまりごとに明示的に改行する
+  // (文言・句読点は一切変更せず、表示上の改行位置だけを調整。Home側の
+  // ArtisanCompact.tsxは founderQuote.value をそのまま使うため影響しない)。
+  const founderQuoteWithBreaks = siteContent.founderQuote.value
+    .replace('朝の一品から、', '\n朝の一品から、')
+    .replace('その日に出会えるパンを、', '\nその日に出会えるパンを、');
+
   return (
     <div className="pt-[200px] max-[640px]:pt-[130px]">
       <div className="mx-auto max-w-container px-8 pb-14 text-center max-[640px]:px-5">
@@ -51,8 +58,8 @@ export default async function AboutPage() {
             <br />
             小さなベーカリー。
           </h1>
-          <p className="mx-auto mt-6 max-w-lg text-[14.5px] text-kura">
-            <NoBreakText text={siteContent.founderQuote.value} phrases={FOUNDER_QUOTE_PROTECTED_PHRASES} />
+          <p className="mx-auto mt-6 max-w-lg whitespace-pre-line text-[14.5px] text-kura">
+            <NoBreakText text={founderQuoteWithBreaks} phrases={FOUNDER_QUOTE_PROTECTED_PHRASES} />
           </p>
         </RevealOnScroll>
       </div>
