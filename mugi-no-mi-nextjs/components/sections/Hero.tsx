@@ -75,13 +75,26 @@ export function Hero({ imageUrl, imageAlt }: HeroProps) {
         style={{ opacity: fade, transform: `translateY(${(1 - fade) * 14}px)` }}
         className="relative z-[2] mx-auto w-full max-w-container px-8 pb-24 text-white transition-opacity duration-100 ease-out motion-reduce:!opacity-100 motion-reduce:!transform-none max-[640px]:px-5"
       >
-        <p className="font-accent text-sm italic uppercase tracking-[0.3em] text-brand-pale">
+        <p className="font-accent text-[11px] italic uppercase tracking-[0.34em] text-brand-pale/85">
           Since the first light of morning
         </p>
-        <h1 className="mt-4 max-w-3xl whitespace-pre-line text-[clamp(38px,6.4vw,84px)] leading-tight text-white drop-shadow-[0_2px_18px_rgba(0,0,0,0.25)]">
-          {siteContent.heroHeadline.value}
+        <h1 className="mt-4 max-w-3xl leading-[1.05]">
+          {/* 「今日も、」は前振りとして小さく軽く、「柳の木の奥で。」を主役として
+              大きく見せる。既存の読み込み済みウェイト(400/500)のみを使い分け、
+              新しいフォント/ウェイトは追加しない。 */}
+          {(() => {
+            const [lead, main] = siteContent.heroHeadline.value.split('\n');
+            return (
+              <>
+                <span className="block font-normal text-[clamp(20px,2.8vw,30px)] tracking-[0.08em] text-ivory/80">
+                  {lead}
+                </span>
+                <span className="block font-medium text-[clamp(40px,6vw,76px)] text-ivory">{main}</span>
+              </>
+            );
+          })()}
         </h1>
-        <p className="mt-6 max-w-md text-[15px] text-white/90">{siteContent.heroSubcopy.value}</p>
+        <p className="mt-7 max-w-md text-[13.5px] text-ivory/75">{siteContent.heroSubcopy.value}</p>
         <div className="mt-10 flex flex-wrap gap-[18px]">
           <Button href="/menu" variant="primary">パンを見る</Button>
           <Button href="/access" variant="outline-inverse">店舗情報を見る</Button>
