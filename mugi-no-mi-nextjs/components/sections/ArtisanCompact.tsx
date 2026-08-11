@@ -19,7 +19,7 @@ export async function ArtisanCompact() {
     <section className="bg-brand-pale px-8 py-24 max-[640px]:px-5 max-[640px]:py-16">
       <div className="mx-auto max-w-container">
         <RevealOnScroll>
-          <div className="mx-auto grid max-w-3xl grid-cols-[0.6fr_1fr] items-center gap-12 max-[700px]:grid-cols-1 max-[700px]:text-center">
+          <div className="mx-auto grid max-w-3xl grid-cols-[minmax(0,0.6fr)_minmax(0,1fr)] items-center gap-12 max-[700px]:grid-cols-1 max-[700px]:text-center">
             <PhotoFrame src={interiorPhoto.url} alt={interiorPhoto.alt} aspect="aspect-[3/4]" />
             <IntroText />
           </div>
