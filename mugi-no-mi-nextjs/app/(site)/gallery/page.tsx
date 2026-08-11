@@ -36,16 +36,19 @@ interface GalleryItem {
 }
 
 /**
- * 外観→入口→店内→ショーケース→雑貨→ディスプレイの順に並べ、
- * ご来店体験の流れをそのままたどれるようにしている。
- * 今後、職人がパンを焼く様子・パンを取る瞬間・接客風景などの写真を
- * 追加する場合は、この配列に項目を足すだけでよい
- * (新しいスロットはsupabase/site-photos-setup.sqlの追加が必要)。
+ * 外観→入口→店内→厨房→ショーケース→雑貨→ディスプレイの順に並べ、
+ * ご来店体験の流れをそのままたどれるようにしている。kitchenはAboutの
+ * 「OUR KITCHEN」セクションと同じsite_photosの写真(単一情報源)を使っており、
+ * 管理画面での差し替えが両方に反映される。
+ * 今後、新しい写真を追加する場合は、この配列に項目を足すだけでよい
+ * (新しいスロットの追加にはsupabase/配下の対応するマイグレーションSQLが必要。
+ * kitchenはsupabase/kitchen-photo-slot-setup.sqlを参照)。
  */
 const GALLERY_ITEMS: GalleryItem[] = [
   { slot: 'exterior', width: 1200, height: 1500, caption: 'Exterior — 柳の木の下で', wide: false },
   { slot: 'entrance', width: 1200, height: 1500, caption: 'Entrance — 扉の向こうへ', wide: false },
   { slot: 'interior', width: 1500, height: 1125, caption: 'Interior — 落ち着いた店内', wide: true },
+  { slot: 'kitchen', width: 1600, height: 1067, caption: 'Kitchen — ガラスの向こうの厨房', wide: true },
   { slot: 'showcase', width: 1600, height: 1067, caption: 'Showcase — 焼きたてが並ぶ場所', wide: true },
   { slot: 'goods-corner', width: 1500, height: 1125, caption: 'Goods Corner — 雑貨のある風景', wide: true },
   { slot: 'display-accent', width: 1200, height: 1500, caption: 'Display — 小さなこだわり', wide: false },

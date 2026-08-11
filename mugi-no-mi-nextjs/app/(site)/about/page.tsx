@@ -96,6 +96,34 @@ export default async function AboutPage() {
         </div>
       </section>
 
+      <section className="bg-white px-8 py-24 max-[640px]:px-5 max-[640px]:py-16">
+        <div className="mx-auto max-w-container">
+          <RevealOnScroll>
+            <div className="mx-auto max-w-2xl text-center">
+              <span className="eyebrow justify-center">OUR KITCHEN</span>
+              <h2 className="mt-3.5 text-[clamp(28px,4vw,44px)] leading-snug">
+                ガラスの向こうで、
+                <br />
+                今日のパンを。
+              </h2>
+              <p className="mx-auto mt-5 max-w-md text-[14.5px] leading-loose text-kura">
+                店内の窓から、パンづくりの様子をご覧いただけます。
+              </p>
+            </div>
+          </RevealOnScroll>
+
+          <RevealOnScroll className="mt-12">
+            <PhotoBlock
+              src={photos.kitchen.url}
+              alt={photos.kitchen.alt}
+              width={1600}
+              height={1067}
+              sizes="100vw"
+            />
+          </RevealOnScroll>
+        </div>
+      </section>
+
       <section className="px-8 py-24 max-[640px]:px-5 max-[640px]:py-16">
         <div className="mx-auto max-w-container">
           <RevealOnScroll>

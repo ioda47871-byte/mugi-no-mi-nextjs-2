@@ -41,7 +41,7 @@ type Phase = 'idle' | 'uploading' | 'canceling' | 'processing';
  * 'idle' と遷移する。'canceling' は 'uploading' からキャンセルボタンを押した
  * 直後の一瞬だけの状態で、連打防止のために存在する。
  *
- * 7スロットぶんこのコンポーネントが独立して並ぶため、複数スロットを
+ * スロットの数だけこのコンポーネントが独立して並ぶため、複数スロットを
  * 同時並行でアップロードできる(各インスタンスが自分のstateだけを持つため)。
  */
 export function SitePhotoUploadField({

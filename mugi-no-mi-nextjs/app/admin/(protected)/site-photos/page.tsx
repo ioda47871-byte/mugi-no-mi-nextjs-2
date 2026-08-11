@@ -18,7 +18,7 @@ export default async function AdminSitePhotosPage() {
       <div className="mb-8">
         <h1 className="font-display text-2xl text-ink">サイト写真</h1>
         <p className="mt-2 max-w-xl text-sm text-kura">
-          Hero・外観・入口・店内・ショーケース・雑貨コーナー・ディスプレイの7枚を管理します。
+          Hero・外観・入口・店内・厨房・ショーケース・雑貨コーナー・ディスプレイの8枚を管理します。
           画像未設定のスロットは、既存のフォールバック表示のままサイトに反映されます。
           差し替えは公開サイトに数十秒程度で反映されます(再デプロイ不要)。
         </p>

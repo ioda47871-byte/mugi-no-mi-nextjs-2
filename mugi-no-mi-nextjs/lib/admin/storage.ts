@@ -69,6 +69,7 @@ export const SITE_PHOTO_SLOTS = [
   { slot: 'exterior', label: '外観' },
   { slot: 'entrance', label: '入口' },
   { slot: 'interior', label: '店内' },
+  { slot: 'kitchen', label: '厨房(About「OUR KITCHEN」・Galleryで使用)' },
   { slot: 'showcase', label: 'ショーケース' },
   { slot: 'goods-corner', label: '雑貨コーナー' },
   { slot: 'display-accent', label: 'ディスプレイ' },

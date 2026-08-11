@@ -24,6 +24,7 @@ const DEFAULT_ALT: Record<SitePhotoSlot, string> = {
   exterior: '柳の木とBrot yanagiの外観',
   entrance: 'Brot yanagiの入口',
   interior: 'Brot yanagiの店内',
+  kitchen: 'ガラス越しに見えるBrot yanagiの厨房',
   showcase: '焼きたてのパンが並ぶBrot yanagiのショーケース',
   'goods-corner': '雑貨コーナーの様子',
   'display-accent': '店先の小物のディスプレイ',
@@ -34,6 +35,7 @@ const STATIC_FALLBACK_PATH: Record<SitePhotoSlot, string> = {
   exterior: '/images/exterior.jpg',
   entrance: '/images/entrance.jpg',
   interior: '/images/interior.jpg',
+  kitchen: '/images/kitchen.jpg',
   showcase: '/images/showcase.jpg',
   'goods-corner': '/images/goods-corner.jpg',
   'display-accent': '/images/display-accent.jpg',
@@ -54,7 +56,7 @@ function buildFallbackMap(): Record<SitePhotoSlot, SitePhoto> {
 }
 
 /**
- * 7スロット分の写真情報を取得する。React cache()でリクエスト単位に
+ * 全スロット分の写真情報を取得する。React cache()でリクエスト単位に
  * メモ化しているため、同一ページ内の複数コンポーネント(Hero・About・
  * MenuSectionなど)がそれぞれ呼び出しても、実際のSupabase問い合わせは
  * 1回だけになる。

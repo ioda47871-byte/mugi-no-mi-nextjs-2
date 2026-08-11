@@ -17,7 +17,7 @@ interface SitePhotoRow {
 }
 
 /**
- * 管理画面用: 全7スロットを固定の表示順(SITE_PHOTO_SLOTS)で取得する。
+ * 管理画面用: 全スロットを固定の表示順(SITE_PHOTO_SLOTS)で取得する。
  * storage_path / original_storage_pathは削除・差し替え処理(Server Action側)
  * でのみ必要なため、ここでは取得しない(管理画面の一覧表示には不要)。
  */

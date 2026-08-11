@@ -125,7 +125,7 @@ export async function GET(request: Request) {
 
     // 2. site-photosバケット内の全オブジェクトを列挙する。
     //    オリジナルは temp/{slot}/、最適化版は {slot}/ 配下にあるため、
-    //    7スロット × 2プレフィックスをそれぞれ列挙する。
+    //    SITE_PHOTO_SLOT_VALUESの各スロット × 2プレフィックスをそれぞれ列挙する。
     const prefixes = SITE_PHOTO_SLOT_VALUES.flatMap((slot) => [`temp/${slot}`, slot]);
     const allObjects: StorageObjectInfo[] = [];
     for (const prefix of prefixes) {
