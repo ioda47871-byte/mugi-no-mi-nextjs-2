@@ -173,6 +173,10 @@ export function getFeaturedHomeProducts(products: Product[], limit = 6): Product
  * Supabase側のデータは削除・変更しない方針のため、公開ページ側で
  * 商品取得そのものを既定で無効化している。実際の商品データが確認でき、
  * 表示してよい状態になったら、環境変数を 'true' に設定してください。
+ *
+ * この値はNEXT_PUBLIC_接頭辞が無いためビルド時に固定されない(リクエストごとに
+ * process.envを読む)が、Vercelで環境変数を変更した場合は対象環境の
+ * 再デプロイ(Redeploy)を行わないと反映されない点に注意。
  */
 const PRODUCT_LISTING_ENABLED = process.env.ENABLE_PRODUCT_LISTING === 'true';
 
@@ -181,32 +185,16 @@ const PRODUCT_LISTING_ENABLED = process.env.ENABLE_PRODUCT_LISTING === 'true';
  * Supabaseが未設定の場合は data/products.json にフォールバックする。
  */
 export async function getAllProducts(): Promise<Product[]> {
-  // TODO(調査用の一時ログ): /menu が0件を返す原因切り分けのために追加。
-  // 原因が特定でき次第、これらのconsole.log行は削除してください。
-  console.log(
-    '[debug:getAllProducts] ENABLE_PRODUCT_LISTING(raw)=',
-    JSON.stringify(process.env.ENABLE_PRODUCT_LISTING),
-    ' PRODUCT_LISTING_ENABLED=',
-    PRODUCT_LISTING_ENABLED,
-  );
-
   if (!PRODUCT_LISTING_ENABLED) {
-    console.log('[debug:getAllProducts] PRODUCT_LISTING_ENABLED=false のため空配列を返します(条件A)');
     return [];
   }
 
   const supabase = getSupabaseClient();
-  console.log('[debug:getAllProducts] getSupabaseClient() =', supabase ? 'クライアント取得成功' : 'null');
 
   if (!supabase) {
-    const fallback = getFromJsonFallback()
+    return getFromJsonFallback()
       .filter((p) => p.isActive)
       .sort((a, b) => a.displayOrder - b.displayOrder);
-    console.log(
-      '[debug:getAllProducts] Supabase未設定のためJSONフォールバックを使用(条件C)。件数=',
-      fallback.length,
-    );
-    return fallback;
   }
 
   const { data, error } = await supabase
@@ -217,25 +205,14 @@ export async function getAllProducts(): Promise<Product[]> {
     .eq('is_active', true)
     .order('display_order', { ascending: true });
 
-  console.log(
-    '[debug:getAllProducts] Supabaseクエリ結果 - error=',
-    error ? error.message : null,
-    ' data件数=',
-    data?.length ?? 'null',
-  );
-
   if (error) {
     console.error('[Supabase] products取得に失敗しました。JSONフォールバックを使用します:', error.message);
-    const fallback = getFromJsonFallback()
+    return getFromJsonFallback()
       .filter((p) => p.isActive)
       .sort((a, b) => a.displayOrder - b.displayOrder);
-    console.log('[debug:getAllProducts] エラー時フォールバック件数(条件B)=', fallback.length);
-    return fallback;
   }
 
-  const mapped = (data as SupabaseProductRow[]).map(mapRow);
-  console.log('[debug:getAllProducts] 最終的な返却件数=', mapped.length);
-  return mapped;
+  return (data as SupabaseProductRow[]).map(mapRow);
 }
 
 /** idから1商品を取得する(存在しない場合はundefined。非公開商品は対象外) */
