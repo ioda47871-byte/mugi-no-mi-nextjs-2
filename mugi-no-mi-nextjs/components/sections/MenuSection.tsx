@@ -37,11 +37,9 @@ export async function MenuSection({ products, className = '', headingLevel = 'h1
           </div>
         </RevealOnScroll>
 
-        <RevealOnScroll>
-          <Suspense fallback={<MenuBrowserSkeleton />}>
-            <MenuBrowser products={products} />
-          </Suspense>
-        </RevealOnScroll>
+        <Suspense fallback={<MenuBrowserSkeleton />}>
+          <MenuBrowser products={products} />
+        </Suspense>
       </div>
     </section>
   );
