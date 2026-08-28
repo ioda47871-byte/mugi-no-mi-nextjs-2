@@ -67,7 +67,7 @@ export function MenuBrowser({ products }: MenuBrowserProps) {
           個別の商品情報は準備中です。店頭にてぜひご覧ください。
         </p>
       ) : (
-        <div className="grid grid-cols-3 gap-x-8 gap-y-12 max-[900px]:grid-cols-2 max-[900px]:gap-x-6 max-[560px]:grid-cols-1">
+        <div className="grid grid-cols-3 gap-x-8 gap-y-14 max-[900px]:grid-cols-2 max-[900px]:gap-x-6 max-[560px]:grid-cols-1">
           {filtered.map((product, i) => (
             <ProductCard key={product.id} product={product} priority={i < 3} />
           ))}
@@ -98,7 +98,7 @@ export function MenuBrowserSkeleton() {
           </span>
         ))}
       </div>
-      <div className="grid grid-cols-3 gap-x-8 gap-y-12 max-[900px]:grid-cols-2 max-[560px]:grid-cols-1">
+      <div className="grid grid-cols-3 gap-x-8 gap-y-14 max-[900px]:grid-cols-2 max-[560px]:grid-cols-1">
         {Array.from({ length: 3 }).map((_, i) => (
           <div key={i} className="aspect-[4/5] animate-pulse rounded-[2px] bg-brand-pale/40" />
         ))}

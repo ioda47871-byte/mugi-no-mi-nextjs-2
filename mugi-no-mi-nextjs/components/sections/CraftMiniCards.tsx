@@ -23,8 +23,10 @@ const NAV_ITEMS = MENU_FILTERS.filter(
  * (FeaturedProducts)の下に置き、「見て興味を引く」→「カテゴリーから探す」
  * という流れを作る。カードクリックで/menuへ遷移し、該当カテゴリーで
  * 絞り込まれた状態になる(?category=クエリパラメータ。MenuBrowser.tsx参照)。
- * 見た目は罫線カードではなく、線画アイコン+ラベルの横並び(アイコンのみで
- * 十分に意味が伝わるため、英字ラベル・説明文は持たない軽量な表現)。
+ * 見た目は「アプリのカテゴリボタン」(丸枠+汎用アイコン)ではなく、パン屋の
+ * 品書き板のような横一列の意匠: 上にパンの線画、下にラベル、間を薄い罫線で
+ * 区切った一枚の帯として見せている。ホバーはアイコンが少し浮く+ゴールドが
+ * 濃くなる+下線が伸びる、の3つだけに留め、拡大や強い背景色は使わない。
  */
 export function CraftMiniCards() {
   return (
@@ -45,20 +47,25 @@ export function CraftMiniCards() {
           </div>
         </RevealOnScroll>
         <RevealOnScroll>
-          <div className="flex flex-wrap items-start justify-center gap-x-14 gap-y-8 max-[640px]:gap-x-8">
-            {NAV_ITEMS.map((item) => (
-              <Link
-                key={item.key}
-                href={`/menu?category=${item.key}`}
-                aria-label={`${item.label}を見る`}
-                className="group flex flex-col items-center gap-3 text-center"
-              >
-                <span className="flex h-16 w-16 items-center justify-center rounded-full border border-line text-brand-text transition-all duration-300 ease-signature group-hover:-translate-y-1 group-hover:border-brand-deep group-hover:text-brand-deep">
-                  <CategoryIcon category={item.key} className="h-7 w-7" />
-                </span>
-                <span className="text-[13.5px] tracking-wide text-ink">{item.label}</span>
-              </Link>
-            ))}
+          <div className="overflow-hidden rounded-[10px] border border-gold/20 bg-[#FBF6EA]">
+            <div className="flex divide-x divide-gold/15 max-[640px]:flex-col max-[640px]:divide-x-0 max-[640px]:divide-y">
+              {NAV_ITEMS.map((item) => (
+                <Link
+                  key={item.key}
+                  href={`/menu?category=${item.key}`}
+                  aria-label={`${item.label}を見る`}
+                  className="group flex flex-1 flex-col items-center gap-3 px-4 py-9 text-center max-[640px]:flex-row max-[640px]:justify-start max-[640px]:gap-5 max-[640px]:px-6 max-[640px]:py-5"
+                >
+                  <span className="text-brand-text transition-transform duration-200 ease-out group-hover:-translate-y-1">
+                    <CategoryIcon category={item.key} className="h-9 w-9 transition-colors duration-200 group-hover:text-brand-deep" />
+                  </span>
+                  <span className="relative pb-1.5 text-[13.5px] tracking-wide text-ink">
+                    {item.label}
+                    <span className="absolute -bottom-0 left-1/2 h-px w-0 -translate-x-1/2 bg-brand-deep transition-all duration-200 ease-out group-hover:w-full max-[640px]:left-0 max-[640px]:translate-x-0" />
+                  </span>
+                </Link>
+              ))}
+            </div>
           </div>
         </RevealOnScroll>
       </div>
