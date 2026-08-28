@@ -22,7 +22,15 @@ interface PageHeroProps {
 export function PageHero({ eyebrow, title, description, photoUrl, photoAlt, children }: PageHeroProps) {
   return (
     <section className="relative overflow-hidden bg-ivory pt-[200px] max-[640px]:pt-[130px]">
-      <div className="mx-auto grid max-w-container grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] items-center gap-10 px-8 max-[900px]:grid-cols-1 max-[900px]:gap-8 max-[640px]:px-5">
+      {/* ページ外側から柳の枝が入り込んでいるように見せる、Hero左端の装飾。
+          テキストへ重ならないよう左端に寄せ、マスクで内側へ向かって消す。 */}
+      <WillowDecoration
+        variant="branch"
+        className="pointer-events-none absolute -left-8 top-[180px] hidden h-[280px] w-24 text-gold/25 min-[900px]:block"
+        style={{ maskImage: 'linear-gradient(100deg, black 20%, transparent 75%)', WebkitMaskImage: 'linear-gradient(100deg, black 20%, transparent 75%)' }}
+      />
+
+      <div className="relative mx-auto grid max-w-container grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] items-center gap-10 px-8 max-[900px]:grid-cols-1 max-[900px]:gap-8 max-[640px]:px-5">
         <div className="relative z-10 py-14 pr-6 max-[900px]:py-0 max-[900px]:pr-0 max-[900px]:text-center">
           <span className="eyebrow max-[900px]:justify-center">{eyebrow}</span>
           <h1 className="mt-4 text-[clamp(32px,4.6vw,52px)] leading-snug">{title}</h1>
@@ -45,7 +53,10 @@ export function PageHero({ eyebrow, title, description, photoUrl, photoAlt, chil
             aria-hidden
             className="absolute inset-y-0 left-0 w-1/4 bg-gradient-to-r from-ivory to-transparent max-[900px]:hidden"
           />
-          <WillowDecoration className="pointer-events-none absolute right-6 top-3 h-36 w-14 text-ivory/70 max-[900px]:hidden" />
+          <WillowDecoration
+            variant="corner"
+            className="pointer-events-none absolute -right-4 -top-4 h-56 w-48 text-ivory/80 max-[900px]:hidden"
+          />
         </div>
       </div>
     </section>

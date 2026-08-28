@@ -1,5 +1,6 @@
 import { RevealOnScroll } from '@/components/ui/RevealOnScroll';
 import { PhotoFrame } from '@/components/ui/PhotoFrame';
+import { WillowDecoration } from '@/components/ui/WillowDecoration';
 import { InstagramEmbedPost } from './InstagramEmbedPost';
 import { siteContent } from '@/lib/placeholder-content';
 import { getLatestInstagramPosts } from '@/lib/instagram';
@@ -19,8 +20,17 @@ export async function InstagramFeed() {
   const posts = await getLatestInstagramPosts();
 
   return (
-    <section className="bg-brand-pale px-8 py-24 max-[640px]:px-5 max-[640px]:py-16">
-      <div className="mx-auto max-w-container">
+    <section className="relative overflow-hidden bg-brand-pale px-8 py-24 max-[640px]:px-5 max-[640px]:py-16">
+      <WillowDecoration
+        variant="branch"
+        className="pointer-events-none absolute -left-6 top-8 hidden h-64 w-20 text-gold/20 min-[1024px]:block"
+      />
+      <WillowDecoration
+        variant="branch"
+        flip
+        className="pointer-events-none absolute -right-6 top-8 hidden h-64 w-20 text-gold/20 min-[1024px]:block"
+      />
+      <div className="relative mx-auto max-w-container">
         <RevealOnScroll>
           <div className="mb-14 text-center">
             <span className="eyebrow justify-center">Instagram</span>

@@ -58,30 +58,41 @@ export default async function ContactPage() {
       <div className="mx-auto max-w-container px-8 pb-24 max-[640px]:px-5 max-[640px]:pb-16">
         <div className="grid grid-cols-2 items-stretch gap-8 max-[860px]:grid-cols-1">
           <PhoneReservationCard />
-          <div className="rounded-[10px] border border-line bg-white p-8">
-            <div className="mb-6 text-center">
+          <div className="relative overflow-hidden rounded-[10px] border border-line bg-white p-8">
+            <WillowDecoration
+              variant="sprig"
+              flip
+              className="pointer-events-none absolute -bottom-4 -right-4 h-28 w-12 text-gold/20"
+            />
+            <div className="relative mb-6 text-center">
               <span aria-hidden className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-brand-pale text-brand-text">
                 <MailIcon />
               </span>
               <h2 className="font-display text-xl text-ink">その他のお問い合わせ</h2>
             </div>
-            {formEnabled ? <ContactForm /> : <ContactFallback />}
+            <div className="relative">{formEnabled ? <ContactForm /> : <ContactFallback />}</div>
           </div>
         </div>
       </div>
 
       <StoreInfoStrip />
 
-      <section className="px-8 pb-24 max-[640px]:px-5 max-[640px]:pb-16">
+      <section className="overflow-hidden px-8 pb-24 max-[640px]:px-5 max-[640px]:pb-16">
         <div className="mx-auto max-w-container">
           <div className="grid grid-cols-2 items-center gap-16 max-[860px]:grid-cols-1 max-[860px]:gap-9">
             <PhotoBlock src={photos.interior.url} alt={photos.interior.alt} width={1500} height={1125} />
             <div className="relative max-[860px]:text-center">
-              <WillowDecoration className="pointer-events-none absolute -right-10 top-0 h-32 w-12 text-gold/25 max-[1100px]:hidden" />
-              <h2 className="text-2xl">お気軽にお問い合わせください</h2>
-              <p className="mt-5 max-w-sm text-[14.5px] leading-loose text-kura max-[860px]:mx-auto">
-                ご予約やお問い合わせはもちろん、パンのご感想やご要望などもぜひお聞かせください。皆さまのご来店を心よりお待ちしております。
-              </p>
+              <WillowDecoration
+                variant="sprig"
+                flip
+                className="pointer-events-none absolute -right-9 -top-8 h-20 w-9 text-gold/30 max-[1100px]:hidden"
+              />
+              <div className="relative">
+                <h2 className="text-2xl">お気軽にお問い合わせください</h2>
+                <p className="mt-5 max-w-sm text-[14.5px] leading-loose text-kura max-[860px]:mx-auto">
+                  ご予約やお問い合わせはもちろん、パンのご感想やご要望などもぜひお聞かせください。皆さまのご来店を心よりお待ちしております。
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -97,46 +108,53 @@ export default async function ContactPage() {
  */
 function PhoneReservationCard() {
   return (
-    <div className="rounded-[10px] border border-brand/30 border-l-[3px] border-l-brand bg-ivory p-8 text-center">
-      <span aria-hidden className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-brand-pale text-brand-text">
-        <PhoneIcon />
-      </span>
-      <h2 className="font-display text-xl text-ink sm:text-2xl">パンのご予約・お取り置き</h2>
-      <p className="mx-auto mt-3 max-w-md text-[14.5px] leading-relaxed text-kura">
-        パンのご予約・お取り置きは、お電話にて承っております。
-      </p>
-      <a
-        href={`tel:${siteContent.phoneHref.value}`}
-        className="mt-3 inline-block font-accent text-[21px] font-medium tracking-wide text-brand-text transition-colors hover:text-brand-deep"
-      >
-        {siteContent.phone.value}
-      </a>
+    <div className="relative overflow-hidden rounded-[10px] border border-brand/30 border-l-[3px] border-l-brand bg-ivory p-8 text-center">
+      <WillowDecoration
+        variant="sprig"
+        flip
+        className="pointer-events-none absolute -bottom-4 -right-4 h-28 w-12 text-gold/20"
+      />
+      <div className="relative">
+        <span aria-hidden className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-brand-pale text-brand-text">
+          <PhoneIcon />
+        </span>
+        <h2 className="font-display text-xl text-ink sm:text-2xl">パンのご予約・お取り置き</h2>
+        <p className="mx-auto mt-3 max-w-md text-[14.5px] leading-relaxed text-kura">
+          パンのご予約・お取り置きは、お電話にて承っております。
+        </p>
+        <a
+          href={`tel:${siteContent.phoneHref.value}`}
+          className="mt-3 inline-block font-accent text-[21px] font-medium tracking-wide text-brand-text transition-colors hover:text-brand-deep"
+        >
+          {siteContent.phone.value}
+        </a>
 
-      <div className="mx-auto mt-6 max-w-xs border-t border-line pt-6 text-left">
-        <p className="font-accent text-sm italic tracking-wide text-brand-text">ご予約の際にお伝えください</p>
-        <ul className="mt-2.5 space-y-2 text-[14px] text-kura">
-          <li className="flex items-start gap-2.5">
-            <span aria-hidden className="mt-2 h-1 w-1 shrink-0 rounded-full bg-gold" />
-            ご希望の商品・個数
-          </li>
-          <li className="flex items-start gap-2.5">
-            <span aria-hidden className="mt-2 h-1 w-1 shrink-0 rounded-full bg-gold" />
-            お名前
-          </li>
-          <li className="flex items-start gap-2.5">
-            <span aria-hidden className="mt-2 h-1 w-1 shrink-0 rounded-full bg-gold" />
-            お電話番号
-          </li>
-        </ul>
+        <div className="mx-auto mt-6 max-w-xs border-t border-line pt-6 text-left">
+          <p className="font-accent text-sm italic tracking-wide text-brand-text">ご予約の際にお伝えください</p>
+          <ul className="mt-2.5 space-y-2 text-[14px] text-kura">
+            <li className="flex items-start gap-2.5">
+              <span aria-hidden className="mt-2 h-1 w-1 shrink-0 rounded-full bg-gold" />
+              ご希望の商品・個数
+            </li>
+            <li className="flex items-start gap-2.5">
+              <span aria-hidden className="mt-2 h-1 w-1 shrink-0 rounded-full bg-gold" />
+              お名前
+            </li>
+            <li className="flex items-start gap-2.5">
+              <span aria-hidden className="mt-2 h-1 w-1 shrink-0 rounded-full bg-gold" />
+              お電話番号
+            </li>
+          </ul>
+        </div>
+
+        <Button
+          href={`tel:${siteContent.phoneHref.value}`}
+          variant="primary"
+          className="mt-7 max-[640px]:w-full max-[640px]:justify-center"
+        >
+          電話で予約する
+        </Button>
       </div>
-
-      <Button
-        href={`tel:${siteContent.phoneHref.value}`}
-        variant="primary"
-        className="mt-7 max-[640px]:w-full max-[640px]:justify-center"
-      >
-        電話で予約する
-      </Button>
     </div>
   );
 }

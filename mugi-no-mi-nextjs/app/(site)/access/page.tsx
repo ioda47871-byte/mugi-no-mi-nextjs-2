@@ -99,7 +99,11 @@ export default async function AccessPage() {
       <section className="px-8 pb-24 max-[640px]:px-5 max-[640px]:pb-16">
         <div className="mx-auto grid max-w-container grid-cols-2 items-stretch gap-8 max-[860px]:grid-cols-1">
           <div className="relative overflow-hidden rounded-[10px] border border-line bg-white p-8">
-            <WillowDecoration className="pointer-events-none absolute -bottom-6 -right-6 h-32 w-14 text-gold/20" />
+            <WillowDecoration
+              variant="sprig"
+              flip
+              className="pointer-events-none absolute -bottom-4 -right-4 h-28 w-12 text-gold/25"
+            />
             <div className="relative flex items-start gap-5">
               <ParkingIcon />
               <div>

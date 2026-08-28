@@ -1,4 +1,5 @@
 import { siteContent } from '@/lib/placeholder-content';
+import { WillowDecoration } from '@/components/ui/WillowDecoration';
 
 /**
  * Instagram導線の軽量版(1行カード)。About/InstagramFeed.tsxの
@@ -7,8 +8,13 @@ import { siteContent } from '@/lib/placeholder-content';
  */
 export function InstagramCTA() {
   return (
-    <div className="mx-auto flex max-w-container flex-col items-center justify-between gap-5 rounded-2xl border border-line bg-white px-8 py-7 max-[640px]:px-5 sm:flex-row">
-      <div className="flex items-center gap-4 text-center sm:text-left">
+    <div className="relative mx-auto flex max-w-container flex-col items-center justify-between gap-5 overflow-hidden rounded-2xl border border-line bg-white px-8 py-7 max-[640px]:px-5 sm:flex-row">
+      <WillowDecoration
+        variant="sprig"
+        flip
+        className="pointer-events-none absolute -bottom-4 -right-3 h-24 w-10 text-gold/20 max-[640px]:hidden"
+      />
+      <div className="relative flex items-center gap-4 text-center sm:text-left">
         <span aria-hidden className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-pale text-brand-text">
           <InstagramIcon />
         </span>
@@ -17,7 +23,7 @@ export function InstagramCTA() {
           <p className="mt-1 text-[13px] text-kura">新商品や季節のおすすめ、店内の様子などを日々更新中、ぜひフォローしてください。</p>
         </div>
       </div>
-      <div className="flex shrink-0 items-center gap-5">
+      <div className="relative flex shrink-0 items-center gap-5">
         <span className="font-accent text-sm italic text-brand-text">{siteContent.instagramHandle.value}</span>
         <a href={siteContent.instagramUrl.value} className="link-gold shrink-0 whitespace-nowrap text-sm">
           Instagramを見る →

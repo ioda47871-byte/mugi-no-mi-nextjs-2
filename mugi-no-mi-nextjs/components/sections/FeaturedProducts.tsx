@@ -25,10 +25,10 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
     <section className="bg-white px-8 py-24 max-[640px]:px-5 max-[640px]:py-16">
       <div className="mx-auto max-w-container">
         <RevealOnScroll>
-          <div className="mb-14 flex items-center justify-center gap-5">
-            <WheatDecoration className="h-10 w-6 text-gold/50" />
+          <div className="mb-14 flex items-center justify-center gap-6">
+            <WheatDecoration lean="left" className="h-12 w-7 text-gold/55" />
             <h2 className="font-display text-[clamp(24px,3vw,32px)]">おすすめのパン</h2>
-            <WheatDecoration className="h-10 w-6 -scale-x-100 text-gold/50" />
+            <WheatDecoration lean="right" className="h-12 w-7 text-gold/55" />
           </div>
         </RevealOnScroll>
 

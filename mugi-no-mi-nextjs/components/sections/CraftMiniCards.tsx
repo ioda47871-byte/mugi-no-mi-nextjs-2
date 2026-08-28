@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { RevealOnScroll } from '@/components/ui/RevealOnScroll';
 import { CategoryIcon } from '@/components/ui/CategoryIcon';
+import { WheatDecoration } from '@/components/ui/WheatDecoration';
+import { WillowDecoration } from '@/components/ui/WillowDecoration';
 import { MENU_FILTERS, type MenuFilterKey } from '@/lib/products';
 
 /**
@@ -26,13 +28,20 @@ const NAV_ITEMS = MENU_FILTERS.filter(
  */
 export function CraftMiniCards() {
   return (
-    <section className="border-t border-line px-8 py-16 max-[640px]:px-5 max-[640px]:py-12">
-      <div className="mx-auto max-w-container">
+    <section className="relative overflow-hidden border-t border-line px-8 py-16 max-[640px]:px-5 max-[640px]:py-12">
+      {/* ページ下部(次のStoreInfoStripとの境目)へ、柳が下から入り込んでくる装飾。
+          canopyを上下反転させ、根元(かつてのグラデーション濃い側)を下端に置く。 */}
+      <WillowDecoration
+        variant="canopy"
+        className="pointer-events-none absolute -bottom-16 left-1/2 hidden h-[420px] w-[520px] -translate-x-1/2 scale-y-[-1] text-gold/[0.14] min-[860px]:block"
+      />
+
+      <div className="relative mx-auto max-w-container">
         <RevealOnScroll>
-          <div className="mb-10 flex items-center justify-center gap-4 text-center">
-            <span aria-hidden className="h-px w-9 bg-gold" />
+          <div className="mb-10 flex items-center justify-center gap-3 text-center">
+            <WheatDecoration lean="left" className="h-8 w-5 text-gold/45" />
             <h2 className="font-display text-lg tracking-[0.08em] text-ink">パンのカテゴリ</h2>
-            <span aria-hidden className="h-px w-9 bg-gold" />
+            <WheatDecoration lean="right" className="h-8 w-5 text-gold/45" />
           </div>
         </RevealOnScroll>
         <RevealOnScroll>

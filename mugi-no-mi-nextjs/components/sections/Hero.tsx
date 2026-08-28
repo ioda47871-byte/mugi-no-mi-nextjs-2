@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/Button';
+import { WillowDecoration } from '@/components/ui/WillowDecoration';
 import { siteContent } from '@/lib/placeholder-content';
 
 interface HeroProps {
@@ -69,6 +70,12 @@ export function Hero({ imageUrl, imageAlt }: HeroProps) {
         {/* 薄い黒のオーバーレイ: テキストの可読性を確保 */}
         <div className="absolute inset-0 bg-black/22" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,rgba(255,255,255,0.14),transparent_55%),linear-gradient(to_top,rgba(20,15,8,0.78)_0%,rgba(20,15,8,0.25)_55%,transparent_82%)]" />
+
+        {/* Hero左端、ごく薄い柳。写真の外から入り込んでいるように見せる控えめな装飾 */}
+        <WillowDecoration
+          variant="branch"
+          className="pointer-events-none absolute -left-6 top-0 hidden h-[70vh] w-28 text-ivory/[0.14] min-[900px]:block"
+        />
       </div>
 
       <div

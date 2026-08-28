@@ -1,4 +1,5 @@
 import { siteContent } from '@/lib/placeholder-content';
+import { WillowDecoration } from '@/components/ui/WillowDecoration';
 
 interface StoreInfoStripProps {
   /** Homeページのみ、右端に「フォローする」ボタンを表示する */
@@ -15,8 +16,13 @@ interface StoreInfoStripProps {
  */
 export function StoreInfoStrip({ showFollowButton = false, className = '' }: StoreInfoStripProps) {
   return (
-    <section className={`border-t border-line bg-ivory px-8 py-10 max-[640px]:px-5 max-[640px]:py-8 ${className}`}>
-      <div className="mx-auto flex max-w-container flex-wrap items-start justify-between gap-x-6 gap-y-7 max-[860px]:justify-center max-[860px]:text-center">
+    <section className={`relative overflow-hidden border-t border-line bg-ivory px-8 py-10 max-[640px]:px-5 max-[640px]:py-8 ${className}`}>
+      <WillowDecoration
+        variant="sprig"
+        flip
+        className="pointer-events-none absolute -right-2 -top-2 hidden h-28 w-12 text-gold/20 min-[860px]:block"
+      />
+      <div className="relative mx-auto flex max-w-container flex-wrap items-start justify-between gap-x-6 gap-y-7 max-[860px]:justify-center max-[860px]:text-center">
         <InfoItem icon={<PinIcon />} label="所在地">
           <p className="whitespace-pre-line">{siteContent.address.value.replace('〒456-0018 ', '〒456-0018\n')}</p>
         </InfoItem>

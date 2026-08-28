@@ -70,19 +70,25 @@ export default async function AboutPage() {
         photoAlt={photos.exterior.alt}
       />
 
-      <section className="bg-brand-pale px-8 py-24 max-[640px]:px-5 max-[640px]:py-16">
+      <section className="overflow-hidden bg-brand-pale px-8 py-24 max-[640px]:px-5 max-[640px]:py-16">
         <div className="mx-auto max-w-container">
           <RevealOnScroll>
             <div className="grid grid-cols-2 items-center gap-16 max-[860px]:grid-cols-1 max-[860px]:gap-9">
               <PhotoBlock src={photos.interior.url} alt={photos.interior.alt} width={1500} height={1125} />
-              <div className="max-[860px]:text-center">
-                <span className="eyebrow">Space</span>
-                <h2 className="mt-3.5 text-2xl">落ち着いた店内。</h2>
-                <p className="mt-5 max-w-sm text-[14.5px] leading-loose text-kura max-[860px]:mx-auto">
-                  {siteContent.tagline.value}
-                  <br />
-                  柳の木を目印に扉を開けると、静かな店内にその日のパンが並びます。
-                </p>
+              <div className="relative max-[860px]:text-center">
+                <WillowDecoration
+                  variant="sprig"
+                  className="pointer-events-none absolute -left-6 -top-8 h-16 w-8 text-gold/30 max-[860px]:hidden"
+                />
+                <div className="relative">
+                  <span className="eyebrow">Space</span>
+                  <h2 className="mt-3.5 text-2xl">落ち着いた店内。</h2>
+                  <p className="mt-5 max-w-sm text-[14.5px] leading-loose text-kura max-[860px]:mx-auto">
+                    {siteContent.tagline.value}
+                    <br />
+                    柳の木を目印に扉を開けると、静かな店内にその日のパンが並びます。
+                  </p>
+                </div>
               </div>
             </div>
           </RevealOnScroll>
@@ -117,22 +123,27 @@ export default async function AboutPage() {
         </div>
       </section>
 
-      <section className="relative px-8 py-24 max-[640px]:px-5 max-[640px]:py-16">
+      <section className="relative overflow-hidden px-8 py-24 max-[640px]:px-5 max-[640px]:py-16">
         <div className="mx-auto max-w-container">
           <RevealOnScroll>
             <div className="grid grid-cols-2 items-center gap-16 max-[860px]:grid-cols-1 max-[860px]:gap-9">
               <div className="relative max-[860px]:order-2 max-[860px]:text-center">
-                <WillowDecoration className="pointer-events-none absolute -left-10 -top-6 h-32 w-12 text-gold/25 max-[1100px]:hidden" />
-                <p className="text-[clamp(20px,2.6vw,25px)] font-display leading-loose">
-                  パンだけではない、
-                  <br />
-                  店先のしつらえ
-                </p>
-                <p className="mt-5 max-w-sm text-[14.5px] leading-loose text-kura max-[860px]:mx-auto">
-                  パンがおいしいのはもちろん、扉の前に立つその時間も、楽しんでほしい。
-                  <br />
-                  そんな想いで、季節ごとにしつらえています。
-                </p>
+                <WillowDecoration
+                  variant="sprig"
+                  className="pointer-events-none absolute -left-9 -top-8 h-20 w-9 text-gold/30 max-[1100px]:hidden"
+                />
+                <div className="relative">
+                  <p className="text-[clamp(20px,2.6vw,25px)] font-display leading-loose">
+                    パンだけではない、
+                    <br />
+                    店先のしつらえ
+                  </p>
+                  <p className="mt-5 max-w-sm text-[14.5px] leading-loose text-kura max-[860px]:mx-auto">
+                    パンがおいしいのはもちろん、扉の前に立つその時間も、楽しんでほしい。
+                    <br />
+                    そんな想いで、季節ごとにしつらえています。
+                  </p>
+                </div>
               </div>
               <div className="max-[860px]:order-1">
                 <PhotoBlock src={photos['goods-corner'].url} alt={photos['goods-corner'].alt} width={1500} height={1125} />
