@@ -2,6 +2,9 @@ import type { Metadata } from 'next';
 import { PhotoBlock } from '@/components/ui/PhotoBlock';
 import { RevealOnScroll } from '@/components/ui/RevealOnScroll';
 import { NoBreakText } from '@/components/ui/NoBreakText';
+import { WillowDecoration } from '@/components/ui/WillowDecoration';
+import { InstagramCTA } from '@/components/sections/InstagramCTA';
+import { StoreInfoStrip } from '@/components/sections/StoreInfoStrip';
 import { pageOpenGraph, siteConfig } from '@/lib/site-config';
 import { getSitePhotos } from '@/lib/site-photos';
 import type { SitePhotoSlot } from '@/lib/admin/storage';
@@ -47,10 +50,10 @@ interface GalleryItem {
 const GALLERY_ITEMS: GalleryItem[] = [
   { slot: 'exterior', width: 1200, height: 1500, caption: 'Exterior — 柳の木の下で', wide: false },
   { slot: 'entrance', width: 1200, height: 1500, caption: 'Entrance — 扉の向こうへ', wide: false },
-  { slot: 'interior', width: 1500, height: 1125, caption: 'Interior — 落ち着いた店内', wide: true },
-  { slot: 'kitchen', width: 1600, height: 1067, caption: 'Kitchen — ガラスの向こうの厨房', wide: true },
-  { slot: 'showcase', width: 1600, height: 1067, caption: 'Showcase — 焼きたてが並ぶ場所', wide: true },
-  { slot: 'goods-corner', width: 1500, height: 1125, caption: 'Goods Corner — 雑貨のある風景', wide: true },
+  { slot: 'interior', width: 1600, height: 900, caption: 'Interior — 落ち着いた店内', wide: true },
+  { slot: 'kitchen', width: 1200, height: 1500, caption: 'Kitchen — ガラスの向こうの厨房', wide: false },
+  { slot: 'showcase', width: 1200, height: 1500, caption: 'Showcase — 焼きたてが並ぶ場所', wide: false },
+  { slot: 'goods-corner', width: 1200, height: 1500, caption: 'Goods Corner — 雑貨のある風景', wide: false },
   { slot: 'display-accent', width: 1200, height: 1500, caption: 'Display — 小さなこだわり', wide: false },
 ];
 
@@ -59,7 +62,8 @@ export default async function GalleryPage() {
 
   return (
     <div className="pt-[200px] max-[640px]:pt-[130px]">
-      <div className="mx-auto max-w-container px-8 pb-16 text-center max-[640px]:px-5">
+      <div className="relative mx-auto max-w-container px-8 pb-16 text-center max-[640px]:px-5">
+        <WillowDecoration className="pointer-events-none absolute -right-4 top-0 h-40 w-16 text-gold/20 max-[900px]:hidden" />
         <span className="eyebrow justify-center">Gallery</span>
         <h1 className="mt-[18px] text-[clamp(34px,5vw,58px)]">光と、香りと、時間の記録</h1>
         <p className="mx-auto mt-6 max-w-lg text-[14.5px] text-kura">
@@ -69,12 +73,12 @@ export default async function GalleryPage() {
         </p>
       </div>
 
-      <div className="mx-auto max-w-container px-8 pb-32 max-[640px]:px-5 max-[640px]:pb-20">
-        <div className="flex flex-col items-center gap-20 max-[640px]:gap-14">
+      <div className="mx-auto max-w-container px-8 pb-24 max-[640px]:px-5 max-[640px]:pb-16">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-14 max-[640px]:grid-cols-1 max-[640px]:gap-y-10">
           {GALLERY_ITEMS.map((item, index) => {
             const photo = photos[item.slot];
             return (
-              <RevealOnScroll key={item.slot} className={item.wide ? 'w-full' : 'w-full max-w-2xl'}>
+              <RevealOnScroll key={item.slot} className={item.wide ? 'col-span-2' : ''}>
                 <PhotoBlock
                   src={photo.url}
                   alt={photo.alt}
@@ -82,13 +86,19 @@ export default async function GalleryPage() {
                   height={item.height}
                   caption={item.caption}
                   priority={index === 0}
-                  sizes={item.wide ? '100vw' : '(max-width: 768px) 100vw, 672px'}
+                  sizes={item.wide ? '100vw' : '(max-width: 640px) 100vw, 50vw'}
                 />
               </RevealOnScroll>
             );
           })}
         </div>
       </div>
+
+      <div className="px-8 pb-24 max-[640px]:px-5 max-[640px]:pb-16">
+        <InstagramCTA />
+      </div>
+
+      <StoreInfoStrip />
     </div>
   );
 }

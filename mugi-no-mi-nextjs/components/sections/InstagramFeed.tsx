@@ -1,16 +1,22 @@
 import { RevealOnScroll } from '@/components/ui/RevealOnScroll';
+import { PhotoFrame } from '@/components/ui/PhotoFrame';
 import { InstagramEmbedPost } from './InstagramEmbedPost';
 import { siteContent } from '@/lib/placeholder-content';
+import { getLatestInstagramPosts } from '@/lib/instagram';
 
 /**
  * About = Instagramと連携したページ。
+ * - 実投稿の写真グリッド(取得できた場合のみ。件数はInstagram側のAPIレスポンス次第)
  * - 公式oEmbed(実投稿URLがある場合)またはプレースホルダーカード
  * - 「最新情報はこちら」バナー
  * - フォローボタン
- * 実際の投稿写真・キャプションは確認できていないため、投稿一覧グリッドは表示していません。
+ * 写真グリッドはHomeのInstagramGrid.tsxと同じlib/instagram経由の取得ロジックを
+ * 再利用しており(取得失敗・未設定時は空配列→グリッド非表示という既存の安全な
+ * フォールバック挙動もそのまま)、新しいデータ取得ロジックは追加していない。
  */
-export function InstagramFeed() {
+export async function InstagramFeed() {
   const hasFeaturedPost = Boolean(siteContent.instagramFeaturedPostUrl.value);
+  const posts = await getLatestInstagramPosts();
 
   return (
     <section className="bg-brand-pale px-8 py-24 max-[640px]:px-5 max-[640px]:py-16">
@@ -24,6 +30,23 @@ export function InstagramFeed() {
             </p>
           </div>
         </RevealOnScroll>
+
+        {posts.length > 0 && (
+          <RevealOnScroll>
+            <div className="mb-14 grid grid-cols-4 gap-3 max-[640px]:grid-cols-2">
+              {posts.slice(0, 4).map((post) => (
+                <a key={post.id} href={post.permalink} target="_blank" rel="noreferrer" aria-label={post.caption || 'Instagramの投稿を見る'}>
+                  <PhotoFrame
+                    src={post.imageUrl}
+                    alt={post.caption || 'Instagramの投稿'}
+                    aspect="aspect-square"
+                    sizes="(max-width: 640px) 45vw, 22vw"
+                  />
+                </a>
+              ))}
+            </div>
+          </RevealOnScroll>
+        )}
 
         {/* 最新情報はこちら バナー */}
         <RevealOnScroll>

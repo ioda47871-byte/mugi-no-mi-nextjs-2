@@ -1,7 +1,7 @@
 import Link from 'next/link';
-import { SectionHeading } from '@/components/ui/SectionHeading';
 import { RevealOnScroll } from '@/components/ui/RevealOnScroll';
-import { MENU_FILTERS } from '@/lib/products';
+import { CategoryIcon } from '@/components/ui/CategoryIcon';
+import { MENU_FILTERS, type MenuFilterKey } from '@/lib/products';
 
 /**
  * トップページの「カテゴリー導線セクション」。名称・並び順・遷移先は
@@ -12,63 +12,46 @@ import { MENU_FILTERS } from '@/lib/products';
  * カテゴリーと1:1に対応しない独自の見出しを使っていたが、正式な5カテゴリー
  * (食パン/惣菜パン/菓子パン/食事パン/季節限定)に統一した。
  */
-const NAV_ITEMS = MENU_FILTERS.filter((f) => f.key !== 'all');
-
-const CATEGORY_EN: Record<string, string> = {
-  shokupan: 'Shokupan',
-  savory: 'Savory Bread',
-  sweet: 'Sweet Bread',
-  'meal-bread': 'Meal Bread',
-  seasonal: 'Seasonal',
-};
-
-const CATEGORY_TEXT: Record<string, string> = {
-  shokupan: '毎日の食卓に。',
-  savory: '小腹を満たす一品。',
-  sweet: 'おやつのひとときに。',
-  'meal-bread': 'しっかり食べたい日に。',
-  seasonal: 'その時期だけの味わい。',
-};
+const NAV_ITEMS = MENU_FILTERS.filter(
+  (f): f is { key: Exclude<MenuFilterKey, 'all'>; label: string } => f.key !== 'all',
+);
 
 /**
  * カテゴリーから探しやすくするための導線。おすすめ商品セクション
  * (FeaturedProducts)の下に置き、「見て興味を引く」→「カテゴリーから探す」
- * という流れを作る。カード全体が/menuへのリンクになっており、クリックすると
- * 該当カテゴリーで絞り込まれた状態のMenuへ遷移する(?category=クエリ
- * パラメータ。MenuBrowser.tsx参照)。
+ * という流れを作る。カードクリックで/menuへ遷移し、該当カテゴリーで
+ * 絞り込まれた状態になる(?category=クエリパラメータ。MenuBrowser.tsx参照)。
+ * 見た目は罫線カードではなく、線画アイコン+ラベルの横並び(アイコンのみで
+ * 十分に意味が伝わるため、英字ラベル・説明文は持たない軽量な表現)。
  */
 export function CraftMiniCards() {
   return (
-    <section className="px-8 py-24 max-[640px]:px-5 max-[640px]:py-16">
+    <section className="border-t border-line px-8 py-16 max-[640px]:px-5 max-[640px]:py-12">
       <div className="mx-auto max-w-container">
         <RevealOnScroll>
-          <SectionHeading
-            eyebrow="Categories"
-            title="カテゴリーから探す"
-            description="食事に寄り添うパンから、軽いおやつに楽しめるパンまで。カテゴリーごとにご覧いただけます。"
-          />
+          <div className="mb-10 flex items-center justify-center gap-4 text-center">
+            <span aria-hidden className="h-px w-9 bg-gold" />
+            <h2 className="font-display text-lg tracking-[0.08em] text-ink">パンのカテゴリ</h2>
+            <span aria-hidden className="h-px w-9 bg-gold" />
+          </div>
         </RevealOnScroll>
         <RevealOnScroll>
-          <div className="grid grid-cols-3 gap-7 max-[760px]:min-[641px]:grid-cols-1 max-[640px]:grid-cols-2 max-[640px]:gap-4">
+          <div className="flex flex-wrap items-start justify-center gap-x-14 gap-y-8 max-[640px]:gap-x-8">
             {NAV_ITEMS.map((item) => (
               <Link
                 key={item.key}
                 href={`/menu?category=${item.key}`}
                 aria-label={`${item.label}を見る`}
-                className="group block rounded-[2px] border border-line bg-white p-8 transition-all duration-300 ease-signature hover:-translate-y-1 hover:border-brand-deep hover:shadow-[0_14px_30px_rgba(43,36,29,0.08)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-deep"
+                className="group flex flex-col items-center gap-3 text-center"
               >
-                <span className="font-accent text-[13px] tracking-wide text-gold">{CATEGORY_EN[item.key]}</span>
-                <h3 className="mt-2.5 font-display text-[17px] leading-relaxed transition-colors duration-300 group-hover:text-brand-deep">
-                  {item.label}
-                </h3>
-                <p className="mt-3 text-[13.5px] text-kura">{CATEGORY_TEXT[item.key]}</p>
+                <span className="flex h-16 w-16 items-center justify-center rounded-full border border-line text-brand-text transition-all duration-300 ease-signature group-hover:-translate-y-1 group-hover:border-brand-deep group-hover:text-brand-deep">
+                  <CategoryIcon category={item.key} className="h-7 w-7" />
+                </span>
+                <span className="text-[13.5px] tracking-wide text-ink">{item.label}</span>
               </Link>
             ))}
           </div>
         </RevealOnScroll>
-        <div className="mt-9 text-center">
-          <Link href="/menu" className="link-gold">パンを見る →</Link>
-        </div>
       </div>
     </section>
   );

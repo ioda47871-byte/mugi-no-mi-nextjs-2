@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { InstagramFeed } from '@/components/sections/InstagramFeed';
+import { PageHero } from '@/components/sections/PageHero';
+import { StoreInfoStrip } from '@/components/sections/StoreInfoStrip';
 import { PhotoBlock } from '@/components/ui/PhotoBlock';
 import { RevealOnScroll } from '@/components/ui/RevealOnScroll';
 import { NoBreakText } from '@/components/ui/NoBreakText';
+import { WillowDecoration } from '@/components/ui/WillowDecoration';
 import { pageOpenGraph, siteConfig } from '@/lib/site-config';
 import { siteContent, FOUNDER_QUOTE_PROTECTED_PHRASES } from '@/lib/placeholder-content';
 import { getSitePhotos } from '@/lib/site-photos';
@@ -49,33 +51,24 @@ export default async function AboutPage() {
     .replace('その日に出会えるパンを、', '\nその日に出会えるパンを、');
 
   return (
-    <div className="pt-[200px] max-[640px]:pt-[130px]">
-      <div className="mx-auto max-w-container px-8 pb-14 text-center max-[640px]:px-5">
-        <RevealOnScroll>
-          <span className="eyebrow justify-center">About</span>
-          <h1 className="mx-auto mt-[18px] max-w-2xl text-[clamp(34px,5vw,58px)] leading-snug">
+    <div>
+      <PageHero
+        eyebrow="About"
+        title={
+          <>
             柳の木の奥にある、
             <br />
             小さなベーカリー。
-          </h1>
-          <p className="mx-auto mt-6 max-w-lg whitespace-pre-line text-[14.5px] text-kura">
+          </>
+        }
+        description={
+          <span className="whitespace-pre-line">
             <NoBreakText text={founderQuoteWithBreaks} phrases={FOUNDER_QUOTE_PROTECTED_PHRASES} />
-          </p>
-        </RevealOnScroll>
-      </div>
-
-      <div className="px-8 pb-24 max-[640px]:px-5 max-[640px]:pb-16">
-        <RevealOnScroll className="mx-auto max-w-2xl">
-          <PhotoBlock
-            src={photos.exterior.url}
-            alt={photos.exterior.alt}
-            width={1200}
-            height={1500}
-            caption="柳の木を目印に"
-            priority
-          />
-        </RevealOnScroll>
-      </div>
+          </span>
+        }
+        photoUrl={photos.exterior.url}
+        photoAlt={photos.exterior.alt}
+      />
 
       <section className="bg-brand-pale px-8 py-24 max-[640px]:px-5 max-[640px]:py-16">
         <div className="mx-auto max-w-container">
@@ -124,43 +117,34 @@ export default async function AboutPage() {
         </div>
       </section>
 
-      <section className="px-8 py-24 max-[640px]:px-5 max-[640px]:py-16">
+      <section className="relative px-8 py-24 max-[640px]:px-5 max-[640px]:py-16">
         <div className="mx-auto max-w-container">
           <RevealOnScroll>
             <div className="grid grid-cols-2 items-center gap-16 max-[860px]:grid-cols-1 max-[860px]:gap-9">
-              <div className="order-2 max-[860px]:order-2 max-[860px]:text-center">
-                <span className="eyebrow">Visit</span>
-                <h2 className="mt-3.5 text-2xl">ご来店をお待ちしています。</h2>
-                <p className="mt-5 max-w-sm text-[14.5px] leading-loose text-kura max-[860px]:mx-auto">
-                  {siteContent.address.value}
+              <div className="relative max-[860px]:order-2 max-[860px]:text-center">
+                <WillowDecoration className="pointer-events-none absolute -left-10 -top-6 h-32 w-12 text-gold/25 max-[1100px]:hidden" />
+                <p className="text-[clamp(20px,2.6vw,25px)] font-display leading-loose">
+                  パンだけではない、
                   <br />
-                  営業時間 {siteContent.hours.value}(定休日 {siteContent.closedDay.value})
+                  店先のしつらえ
                 </p>
-                <div className="mt-6">
-                  <Link href="/access" className="link-gold">アクセス・地図を見る →</Link>
-                </div>
+                <p className="mt-5 max-w-sm text-[14.5px] leading-loose text-kura max-[860px]:mx-auto">
+                  パンがおいしいのはもちろん、扉の前に立つその時間も、楽しんでほしい。
+                  <br />
+                  そんな想いで、季節ごとにしつらえています。
+                </p>
               </div>
-              <div className="order-1 max-[860px]:order-1">
-                <PhotoBlock src={photos.entrance.url} alt={photos.entrance.alt} width={1200} height={1500} />
+              <div className="max-[860px]:order-1">
+                <PhotoBlock src={photos['goods-corner'].url} alt={photos['goods-corner'].alt} width={1500} height={1125} />
               </div>
             </div>
           </RevealOnScroll>
         </div>
       </section>
 
-      <div className="px-8 pb-24 max-[640px]:px-5 max-[640px]:pb-16">
-        <RevealOnScroll className="mx-auto max-w-md">
-          <PhotoBlock
-            src={photos['display-accent'].url}
-            alt={photos['display-accent'].alt}
-            width={1200}
-            height={1500}
-            caption="パンだけではない、店先のしつらえ"
-          />
-        </RevealOnScroll>
-      </div>
-
       <InstagramFeed />
+
+      <StoreInfoStrip />
     </div>
   );
 }

@@ -3,9 +3,7 @@ import { Hero } from '@/components/sections/Hero';
 import { AnnouncementBanner } from '@/components/sections/AnnouncementBanner';
 import { FeaturedProducts } from '@/components/sections/FeaturedProducts';
 import { CraftMiniCards } from '@/components/sections/CraftMiniCards';
-import { ArtisanCompact } from '@/components/sections/ArtisanCompact';
-import { VisitUs } from '@/components/sections/VisitUs';
-import { InstagramGrid } from '@/components/sections/InstagramGrid';
+import { StoreInfoStrip } from '@/components/sections/StoreInfoStrip';
 import { getAllProducts, getFeaturedHomeProducts } from '@/lib/products';
 import { getSitePhoto } from '@/lib/site-photos';
 import { getLatestPublishedAnnouncement } from '@/lib/announcements';
@@ -26,6 +24,12 @@ export const revalidate = 60;
  * 探しやすくする」の2段構成(FeaturedProducts→CraftMiniCards)。
  * 全商品の閲覧・絞り込みはMenuページ(/menu)の役割のため、以前ここに
  * 埋め込んでいたMenuSection(フィルター付き全商品グリッド)は廃止した。
+ *
+ * 店主紹介(ArtisanCompact)・詳細な来店案内/地図(VisitUs)・Instagram投稿
+ * グリッド(InstagramGrid)は、デザイン刷新に伴いHomeでは使用しない
+ * (店主紹介はAboutへ、来店詳細はAccessへ集約し、HomeはStoreInfoStripの
+ * 軽量な店舗情報+フォローするボタンのみに絞っている)。コンポーネント自体は
+ * 削除しておらず、他ページからは引き続き利用可能。
  */
 export default async function HomePage() {
   const [products, heroPhoto, announcement] = await Promise.all([
@@ -41,9 +45,7 @@ export default async function HomePage() {
       <AnnouncementBanner announcement={announcement} />
       <FeaturedProducts products={featuredProducts} />
       <CraftMiniCards />
-      <ArtisanCompact />
-      <VisitUs />
-      <InstagramGrid />
+      <StoreInfoStrip showFollowButton />
     </>
   );
 }

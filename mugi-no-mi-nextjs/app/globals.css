@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+/* デザイントークン: 値はtailwind.config.tsのcolors(ivory/ink/kura/gold/brand/line)と
+   同じものを指す。Tailwindユーティリティ(bg-ivory等)が実装の実体で、この変数群は
+   ドキュメント目的およびインラインスタイルでの参照用。 */
+:root {
+  --bg: #faf6ef;
+  --bg-soft: #f3e7bd;
+  --ink: #2b241d;
+  --muted: #5c4a38;
+  --gold: #b79456;
+  --line: rgba(43, 36, 29, 0.1);
+}
+
 html {
   scroll-behavior: smooth;
 }
