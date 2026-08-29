@@ -13,7 +13,22 @@ interface StoreInfoStripProps {
  * VisitUs.tsx(地図・駐車場・予約カードを含む詳細版。Access/Contactで使用)とは
  * 役割が異なる軽量版で、既存のsiteContentをそのまま参照するのみで
  * 追加のデータ取得は行わない。
+ *
+ * 電話番号・Instagramの2項目のみ、CTAとして視覚的に区別するため、
+ * サイト共通のゴールド(.link-gold等)ではなくこのコンポーネント限定の
+ * くすんだグリーン/ピンクを使う(他ページ・他コンポーネントのリンク色には
+ * 影響しない、ローカルなクラス文字列として定義)。
  */
+// Phone green: #4F7D55(hover #3D6142) / Instagram pink: #C65D7B(hover #A84763)。
+// Tailwind JITがクラス名を静的解析するため、テンプレートリテラルで組み立てず
+// クラス文字列にそのまま埋め込んでいる(変数化するとpurgeされ、classがCSSに
+// 生成されない)。
+const phoneLinkClass =
+  'relative pb-[3px] text-sm tracking-wide text-[#4F7D55] transition-colors duration-300 hover:text-[#3D6142] after:absolute after:bottom-0 after:left-0 after:h-px after:w-full after:origin-left after:scale-x-[0.3] after:bg-[#4F7D55] after:transition-transform after:duration-500 after:ease-signature hover:after:scale-x-100 hover:after:bg-[#3D6142]';
+
+const instagramLinkClass =
+  'relative pb-[3px] text-sm tracking-wide text-[#C65D7B] transition-colors duration-300 hover:text-[#A84763] after:absolute after:bottom-0 after:left-0 after:h-px after:w-full after:origin-left after:scale-x-[0.3] after:bg-[#C65D7B] after:transition-transform after:duration-500 after:ease-signature hover:after:scale-x-100 hover:after:bg-[#A84763]';
+
 export function StoreInfoStrip({ showFollowButton = false, className = '' }: StoreInfoStripProps) {
   return (
     <section className={`relative overflow-hidden border-t border-line bg-ivory px-8 py-10 max-[640px]:px-5 max-[640px]:py-8 ${className}`}>
@@ -40,13 +55,13 @@ export function StoreInfoStrip({ showFollowButton = false, className = '' }: Sto
             <span className="text-[12px] text-kura/80">※その他臨時休業あり</span>
           </p>
         </InfoItem>
-        <InfoItem icon={<PhoneIcon />} label="電話番号">
-          <a href={`tel:${siteContent.phoneHref.value}`} className="link-gold">
+        <InfoItem icon={<PhoneIcon />} label="電話番号" accent="phone">
+          <a href={`tel:${siteContent.phoneHref.value}`} className={phoneLinkClass}>
             {siteContent.phone.value}
           </a>
         </InfoItem>
-        <InfoItem icon={<InstagramIcon />} label="Instagram">
-          <a href={siteContent.instagramUrl.value} className="link-gold">
+        <InfoItem icon={<InstagramIcon />} label="Instagram" accent="instagram">
+          <a href={siteContent.instagramUrl.value} className={instagramLinkClass}>
             {siteContent.instagramHandle.value}
           </a>
         </InfoItem>
@@ -64,14 +79,33 @@ export function StoreInfoStrip({ showFollowButton = false, className = '' }: Sto
   );
 }
 
-function InfoItem({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) {
+/** アイコン・ラベル共通の色分け(電話=グリーン/Instagram=ピンク) */
+const ACCENT_CLASS = {
+  phone: 'text-[#4F7D55]',
+  instagram: 'text-[#C65D7B]',
+} as const;
+
+function InfoItem({
+  icon,
+  label,
+  children,
+  accent,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  children: React.ReactNode;
+  /** 電話番号・Instagramのみ、アイコン/ラベルをゴールドから専用色へ切り替える */
+  accent?: 'phone' | 'instagram';
+}) {
   return (
     <div className="flex min-w-[140px] items-start gap-3 max-[860px]:min-w-[130px] max-[860px]:flex-col max-[860px]:items-center max-[860px]:gap-1.5">
-      <span aria-hidden className="mt-0.5 text-gold max-[860px]:mt-0">
+      <span aria-hidden className={`mt-0.5 max-[860px]:mt-0 ${accent ? ACCENT_CLASS[accent] : 'text-gold'}`}>
         {icon}
       </span>
       <div className="text-left text-[13.5px] leading-relaxed text-kura max-[860px]:text-center">
-        <p className="font-accent text-[12px] italic tracking-wide text-brand-text">{label}</p>
+        <p className={`font-accent text-[12px] italic tracking-wide ${accent ? ACCENT_CLASS[accent] : 'text-brand-text'}`}>
+          {label}
+        </p>
         {children}
       </div>
     </div>
