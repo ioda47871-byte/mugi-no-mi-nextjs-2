@@ -75,15 +75,15 @@ function buildTwig(origin: Point, spec: TwigSpec, leafSpreadBase: number, seedBa
 
   const leaves: string[] = [];
   for (let i = 0; i < spec.leafCount; i++) {
-    const t = spec.leafCount === 1 ? 0.6 : 0.22 + (i / (spec.leafCount - 1)) * 0.72;
+    const t = spec.leafCount === 1 ? 0.6 : 0.22 + (i / (spec.leafCount - 1)) * 0.74;
     const [x, y] = cubicPoint(p0, p1, p2, p3, t);
     const tangent = cubicTangentAngleDeg(p0, p1, p2, p3, t);
     const side = i % 2 === 0 ? 1 : -1;
     const jitter = pseudoJitter(seedBase + i * 3.7);
-    const spread = leafSpreadBase + (i % 3) * 3.5 + jitter * 6;
-    const leafLen = spec.length * (0.2 - t * 0.06) * (0.85 + jitter * 0.3);
+    const spread = leafSpreadBase + (i % 3) * 2.5 + jitter * 3;
+    const leafLen = spec.length * (0.19 - t * 0.05) * (0.92 + jitter * 0.16);
     const len = Math.max(leafLen, 3.5);
-    leaves.push(willowLeafPath([x, y], tangent + side * spread, len, Math.max(len * 0.19, 1)));
+    leaves.push(willowLeafPath([x, y], tangent + side * spread, len, Math.max(len * 0.15, 1)));
   }
 
   return { stemPath, leaves };
@@ -96,8 +96,8 @@ function buildStemLeaves(stem: [Point, Point, Point, Point], positions: number[]
     const tangent = cubicTangentAngleDeg(p0, p1, p2, p3, t);
     const side = i % 2 === 0 ? 1 : -1;
     const jitter = pseudoJitter(i * 5.3 + 1);
-    const len = leafLen * (0.85 + jitter * 0.3);
-    return willowLeafPath([x, y], tangent + side * (20 + jitter * 6), len, len * 0.2);
+    const len = leafLen * (0.92 + jitter * 0.16);
+    return willowLeafPath([x, y], tangent + side * (18 + jitter * 3), len, len * 0.16);
   });
 }
 
@@ -114,19 +114,19 @@ const VARIANTS: Record<WillowVariant, VariantConfig> = {
     stemLeafPositions: [0.08, 0.18, 0.28, 0.38, 0.48, 0.58, 0.68, 0.78, 0.88, 0.96],
     stemLeafLen: 13,
     twigs: [
-      { t: 0.03, length: 190, drift: -12, leafCount: 8 },
-      { t: 0.12, length: 258, drift: -10, leafCount: 10 },
-      { t: 0.21, length: 320, drift: 9, leafCount: 12 },
-      { t: 0.3, length: 372, drift: -11, leafCount: 14 },
-      { t: 0.39, length: 404, drift: 12, leafCount: 15 },
-      { t: 0.48, length: 392, drift: -9, leafCount: 14 },
-      { t: 0.57, length: 356, drift: 10, leafCount: 13 },
-      { t: 0.66, length: 310, drift: -10, leafCount: 12 },
-      { t: 0.75, length: 262, drift: 11, leafCount: 10 },
-      { t: 0.84, length: 212, drift: -9, leafCount: 8 },
-      { t: 0.93, length: 168, drift: 10, leafCount: 7 },
+      { t: 0.03, length: 190, drift: -12, leafCount: 7 },
+      { t: 0.12, length: 258, drift: -10, leafCount: 9 },
+      { t: 0.21, length: 320, drift: 9, leafCount: 10 },
+      { t: 0.3, length: 372, drift: -11, leafCount: 11 },
+      { t: 0.39, length: 404, drift: 12, leafCount: 12 },
+      { t: 0.48, length: 392, drift: -9, leafCount: 11 },
+      { t: 0.57, length: 356, drift: 10, leafCount: 10 },
+      { t: 0.66, length: 310, drift: -10, leafCount: 10 },
+      { t: 0.75, length: 262, drift: 11, leafCount: 9 },
+      { t: 0.84, length: 212, drift: -9, leafCount: 7 },
+      { t: 0.93, length: 168, drift: 10, leafCount: 6 },
     ],
-    strokeWidth: 0.7,
+    strokeWidth: 0.65,
     fade: true,
   },
   // 「Corner Ornament」: 水平に入ってから右下へ流れ込み、下側に小枝が垂れる
@@ -148,10 +148,12 @@ const VARIANTS: Record<WillowVariant, VariantConfig> = {
       { t: 0.9, length: 226, drift: -9, leafCount: 11 },
       { t: 0.98, length: 240, drift: 8, leafCount: 11 },
     ],
-    strokeWidth: 0.7,
+    strokeWidth: 0.65,
     fade: true,
   },
-  // 「Slim Branch」: ほぼ垂直な主茎+短い葉付きの小枝が左右交互に生える
+  // 「Slim Branch」: ほぼ垂直な主茎に、短い葉のまとまり(小枝というより
+  // 葉の付け根に近い短いスタブ)が左右交互に生える。長く垂れる小枝ではなく、
+  // 参考画像のように主茎へ密着した葉のクラスターにするため、長さをごく短くしている
   branch: {
     viewBox: '0 0 110 260',
     stem: [
@@ -163,15 +165,16 @@ const VARIANTS: Record<WillowVariant, VariantConfig> = {
     stemLeafPositions: [],
     stemLeafLen: 0,
     twigs: [
-      { t: 0.14, length: 30, drift: 26, leafCount: 4 },
-      { t: 0.28, length: 32, drift: -28, leafCount: 5 },
-      { t: 0.42, length: 30, drift: 27, leafCount: 4 },
-      { t: 0.56, length: 30, drift: -26, leafCount: 4 },
-      { t: 0.7, length: 27, drift: 24, leafCount: 4 },
-      { t: 0.84, length: 24, drift: -22, leafCount: 3 },
-      { t: 0.95, length: 20, drift: 18, leafCount: 3 },
+      { t: 0.12, length: 13, drift: 11, leafCount: 3 },
+      { t: 0.24, length: 15, drift: -13, leafCount: 3 },
+      { t: 0.36, length: 14, drift: 12, leafCount: 3 },
+      { t: 0.48, length: 14, drift: -12, leafCount: 3 },
+      { t: 0.6, length: 13, drift: 11, leafCount: 3 },
+      { t: 0.72, length: 12, drift: -10, leafCount: 2 },
+      { t: 0.84, length: 11, drift: 9, leafCount: 2 },
+      { t: 0.95, length: 10, drift: -8, leafCount: 2 },
     ],
-    strokeWidth: 0.7,
+    strokeWidth: 0.65,
     fade: false,
   },
   // branchをさらに短くした、小さな一本枝
@@ -186,12 +189,12 @@ const VARIANTS: Record<WillowVariant, VariantConfig> = {
     stemLeafPositions: [],
     stemLeafLen: 0,
     twigs: [
-      { t: 0.24, length: 20, drift: 16, leafCount: 3 },
-      { t: 0.44, length: 24, drift: -19, leafCount: 4 },
-      { t: 0.64, length: 24, drift: 18, leafCount: 4 },
-      { t: 0.85, length: 20, drift: -16, leafCount: 3 },
+      { t: 0.22, length: 11, drift: 9, leafCount: 2 },
+      { t: 0.42, length: 13, drift: -11, leafCount: 3 },
+      { t: 0.62, length: 12, drift: 10, leafCount: 3 },
+      { t: 0.82, length: 10, drift: -9, leafCount: 2 },
     ],
-    strokeWidth: 0.75,
+    strokeWidth: 0.68,
     fade: false,
   },
 };

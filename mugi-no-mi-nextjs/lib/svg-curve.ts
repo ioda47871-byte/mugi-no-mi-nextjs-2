@@ -55,8 +55,10 @@ export function bezierPath(p0: Point, p1: Point, p2: Point, p3: Point): string {
 }
 
 /**
- * 細長い柳の葉1枚(先端が尖った紡錘形の輪郭)のpath(先頭の"M"含む)を返す。
+ * 細長い柳の葉1枚(先端が尖った披針形の輪郭)のpath(先頭の"M"含む)を返す。
  * originを基点に、angleDeg方向へlength分伸びる。widthは葉の最大幅。
+ * 最大幅の位置を根元寄り(35%)に置き、先端に向けて長く細く尖らせることで、
+ * 左右対称の「紡錘形アイコン」ではなく、柳らしい披針形の葉に近づけている。
  * strokeで描く線画のため、塗りつぶしではなく輪郭線として使う想定。
  */
 export function willowLeafPath(origin: Point, angleDeg: number, length: number, width: number): string {
@@ -68,12 +70,13 @@ export function willowLeafPath(origin: Point, angleDeg: number, length: number, 
   const py = dx;
   const tipX = origin[0] + dx * length;
   const tipY = origin[1] + dy * length;
-  const midX = origin[0] + dx * length * 0.5;
-  const midY = origin[1] + dy * length * 0.5;
+  const wideT = 0.36;
+  const wideX = origin[0] + dx * length * wideT;
+  const wideY = origin[1] + dy * length * wideT;
   const halfW = width / 2;
-  const leftX = midX + px * halfW;
-  const leftY = midY + py * halfW;
-  const rightX = midX - px * halfW;
-  const rightY = midY - py * halfW;
+  const leftX = wideX + px * halfW;
+  const leftY = wideY + py * halfW;
+  const rightX = wideX - px * halfW;
+  const rightY = wideY - py * halfW;
   return `M${origin[0].toFixed(1)} ${origin[1].toFixed(1)} Q${leftX.toFixed(1)} ${leftY.toFixed(1)} ${tipX.toFixed(1)} ${tipY.toFixed(1)} Q${rightX.toFixed(1)} ${rightY.toFixed(1)} ${origin[0].toFixed(1)} ${origin[1].toFixed(1)}`;
 }
