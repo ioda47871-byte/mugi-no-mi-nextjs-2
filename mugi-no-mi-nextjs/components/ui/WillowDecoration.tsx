@@ -43,42 +43,42 @@ const VARIANTS: Record<WillowVariant, VariantConfig> = {
   canopy: {
     viewBox: '0 0 460 420',
     origin: [230, 2],
-    count: 9,
+    count: 11,
     lateralMin: -1,
     lateralMax: 1,
-    spreadUnit: 210,
+    spreadUnit: 150,
     baseLength: 380,
-    edgeShorten: 0.22,
-    tickPositions: [0.32, 0.48, 0.63, 0.78, 0.9],
-    tickLenBase: 15,
+    edgeShorten: 0.24,
+    tickPositions: [0.3, 0.45, 0.6, 0.74, 0.87],
+    tickLenBase: 20,
     strokeWidth: 0.85,
     fade: true,
   },
   corner: {
     viewBox: '0 0 300 340',
     origin: [300, 2],
-    count: 5,
-    lateralMin: -1.15,
-    lateralMax: 0.1,
-    spreadUnit: 150,
+    count: 6,
+    lateralMin: -1.1,
+    lateralMax: 0.05,
+    spreadUnit: 110,
     baseLength: 280,
-    edgeShorten: 0.18,
-    tickPositions: [0.3, 0.5, 0.68, 0.85],
-    tickLenBase: 13,
+    edgeShorten: 0.2,
+    tickPositions: [0.28, 0.46, 0.63, 0.78, 0.9],
+    tickLenBase: 16,
     strokeWidth: 0.85,
     fade: true,
   },
   branch: {
     viewBox: '0 0 100 240',
     origin: [50, 2],
-    count: 3,
+    count: 4,
     lateralMin: -1,
     lateralMax: 1,
-    spreadUnit: 16,
+    spreadUnit: 24,
     baseLength: 220,
-    edgeShorten: 0.12,
-    tickPositions: [0.35, 0.55, 0.75, 0.92],
-    tickLenBase: 8,
+    edgeShorten: 0.14,
+    tickPositions: [0.3, 0.48, 0.65, 0.8, 0.92],
+    tickLenBase: 9,
     strokeWidth: 1,
     fade: false,
   },
@@ -124,15 +124,24 @@ export function WillowDecoration({ className = '', style, variant = 'branch', fl
     const end: Point = [origin[0] + lateral * spreadUnit, origin[1] + baseLength * lengthFactor];
     const [p0, p1, p2, p3] = droopControlPoints(origin, end);
 
+    // 柳の葉は枝からほぼ垂直に突き出すのではなく、枝が伸びていく方向(接線)に
+    // 沿って細長く伸びる。接線方向を基準に左右へごく浅い角度(18〜26度)だけ
+    // 振ることで、扇状の骨(オリーブ/ユーカリ的な見え方)ではなく、柳らしい
+    // 「枝に沿って垂れる細葉」に近づける。葉の先端をわずかにたわませ
+    // (Q曲線)、直線的な硬さも避けている。
     const ticks = tickPositions.map((t, ti) => {
       const [x, y] = cubicPoint(p0, p1, p2, p3, t);
       const tangent = cubicTangentAngleDeg(p0, p1, p2, p3, t);
       const side = ti % 2 === 0 ? 1 : -1;
-      const leafAngle = ((tangent + side * 68) * Math.PI) / 180;
-      const len = tickLenBase * (1 - 0.28 * t);
+      const spread = 18 + (ti % 3) * 4;
+      const leafAngle = ((tangent + side * spread) * Math.PI) / 180;
+      const len = tickLenBase * (1 - 0.22 * t);
       const tx = x + len * Math.cos(leafAngle);
       const ty = y + len * Math.sin(leafAngle);
-      return `M${x.toFixed(1)} ${y.toFixed(1)} L${tx.toFixed(1)} ${ty.toFixed(1)}`;
+      const bowAngle = ((tangent + side * (spread * 0.5)) * Math.PI) / 180;
+      const mx = x + len * 0.55 * Math.cos(bowAngle);
+      const my = y + len * 0.55 * Math.sin(bowAngle);
+      return `M${x.toFixed(1)} ${y.toFixed(1)} Q${mx.toFixed(1)} ${my.toFixed(1)} ${tx.toFixed(1)} ${ty.toFixed(1)}`;
     });
 
     return { pathD: droopPath(origin, end), ticks };

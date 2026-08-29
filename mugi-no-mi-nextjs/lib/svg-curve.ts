@@ -24,21 +24,27 @@ export function cubicTangentAngleDeg(p0: Point, p1: Point, p2: Point, p3: Point,
 
 /**
  * 「重力で垂れる」柳らしい曲線: 根元(origin)付近はほぼ真っ直ぐ垂れ、
- * 中盤から先端(end)に向けて横に大きく流れる。制御点2つを持つ
- * 3次ベジェのd文字列(先頭の"M"含む)を返す。
+ * 中盤から先端(end)に向けて横に大きく流れる。複数の枝を同じ原点から
+ * 扇状に配置するcanopy/corner variantで、根元から放射状に広がる
+ * 「打ち上げ花火」的な見え方にならないよう、序盤の横方向の制御点を
+ * 意図的に小さく抑えている(根元付近はほぼ平行に垂れ、先端側でだけ
+ * 大きく流れる)。制御点2つを持つ3次ベジェのd文字列(先頭の"M"含む)を返す。
  */
-export function droopPath(origin: Point, end: Point): string {
+function droopControlOffsets(origin: Point, end: Point): [Point, Point] {
   const [ox, oy] = origin;
   const [ex, ey] = end;
-  const c1: Point = [ox + (ex - ox) * 0.15, oy + (ey - oy) * 0.27];
-  const c2: Point = [ox + (ex - ox) * 0.75, oy + (ey - oy) * 0.68];
-  return `M${ox} ${oy} C ${c1[0]} ${c1[1]}, ${c2[0]} ${c2[1]}, ${ex} ${ey}`;
+  const c1: Point = [ox + (ex - ox) * 0.05, oy + (ey - oy) * 0.24];
+  const c2: Point = [ox + (ex - ox) * 0.58, oy + (ey - oy) * 0.64];
+  return [c1, c2];
+}
+
+export function droopPath(origin: Point, end: Point): string {
+  const [ox, oy] = origin;
+  const [c1, c2] = droopControlOffsets(origin, end);
+  return `M${ox} ${oy} C ${c1[0]} ${c1[1]}, ${c2[0]} ${c2[1]}, ${end[0]} ${end[1]}`;
 }
 
 export function droopControlPoints(origin: Point, end: Point): [Point, Point, Point, Point] {
-  const [ox, oy] = origin;
-  const [ex, ey] = end;
-  const c1: Point = [ox + (ex - ox) * 0.15, oy + (ey - oy) * 0.27];
-  const c2: Point = [ox + (ex - ox) * 0.75, oy + (ey - oy) * 0.68];
+  const [c1, c2] = droopControlOffsets(origin, end);
   return [origin, c1, c2, end];
 }

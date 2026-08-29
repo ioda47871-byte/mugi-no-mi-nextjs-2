@@ -75,7 +75,9 @@ export function Header() {
   return (
     <header
       className={`fixed inset-x-0 top-0 z-[100] transition-all duration-500 ease-signature ${
-        solid ? 'bg-ivory/90 py-4 shadow-[0_1px_0_theme(colors.line)] backdrop-blur-md' : 'py-6'
+        solid
+          ? 'bg-ivory/90 py-4 shadow-[0_1px_0_theme(colors.line)] backdrop-blur-md'
+          : 'bg-ivory/20 py-6 backdrop-blur-[2px]'
       }`}
     >
       <div className="mx-auto flex max-w-container items-center justify-between px-8 max-[640px]:px-5">
