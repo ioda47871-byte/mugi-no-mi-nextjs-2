@@ -48,3 +48,32 @@ export function droopControlPoints(origin: Point, end: Point): [Point, Point, Po
   const [c1, c2] = droopControlOffsets(origin, end);
   return [origin, c1, c2, end];
 }
+
+/** 4点を明示指定した3次ベジェのd文字列(先頭の"M"含む)を返す */
+export function bezierPath(p0: Point, p1: Point, p2: Point, p3: Point): string {
+  return `M${p0[0]} ${p0[1]} C ${p1[0]} ${p1[1]}, ${p2[0]} ${p2[1]}, ${p3[0]} ${p3[1]}`;
+}
+
+/**
+ * 細長い柳の葉1枚(先端が尖った紡錘形の輪郭)のpath(先頭の"M"含む)を返す。
+ * originを基点に、angleDeg方向へlength分伸びる。widthは葉の最大幅。
+ * strokeで描く線画のため、塗りつぶしではなく輪郭線として使う想定。
+ */
+export function willowLeafPath(origin: Point, angleDeg: number, length: number, width: number): string {
+  const rad = (angleDeg * Math.PI) / 180;
+  const dx = Math.cos(rad);
+  const dy = Math.sin(rad);
+  // 進行方向に垂直なベクトル
+  const px = -dy;
+  const py = dx;
+  const tipX = origin[0] + dx * length;
+  const tipY = origin[1] + dy * length;
+  const midX = origin[0] + dx * length * 0.5;
+  const midY = origin[1] + dy * length * 0.5;
+  const halfW = width / 2;
+  const leftX = midX + px * halfW;
+  const leftY = midY + py * halfW;
+  const rightX = midX - px * halfW;
+  const rightY = midY - py * halfW;
+  return `M${origin[0].toFixed(1)} ${origin[1].toFixed(1)} Q${leftX.toFixed(1)} ${leftY.toFixed(1)} ${tipX.toFixed(1)} ${tipY.toFixed(1)} Q${rightX.toFixed(1)} ${rightY.toFixed(1)} ${origin[0].toFixed(1)} ${origin[1].toFixed(1)}`;
+}

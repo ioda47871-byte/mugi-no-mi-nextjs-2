@@ -73,9 +73,9 @@ export default async function GalleryPage() {
 
         <div className="relative mx-auto max-w-container px-8 pb-16 text-center max-[640px]:px-5">
           <div className="mb-1 flex items-center justify-center gap-4">
-            <WheatDecoration lean="left" className="h-9 w-5 text-gold/40 max-[480px]:hidden" />
+            <WheatDecoration variant="spray" lean="left" className="h-7 w-20 text-gold/55 max-[560px]:hidden" />
             <span className="eyebrow">Gallery</span>
-            <WheatDecoration lean="right" className="h-9 w-5 text-gold/40 max-[480px]:hidden" />
+            <WheatDecoration variant="spray" lean="right" className="h-7 w-20 text-gold/55 max-[560px]:hidden" />
           </div>
           <h1 className="mt-2 text-[clamp(34px,5vw,58px)]">光と、香りと、時間の記録</h1>
           <p className="mx-auto mt-6 max-w-lg text-[14.5px] text-kura">
@@ -112,6 +112,7 @@ export default async function GalleryPage() {
                     caption={item.caption}
                     priority={index === 0}
                     sizes={item.wide ? '100vw' : '(max-width: 640px) 100vw, 50vw'}
+                    rounded="rounded-none"
                   />
                 </RevealOnScroll>
               );

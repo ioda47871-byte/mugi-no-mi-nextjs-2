@@ -63,7 +63,7 @@ export function Hero({ imageUrl, imageAlt }: HeroProps) {
   return (
     <section
       data-hero
-      className="relative flex h-[88vh] max-h-[860px] min-h-[620px] items-end overflow-hidden max-[640px]:h-[100dvh] max-[640px]:max-h-none"
+      className="relative flex h-[76vh] max-h-[740px] min-h-[560px] items-end overflow-hidden max-[640px]:h-[100dvh] max-[640px]:max-h-none"
     >
       {/* 写真: 全面に配置し、暗いフィルターはかけない(色・明るさを保つ) */}
       <div className="absolute inset-0">
@@ -95,10 +95,15 @@ export function Hero({ imageUrl, imageAlt }: HeroProps) {
         variant="corner"
         className="pointer-events-none absolute -top-8 left-[32%] hidden h-[440px] w-[360px] text-gold/[0.32] min-[900px]:block"
       />
-      {/* LEVEL2(中): Hero左端、ページの外から覗く柳 */}
+      {/* LEVEL2(中): Hero左端、ページの外から本物の枝が垂れてきたように見せる柳。
+          マスクで根元(ページ端)側を濃く、内側(コンテンツに近い側)を薄くする */}
       <WillowDecoration
         variant="branch"
-        className="pointer-events-none absolute -left-7 top-[10%] hidden h-[58%] w-28 text-gold/[0.34] min-[900px]:block"
+        className="pointer-events-none absolute -left-9 top-[8%] hidden h-[62%] w-32 text-gold/[0.4] min-[900px]:block"
+        style={{
+          maskImage: 'linear-gradient(100deg, black 15%, transparent 70%)',
+          WebkitMaskImage: 'linear-gradient(100deg, black 15%, transparent 70%)',
+        }}
       />
 
       <div
@@ -108,7 +113,7 @@ export function Hero({ imageUrl, imageAlt }: HeroProps) {
         <div className="flex items-center gap-3.5 max-[480px]:gap-2">
           <WheatDecoration lean="left" className="h-7 w-4 shrink-0 text-gold/60 max-[480px]:hidden" />
           <span aria-hidden className="h-px w-8 shrink-0 bg-gold/45 max-[640px]:hidden" />
-          <p className="whitespace-nowrap font-accent text-[11px] italic uppercase tracking-[0.3em] text-brand-text">
+          <p className="whitespace-nowrap font-accent text-[11px] italic tracking-[0.3em] text-brand-text">
             Since the first light of morning
           </p>
           <span aria-hidden className="h-px w-8 shrink-0 bg-gold/45 max-[640px]:hidden" />

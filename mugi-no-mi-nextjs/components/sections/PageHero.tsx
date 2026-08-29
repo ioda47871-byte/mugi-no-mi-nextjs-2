@@ -40,22 +40,25 @@ export function PageHero({ eyebrow, title, description, photoUrl, photoAlt, chil
           {children}
         </div>
 
-        <div className="relative h-[360px] overflow-hidden rounded-[2px] max-[900px]:h-[240px]">
-          <Image
-            src={photoUrl}
-            alt={photoAlt}
-            fill
-            sizes="(max-width: 900px) 100vw, 50vw"
-            priority
-            className="object-cover"
-          />
-          <div
-            aria-hidden
-            className="absolute inset-y-0 left-0 w-1/4 bg-gradient-to-r from-ivory to-transparent max-[900px]:hidden"
-          />
+        <div className="relative h-[360px] max-[900px]:h-[240px]">
+          <div className="relative h-full w-full overflow-hidden rounded-[2px]">
+            <Image
+              src={photoUrl}
+              alt={photoAlt}
+              fill
+              sizes="(max-width: 900px) 100vw, 50vw"
+              priority
+              className="object-cover"
+            />
+            <div
+              aria-hidden
+              className="absolute inset-y-0 left-0 w-1/4 bg-gradient-to-r from-ivory to-transparent max-[900px]:hidden"
+            />
+          </div>
+          {/* 写真の外(右上)から柳が覗き、実写の柳とUIの柳がつながって見えるようにする */}
           <WillowDecoration
             variant="corner"
-            className="pointer-events-none absolute -right-4 -top-4 h-56 w-48 text-ivory/80 max-[900px]:hidden"
+            className="pointer-events-none absolute -right-10 -top-10 h-56 w-48 text-gold/45 max-[900px]:hidden"
           />
         </div>
       </div>

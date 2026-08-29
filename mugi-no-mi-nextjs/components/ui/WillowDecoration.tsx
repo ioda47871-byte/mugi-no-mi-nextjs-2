@@ -1,150 +1,226 @@
 'use client';
 
-import { useId, type CSSProperties } from 'react';
-import { cubicPoint, cubicTangentAngleDeg, droopControlPoints, droopPath, type Point } from '@/lib/svg-curve';
+import { useId } from 'react';
+import {
+  bezierPath,
+  cubicPoint,
+  cubicTangentAngleDeg,
+  droopControlPoints,
+  willowLeafPath,
+  type Point,
+} from '@/lib/svg-curve';
 
 type WillowVariant = 'canopy' | 'corner' | 'branch' | 'sprig';
 
 interface WillowDecorationProps {
   className?: string;
-  /** ページ端に入り込む装飾などで、内側へ向かって消えるmask-imageを指定する場合に使用 */
-  style?: CSSProperties;
   /**
    * 装飾の規模(3階層):
-   * - canopy: LEVEL1。大型の背景装飾(例: Galleryページ右上から垂れる柳)。
-   *   本数が多く、内部にグラデーションを持ち、下(先端)へ向かうほど自動的に透明になる。
-   * - corner: LEVEL1〜2。ページの角(Heroの端など)から入り込む、canopyよりやや小ぶりで
-   *   非対称な柳。こちらもグラデーションで先端が消える。
-   * - branch: LEVEL2。ページ余白・カードの角に添える中くらいの柳の枝(3本)。
-   * - sprig: LEVEL3。見出し脇・小さなカードの角に添える控えめな小枝(2本)。
+   * - canopy: LEVEL1。大型の背景装飾。1本の弧を描く主枝から、長さの異なる
+   *   複数の小枝が垂れ下がる「Cascading Canopy」構成。
+   * - corner: LEVEL1〜2。水平に入ってから下へ流れ込む主枝+小枝の
+   *   「Corner Ornament」構成。ページの角から入り込む用途向け。
+   * - branch: LEVEL2。ほぼ垂直な1本の主茎から、短い葉付きの小枝が
+   *   左右交互に生える「Slim Branch」構成。
+   * - sprig: LEVEL3。branchをさらに短くした、小さな一本枝。
    * 既定はbranch。
    */
   variant?: WillowVariant;
   /** trueの場合、左右反転して表示する */
   flip?: boolean;
+  style?: React.CSSProperties;
+}
+
+interface TwigSpec {
+  /** 主茎上でこの小枝が生える位置(0〜1) */
+  t: number;
+  /** 小枝の長さ */
+  length: number;
+  /** 小枝の先端が主茎からどれだけ横にずれるか(符号で左右) */
+  drift: number;
+  leafCount: number;
 }
 
 interface VariantConfig {
   viewBox: string;
-  origin: Point;
-  count: number;
-  lateralMin: number;
-  lateralMax: number;
-  spreadUnit: number;
-  baseLength: number;
-  edgeShorten: number;
-  tickPositions: number[];
-  tickLenBase: number;
+  /** 主茎(幹)の3次ベジェ制御点 */
+  stem: [Point, Point, Point, Point];
+  /** 主茎そのものに直接つける、控えめな葉の位置(0〜1)の配列 */
+  stemLeafPositions: number[];
+  stemLeafLen: number;
+  twigs: TwigSpec[];
   strokeWidth: number;
   fade: boolean;
 }
 
+/**
+ * 決定論的な疑似乱数(0〜1)。Math.random()はSSR/CSRで値がずれるため使えない。
+ * indexだけから求まる、見た目に十分な「揺らぎ」を得るための簡易ハッシュ。
+ */
+function pseudoJitter(seed: number): number {
+  const x = Math.sin(seed * 12.9898) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+/**
+ * 小枝(茎+葉)を生成する。originから、なだらかに垂れるカーブでlength分伸びる。
+ * 参考画像(柳UIモチーフ)のような密度・繊細さに寄せるため、葉は細く・多めに
+ * 配置し、角度と長さにわずかな個体差(決定論的ジッター)を持たせている
+ * (全ての葉が同じ形になる「SVG記号感」を避けるため)。
+ */
+function buildTwig(origin: Point, spec: TwigSpec, leafSpreadBase: number, seedBase: number) {
+  const end: Point = [origin[0] + spec.drift, origin[1] + spec.length];
+  const [p0, p1, p2, p3] = droopControlPoints(origin, end);
+  const stemPath = bezierPath(p0, p1, p2, p3);
+
+  const leaves: string[] = [];
+  for (let i = 0; i < spec.leafCount; i++) {
+    const t = spec.leafCount === 1 ? 0.6 : 0.22 + (i / (spec.leafCount - 1)) * 0.72;
+    const [x, y] = cubicPoint(p0, p1, p2, p3, t);
+    const tangent = cubicTangentAngleDeg(p0, p1, p2, p3, t);
+    const side = i % 2 === 0 ? 1 : -1;
+    const jitter = pseudoJitter(seedBase + i * 3.7);
+    const spread = leafSpreadBase + (i % 3) * 3.5 + jitter * 6;
+    const leafLen = spec.length * (0.2 - t * 0.06) * (0.85 + jitter * 0.3);
+    const len = Math.max(leafLen, 3.5);
+    leaves.push(willowLeafPath([x, y], tangent + side * spread, len, Math.max(len * 0.19, 1)));
+  }
+
+  return { stemPath, leaves };
+}
+
+function buildStemLeaves(stem: [Point, Point, Point, Point], positions: number[], leafLen: number) {
+  const [p0, p1, p2, p3] = stem;
+  return positions.map((t, i) => {
+    const [x, y] = cubicPoint(p0, p1, p2, p3, t);
+    const tangent = cubicTangentAngleDeg(p0, p1, p2, p3, t);
+    const side = i % 2 === 0 ? 1 : -1;
+    const jitter = pseudoJitter(i * 5.3 + 1);
+    const len = leafLen * (0.85 + jitter * 0.3);
+    return willowLeafPath([x, y], tangent + side * (20 + jitter * 6), len, len * 0.2);
+  });
+}
+
 const VARIANTS: Record<WillowVariant, VariantConfig> = {
+  // 「Cascading Canopy」: 弧を描く主枝から、長さの異なる小枝が連続して垂れる
   canopy: {
-    viewBox: '0 0 460 420',
-    origin: [230, 2],
-    count: 11,
-    lateralMin: -1,
-    lateralMax: 1,
-    spreadUnit: 150,
-    baseLength: 380,
-    edgeShorten: 0.24,
-    tickPositions: [0.3, 0.45, 0.6, 0.74, 0.87],
-    tickLenBase: 20,
-    strokeWidth: 0.85,
+    viewBox: '0 0 480 460',
+    stem: [
+      [14, 55],
+      [150, 4],
+      [330, 10],
+      [468, 92],
+    ],
+    stemLeafPositions: [0.08, 0.18, 0.28, 0.38, 0.48, 0.58, 0.68, 0.78, 0.88, 0.96],
+    stemLeafLen: 13,
+    twigs: [
+      { t: 0.03, length: 190, drift: -12, leafCount: 8 },
+      { t: 0.12, length: 258, drift: -10, leafCount: 10 },
+      { t: 0.21, length: 320, drift: 9, leafCount: 12 },
+      { t: 0.3, length: 372, drift: -11, leafCount: 14 },
+      { t: 0.39, length: 404, drift: 12, leafCount: 15 },
+      { t: 0.48, length: 392, drift: -9, leafCount: 14 },
+      { t: 0.57, length: 356, drift: 10, leafCount: 13 },
+      { t: 0.66, length: 310, drift: -10, leafCount: 12 },
+      { t: 0.75, length: 262, drift: 11, leafCount: 10 },
+      { t: 0.84, length: 212, drift: -9, leafCount: 8 },
+      { t: 0.93, length: 168, drift: 10, leafCount: 7 },
+    ],
+    strokeWidth: 0.7,
     fade: true,
   },
+  // 「Corner Ornament」: 水平に入ってから右下へ流れ込み、下側に小枝が垂れる
   corner: {
-    viewBox: '0 0 300 340',
-    origin: [300, 2],
-    count: 6,
-    lateralMin: -1.1,
-    lateralMax: 0.05,
-    spreadUnit: 110,
-    baseLength: 280,
-    edgeShorten: 0.2,
-    tickPositions: [0.28, 0.46, 0.63, 0.78, 0.9],
-    tickLenBase: 16,
-    strokeWidth: 0.85,
+    viewBox: '0 0 320 380',
+    stem: [
+      [10, 66],
+      [112, 14],
+      [256, 26],
+      [300, 292],
+    ],
+    stemLeafPositions: [0.08, 0.18, 0.28, 0.38, 0.46],
+    stemLeafLen: 11,
+    twigs: [
+      { t: 0.5, length: 96, drift: -10, leafCount: 7 },
+      { t: 0.6, length: 132, drift: 10, leafCount: 8 },
+      { t: 0.7, length: 168, drift: -11, leafCount: 9 },
+      { t: 0.8, length: 200, drift: 10, leafCount: 10 },
+      { t: 0.9, length: 226, drift: -9, leafCount: 11 },
+      { t: 0.98, length: 240, drift: 8, leafCount: 11 },
+    ],
+    strokeWidth: 0.7,
     fade: true,
   },
+  // 「Slim Branch」: ほぼ垂直な主茎+短い葉付きの小枝が左右交互に生える
   branch: {
-    viewBox: '0 0 100 240',
-    origin: [50, 2],
-    count: 4,
-    lateralMin: -1,
-    lateralMax: 1,
-    spreadUnit: 24,
-    baseLength: 220,
-    edgeShorten: 0.14,
-    tickPositions: [0.3, 0.48, 0.65, 0.8, 0.92],
-    tickLenBase: 9,
-    strokeWidth: 1,
+    viewBox: '0 0 110 260',
+    stem: [
+      [55, 4],
+      [50, 90],
+      [46, 180],
+      [42, 250],
+    ],
+    stemLeafPositions: [],
+    stemLeafLen: 0,
+    twigs: [
+      { t: 0.14, length: 30, drift: 26, leafCount: 4 },
+      { t: 0.28, length: 32, drift: -28, leafCount: 5 },
+      { t: 0.42, length: 30, drift: 27, leafCount: 4 },
+      { t: 0.56, length: 30, drift: -26, leafCount: 4 },
+      { t: 0.7, length: 27, drift: 24, leafCount: 4 },
+      { t: 0.84, length: 24, drift: -22, leafCount: 3 },
+      { t: 0.95, length: 20, drift: 18, leafCount: 3 },
+    ],
+    strokeWidth: 0.7,
     fade: false,
   },
+  // branchをさらに短くした、小さな一本枝
   sprig: {
-    viewBox: '0 0 60 130',
-    origin: [30, 2],
-    count: 2,
-    lateralMin: -1,
-    lateralMax: 1,
-    spreadUnit: 8,
-    baseLength: 118,
-    edgeShorten: 0.08,
-    tickPositions: [0.45, 0.85],
-    tickLenBase: 6,
-    strokeWidth: 1,
+    viewBox: '0 0 70 150',
+    stem: [
+      [35, 145],
+      [33, 100],
+      [28, 55],
+      [24, 15],
+    ],
+    stemLeafPositions: [],
+    stemLeafLen: 0,
+    twigs: [
+      { t: 0.24, length: 20, drift: 16, leafCount: 3 },
+      { t: 0.44, length: 24, drift: -19, leafCount: 4 },
+      { t: 0.64, length: 24, drift: 18, leafCount: 4 },
+      { t: 0.85, length: 20, drift: -16, leafCount: 3 },
+    ],
+    strokeWidth: 0.75,
     fade: false,
   },
 };
 
 /**
- * 柳の枝が垂れる線画装飾。店・空間・土地としてのBrot yanagiらしさを表す
- * モチーフ(装飾の使い分けはWheatDecoration.tsxのコメントを参照)。
+ * 柳の線画装飾。店・空間・土地としてのBrot yanagiらしさを表すモチーフ
+ * (装飾の使い分けはWheatDecoration.tsxのコメントを参照)。
  *
- * 単一の小さなアイコンではなく、根元(画面の外にある柳の木を想定した1点)
- * から複数の枝が扇状に垂れ下がる構造を、variantごとの本数・広がり・
- * 長さのパラメータから生成している。各枝は「根元付近はほぼ直進し、
- * 中盤から先端にかけて大きく流れる」曲線(lib/svg-curve.tsのdroopPath)で、
- * 重力で垂れるシルエットを表現する。葉の刻みは枝の曲線上の実座標・接線
- * 角度から配置しているため、曲線の形を変えても自動的に追従する。
- * canopy/cornerは内部にグラデーションを持ち、先端(コンテンツに近づく側)
- * ほど自動的に透明になる(呼び出し側でopacityを追加調整する必要はない)。
+ * 単一の原点から扇状に伸ばすだけの構成(打ち上げ花火的に見えやすい)ではなく、
+ * 弧を描く/垂直な「主茎」を1本置き、その上の複数の点から長さの異なる
+ * 「小枝」を垂らす2階層構造にしている(参考: Cascading Canopy / Corner
+ * Ornament / Slim Branch / Sprig)。各小枝にはさらに、接線方向に沿って
+ * 細長い葉(willowLeafPath、輪郭線のみ・塗りつぶし無し)を複数配置しており、
+ * 実際の柳のように「主茎から垂れた枝に、葉が連なって垂れ下がる」見え方に
+ * なるようにしている。canopy/cornerは内部にグラデーションを持ち、
+ * 先端(コンテンツに近づく側)ほど自動的に透明になる。
  */
 export function WillowDecoration({ className = '', style, variant = 'branch', flip = false }: WillowDecorationProps) {
   const gradId = useId();
   const config = VARIANTS[variant];
-  const { viewBox, origin, count, lateralMin, lateralMax, spreadUnit, baseLength, edgeShorten, tickPositions, tickLenBase, strokeWidth, fade } = config;
+  const { viewBox, stem, stemLeafPositions, stemLeafLen, twigs, strokeWidth, fade } = config;
   const stroke = fade ? `url(#${gradId})` : 'currentColor';
+  const leafSpreadBase = variant === 'branch' || variant === 'sprig' ? 20 : 17;
 
-  const strands = Array.from({ length: count }, (_, i) => {
-    const frac = count === 1 ? 0.5 : i / (count - 1);
-    const lateral = lateralMin + frac * (lateralMax - lateralMin);
-    const lengthFactor = 1 - edgeShorten * Math.abs(lateral);
-    const end: Point = [origin[0] + lateral * spreadUnit, origin[1] + baseLength * lengthFactor];
-    const [p0, p1, p2, p3] = droopControlPoints(origin, end);
-
-    // 柳の葉は枝からほぼ垂直に突き出すのではなく、枝が伸びていく方向(接線)に
-    // 沿って細長く伸びる。接線方向を基準に左右へごく浅い角度(18〜26度)だけ
-    // 振ることで、扇状の骨(オリーブ/ユーカリ的な見え方)ではなく、柳らしい
-    // 「枝に沿って垂れる細葉」に近づける。葉の先端をわずかにたわませ
-    // (Q曲線)、直線的な硬さも避けている。
-    const ticks = tickPositions.map((t, ti) => {
-      const [x, y] = cubicPoint(p0, p1, p2, p3, t);
-      const tangent = cubicTangentAngleDeg(p0, p1, p2, p3, t);
-      const side = ti % 2 === 0 ? 1 : -1;
-      const spread = 18 + (ti % 3) * 4;
-      const leafAngle = ((tangent + side * spread) * Math.PI) / 180;
-      const len = tickLenBase * (1 - 0.22 * t);
-      const tx = x + len * Math.cos(leafAngle);
-      const ty = y + len * Math.sin(leafAngle);
-      const bowAngle = ((tangent + side * (spread * 0.5)) * Math.PI) / 180;
-      const mx = x + len * 0.55 * Math.cos(bowAngle);
-      const my = y + len * 0.55 * Math.sin(bowAngle);
-      return `M${x.toFixed(1)} ${y.toFixed(1)} Q${mx.toFixed(1)} ${my.toFixed(1)} ${tx.toFixed(1)} ${ty.toFixed(1)}`;
-    });
-
-    return { pathD: droopPath(origin, end), ticks };
+  const stemPath = bezierPath(stem[0], stem[1], stem[2], stem[3]);
+  const stemLeaves = buildStemLeaves(stem, stemLeafPositions, stemLeafLen);
+  const twigData = twigs.map((spec, i) => {
+    const origin = cubicPoint(stem[0], stem[1], stem[2], stem[3], spec.t);
+    return buildTwig(origin, spec, leafSpreadBase, i * 7.3 + 2.1);
   });
 
   return (
@@ -167,11 +243,17 @@ export function WillowDecoration({ className = '', style, variant = 'branch', fl
           </linearGradient>
         </defs>
       )}
-      {strands.map((s, i) => (
+
+      <path d={stemPath} />
+      {stemLeaves.map((d, i) => (
+        <path key={`sl-${i}`} d={d} />
+      ))}
+
+      {twigData.map((twig, i) => (
         <g key={i}>
-          <path d={s.pathD} />
-          {s.ticks.map((d, ti) => (
-            <path key={ti} d={d} />
+          <path d={twig.stemPath} />
+          {twig.leaves.map((d, li) => (
+            <path key={li} d={d} />
           ))}
         </g>
       ))}

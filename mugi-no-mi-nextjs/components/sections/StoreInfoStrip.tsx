@@ -4,6 +4,8 @@ import { WillowDecoration } from '@/components/ui/WillowDecoration';
 interface StoreInfoStripProps {
   /** Homeページのみ、右端に「フォローする」ボタンを表示する */
   showFollowButton?: boolean;
+  /** Contactページのみ、先頭に「店舗名」項目を追加した6項目構成にする。他ページの5項目構成には影響しない */
+  showStoreName?: boolean;
   className?: string;
 }
 
@@ -29,7 +31,7 @@ const phoneLinkClass =
 const instagramLinkClass =
   'relative pb-[3px] text-sm tracking-wide text-[#C65D7B] transition-colors duration-300 hover:text-[#A84763] after:absolute after:bottom-0 after:left-0 after:h-px after:w-full after:origin-left after:scale-x-[0.3] after:bg-[#C65D7B] after:transition-transform after:duration-500 after:ease-signature hover:after:scale-x-100 hover:after:bg-[#A84763]';
 
-export function StoreInfoStrip({ showFollowButton = false, className = '' }: StoreInfoStripProps) {
+export function StoreInfoStrip({ showFollowButton = false, showStoreName = false, className = '' }: StoreInfoStripProps) {
   return (
     <section className={`relative overflow-hidden border-t border-line bg-ivory px-8 py-10 max-[640px]:px-5 max-[640px]:py-8 ${className}`}>
       <WillowDecoration
@@ -38,6 +40,15 @@ export function StoreInfoStrip({ showFollowButton = false, className = '' }: Sto
         className="pointer-events-none absolute -right-2 -top-2 hidden h-28 w-12 text-gold/20 min-[860px]:block"
       />
       <div className="relative mx-auto flex max-w-container flex-wrap items-start justify-between gap-x-6 gap-y-7 max-[860px]:justify-center max-[860px]:text-center">
+        {showStoreName && (
+          <InfoItem icon={<StoreIcon />} label="店舗名">
+            <p>
+              {siteContent.brandName.value}
+              <br />
+              <span className="text-[12px] text-kura/80">({siteContent.brandNameEn.value})</span>
+            </p>
+          </InfoItem>
+        )}
         <InfoItem icon={<PinIcon />} label="所在地">
           <p className="whitespace-pre-line">{siteContent.address.value.replace('〒456-0018 ', '〒456-0018\n')}</p>
         </InfoItem>
@@ -121,6 +132,16 @@ const iconProps = {
   strokeLinejoin: 'round' as const,
   className: 'h-[18px] w-[18px]',
 };
+
+function StoreIcon() {
+  return (
+    <svg {...iconProps}>
+      <path d="M4 10.5 12 4l8 6.5" />
+      <path d="M5.5 9.5V20h13V9.5" />
+      <path d="M10 20v-5.5h4V20" />
+    </svg>
+  );
+}
 
 function PinIcon() {
   return (

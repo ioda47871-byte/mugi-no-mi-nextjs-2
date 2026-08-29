@@ -11,6 +11,8 @@ interface PhotoBlockProps {
   priority?: boolean;
   className?: string;
   sizes?: string;
+  /** 角丸のTailwindクラス。既定は rounded-[2px](ごくわずかな角丸)。Galleryなど直角に近づけたい場合に上書きする */
+  rounded?: string;
 }
 
 /**
@@ -31,10 +33,11 @@ export function PhotoBlock({
   priority = false,
   className = '',
   sizes = '100vw',
+  rounded = 'rounded-[2px]',
 }: PhotoBlockProps) {
   return (
     <figure className={className}>
-      <div className="overflow-hidden rounded-[2px]">
+      <div className={`overflow-hidden ${rounded}`}>
         <Image
           src={src}
           alt={alt}

@@ -75,7 +75,7 @@ export default async function ContactPage() {
         </div>
       </div>
 
-      <StoreInfoStrip />
+      <StoreInfoStrip showStoreName />
 
       <section className="overflow-hidden px-8 pb-24 max-[640px]:px-5 max-[640px]:pb-16">
         <div className="mx-auto max-w-container">

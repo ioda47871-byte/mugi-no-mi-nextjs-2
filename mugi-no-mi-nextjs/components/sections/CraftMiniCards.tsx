@@ -40,10 +40,10 @@ export function CraftMiniCards() {
 
       <div className="relative mx-auto max-w-container">
         <RevealOnScroll>
-          <div className="mb-10 flex items-center justify-center gap-3 text-center">
-            <WheatDecoration lean="left" className="h-8 w-5 text-gold/45" />
+          <div className="mb-10 flex items-center justify-center gap-4 text-center">
+            <WheatDecoration variant="spray" lean="left" className="h-6 w-16 text-gold/50 max-[560px]:hidden" />
             <h2 className="font-display text-lg tracking-[0.08em] text-ink">パンのカテゴリ</h2>
-            <WheatDecoration lean="right" className="h-8 w-5 text-gold/45" />
+            <WheatDecoration variant="spray" lean="right" className="h-6 w-16 text-gold/50 max-[560px]:hidden" />
           </div>
         </RevealOnScroll>
         <RevealOnScroll>
