@@ -68,14 +68,14 @@ export default async function GalleryPage() {
             Gallery最大の背景装飾(LEVEL1)。見出しより手前へは出さない(z-0)。 */}
         <WillowDecoration
           variant="canopy"
-          className="pointer-events-none absolute -right-20 -top-16 hidden h-[480px] w-[540px] text-gold/[0.16] min-[860px]:block"
+          className="pointer-events-none absolute -right-24 -top-16 hidden h-[520px] w-[580px] text-gold/[0.18] min-[860px]:block"
         />
 
         <div className="relative mx-auto max-w-container px-8 pb-16 text-center max-[640px]:px-5">
           <div className="mb-1 flex items-center justify-center gap-4">
-            <WheatDecoration variant="spray" lean="left" className="h-7 w-20 text-gold/55 max-[560px]:hidden" />
+            <WheatDecoration variant="spray" lean="left" className="h-9 w-28 text-gold/60 max-[560px]:hidden" />
             <span className="eyebrow">Gallery</span>
-            <WheatDecoration variant="spray" lean="right" className="h-7 w-20 text-gold/55 max-[560px]:hidden" />
+            <WheatDecoration variant="spray" lean="right" className="h-9 w-28 text-gold/60 max-[560px]:hidden" />
           </div>
           <h1 className="mt-2 text-[clamp(34px,5vw,58px)]">光と、香りと、時間の記録</h1>
           <p className="mx-auto mt-6 max-w-lg text-[14.5px] text-kura">
@@ -87,15 +87,16 @@ export default async function GalleryPage() {
       </div>
 
       <div className="relative overflow-hidden px-8 pb-24 max-[640px]:px-5 max-[640px]:pb-16">
-        {/* ページ左右の余白から、柳がほんの少しだけ覗いている程度の控えめな装飾(LEVEL2) */}
+        {/* 写真グリッドの左右余白いっぱいに、薄く長く伸びる柳(LEVEL2)。
+            tall variantで、グリッドの上から下まで届く丈にしている。 */}
         <WillowDecoration
-          variant="branch"
-          className="pointer-events-none absolute -left-10 top-24 hidden h-72 w-24 text-gold/15 min-[1200px]:block"
+          variant="tall"
+          className="pointer-events-none absolute -left-10 top-10 hidden h-[560px] w-28 text-gold/[0.16] min-[1200px]:block"
         />
         <WillowDecoration
-          variant="branch"
+          variant="tall"
           flip
-          className="pointer-events-none absolute -right-10 top-24 hidden h-72 w-24 text-gold/15 min-[1200px]:block"
+          className="pointer-events-none absolute -right-10 top-10 hidden h-[560px] w-28 text-gold/[0.16] min-[1200px]:block"
         />
 
         <div className="relative mx-auto max-w-container">

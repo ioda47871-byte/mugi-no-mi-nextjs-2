@@ -13,12 +13,12 @@ export function Footer() {
     <footer className="relative overflow-hidden border-t border-line bg-ivory px-8 py-12 max-[640px]:px-5 max-[640px]:py-10">
       <WillowDecoration
         variant="sprig"
-        className="pointer-events-none absolute -left-3 top-0 hidden h-24 w-10 text-gold/25 min-[640px]:block"
+        className="pointer-events-none absolute -left-3 top-0 hidden h-24 w-10 text-gold/30 min-[640px]:block"
       />
       <WillowDecoration
         variant="sprig"
         flip
-        className="pointer-events-none absolute -right-3 top-0 hidden h-24 w-10 text-gold/25 min-[640px]:block"
+        className="pointer-events-none absolute -right-3 top-0 hidden h-24 w-10 text-gold/30 min-[640px]:block"
       />
       <div className="relative mx-auto flex max-w-container flex-col gap-8">
         <div className="flex flex-wrap items-center justify-between gap-6 max-[640px]:flex-col max-[640px]:text-center">

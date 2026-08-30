@@ -30,22 +30,31 @@ export function cubicTangentAngleDeg(p0: Point, p1: Point, p2: Point, p3: Point,
  * 意図的に小さく抑えている(根元付近はほぼ平行に垂れ、先端側でだけ
  * 大きく流れる)。制御点2つを持つ3次ベジェのd文字列(先頭の"M"含む)を返す。
  */
-function droopControlOffsets(origin: Point, end: Point): [Point, Point] {
+/**
+ * curveJitter(-1〜1程度)を渡すと、序盤/終盤の制御点の横方向比率を
+ * わずかにずらす。同じdroopPathの形を持つ小枝が何本も並ぶcanopy/corner
+ * variantで、全ての枝が「同じ形の拡大縮小コピー」に見えてしまう
+ * (結果として扇状・記号的に見える)のを避けるため、枝ごとに曲線の
+ * 形そのものを少しずつ変える。
+ */
+function droopControlOffsets(origin: Point, end: Point, curveJitter = 0): [Point, Point] {
   const [ox, oy] = origin;
   const [ex, ey] = end;
-  const c1: Point = [ox + (ex - ox) * 0.05, oy + (ey - oy) * 0.24];
-  const c2: Point = [ox + (ex - ox) * 0.58, oy + (ey - oy) * 0.64];
+  const f1 = 0.05 + curveJitter * 0.035;
+  const f2 = 0.58 + curveJitter * 0.09;
+  const c1: Point = [ox + (ex - ox) * f1, oy + (ey - oy) * (0.24 - curveJitter * 0.05)];
+  const c2: Point = [ox + (ex - ox) * f2, oy + (ey - oy) * (0.64 + curveJitter * 0.04)];
   return [c1, c2];
 }
 
-export function droopPath(origin: Point, end: Point): string {
+export function droopPath(origin: Point, end: Point, curveJitter = 0): string {
   const [ox, oy] = origin;
-  const [c1, c2] = droopControlOffsets(origin, end);
+  const [c1, c2] = droopControlOffsets(origin, end, curveJitter);
   return `M${ox} ${oy} C ${c1[0]} ${c1[1]}, ${c2[0]} ${c2[1]}, ${end[0]} ${end[1]}`;
 }
 
-export function droopControlPoints(origin: Point, end: Point): [Point, Point, Point, Point] {
-  const [c1, c2] = droopControlOffsets(origin, end);
+export function droopControlPoints(origin: Point, end: Point, curveJitter = 0): [Point, Point, Point, Point] {
+  const [c1, c2] = droopControlOffsets(origin, end, curveJitter);
   return [origin, c1, c2, end];
 }
 

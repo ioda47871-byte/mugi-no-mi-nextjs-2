@@ -10,7 +10,7 @@ import {
   type Point,
 } from '@/lib/svg-curve';
 
-type WillowVariant = 'canopy' | 'corner' | 'branch' | 'sprig';
+type WillowVariant = 'canopy' | 'corner' | 'branch' | 'sprig' | 'tall';
 
 interface WillowDecorationProps {
   className?: string;
@@ -70,18 +70,28 @@ function pseudoJitter(seed: number): number {
  */
 function buildTwig(origin: Point, spec: TwigSpec, leafSpreadBase: number, seedBase: number) {
   const end: Point = [origin[0] + spec.drift, origin[1] + spec.length];
-  const [p0, p1, p2, p3] = droopControlPoints(origin, end);
+  // 枝ごとに曲線の形自体を少しずつ変える(全ての小枝が同じ形の
+  // 拡大縮小コピーに見える「扇状・記号的」な見た目を避けるため)。
+  const curveJitter = pseudoJitter(seedBase + 0.77) * 2 - 1;
+  const [p0, p1, p2, p3] = droopControlPoints(origin, end, curveJitter);
   const stemPath = bezierPath(p0, p1, p2, p3);
 
   const leaves: string[] = [];
   for (let i = 0; i < spec.leafCount; i++) {
-    const t = spec.leafCount === 1 ? 0.6 : 0.22 + (i / (spec.leafCount - 1)) * 0.74;
+    // 葉の間隔を均等割りにせず、位置にも個体差を持たせる
+    const tBase = spec.leafCount === 1 ? 0.6 : 0.2 + (i / (spec.leafCount - 1)) * 0.76;
+    const tJitter = (pseudoJitter(seedBase + i * 2.3) - 0.5) * 0.07;
+    const t = Math.min(Math.max(tBase + tJitter, 0.05), 0.98);
     const [x, y] = cubicPoint(p0, p1, p2, p3, t);
     const tangent = cubicTangentAngleDeg(p0, p1, p2, p3, t);
-    const side = i % 2 === 0 ? 1 : -1;
+    // 左右交互を基本としつつ、たまに崩す(同じ角度・同じ側の繰り返しを避ける)
+    const altSide = i % 2 === 0 ? 1 : -1;
+    const flip = pseudoJitter(seedBase + i * 9.1) < 0.18;
+    const side = flip ? -altSide : altSide;
     const jitter = pseudoJitter(seedBase + i * 3.7);
-    const spread = leafSpreadBase + (i % 3) * 2.5 + jitter * 3;
-    const leafLen = spec.length * (0.19 - t * 0.05) * (0.92 + jitter * 0.16);
+    // 先端(t大)に近づくほど、重力で垂れて広がりが収束する
+    const spread = leafSpreadBase * (1 - t * 0.25) + jitter * 9;
+    const leafLen = spec.length * (0.19 - t * 0.05) * (0.86 + jitter * 0.3);
     const len = Math.max(leafLen, 3.5);
     leaves.push(willowLeafPath([x, y], tangent + side * spread, len, Math.max(len * 0.15, 1)));
   }
@@ -94,10 +104,13 @@ function buildStemLeaves(stem: [Point, Point, Point, Point], positions: number[]
   return positions.map((t, i) => {
     const [x, y] = cubicPoint(p0, p1, p2, p3, t);
     const tangent = cubicTangentAngleDeg(p0, p1, p2, p3, t);
-    const side = i % 2 === 0 ? 1 : -1;
+    const altSide = i % 2 === 0 ? 1 : -1;
+    const flip = pseudoJitter(i * 6.1 + 4) < 0.18;
+    const side = flip ? -altSide : altSide;
     const jitter = pseudoJitter(i * 5.3 + 1);
-    const len = leafLen * (0.92 + jitter * 0.16);
-    return willowLeafPath([x, y], tangent + side * (18 + jitter * 3), len, len * 0.16);
+    const len = leafLen * (0.88 + jitter * 0.28);
+    const spread = (18 + jitter * 8) * (1 - t * 0.2);
+    return willowLeafPath([x, y], tangent + side * spread, len, len * 0.16);
   });
 }
 
@@ -197,6 +210,37 @@ const VARIANTS: Record<WillowVariant, VariantConfig> = {
     strokeWidth: 0.68,
     fade: false,
   },
+  // branchをさらに縦へ伸ばした、写真グリッドの左右余白などページの縦幅
+  // いっぱいを使う場所向けの長尺variant。同じ「主茎+短い葉クラスター」の
+  // 構造を保ったまま、クラスターの数を増やして丈の長い柳らしいシルエットにする。
+  tall: {
+    viewBox: '0 0 110 520',
+    stem: [
+      [55, 4],
+      [46, 180],
+      [36, 360],
+      [28, 510],
+    ],
+    stemLeafPositions: [],
+    stemLeafLen: 0,
+    twigs: [
+      { t: 0.05, length: 12, drift: 10, leafCount: 2 },
+      { t: 0.13, length: 14, drift: -12, leafCount: 3 },
+      { t: 0.21, length: 15, drift: 11, leafCount: 3 },
+      { t: 0.29, length: 14, drift: -13, leafCount: 3 },
+      { t: 0.37, length: 15, drift: 12, leafCount: 3 },
+      { t: 0.45, length: 14, drift: -11, leafCount: 3 },
+      { t: 0.53, length: 15, drift: 12, leafCount: 3 },
+      { t: 0.61, length: 14, drift: -12, leafCount: 3 },
+      { t: 0.69, length: 13, drift: 11, leafCount: 2 },
+      { t: 0.77, length: 13, drift: -11, leafCount: 2 },
+      { t: 0.85, length: 12, drift: 10, leafCount: 2 },
+      { t: 0.92, length: 11, drift: -9, leafCount: 2 },
+      { t: 0.97, length: 10, drift: 9, leafCount: 2 },
+    ],
+    strokeWidth: 0.62,
+    fade: false,
+  },
 };
 
 /**
@@ -217,7 +261,7 @@ export function WillowDecoration({ className = '', style, variant = 'branch', fl
   const config = VARIANTS[variant];
   const { viewBox, stem, stemLeafPositions, stemLeafLen, twigs, strokeWidth, fade } = config;
   const stroke = fade ? `url(#${gradId})` : 'currentColor';
-  const leafSpreadBase = variant === 'branch' || variant === 'sprig' ? 20 : 17;
+  const leafSpreadBase = variant === 'branch' || variant === 'sprig' || variant === 'tall' ? 20 : 17;
 
   const stemPath = bezierPath(stem[0], stem[1], stem[2], stem[3]);
   const stemLeaves = buildStemLeaves(stem, stemLeafPositions, stemLeafLen);

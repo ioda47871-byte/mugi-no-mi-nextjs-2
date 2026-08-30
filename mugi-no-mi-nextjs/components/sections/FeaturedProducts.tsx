@@ -32,9 +32,9 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
       <div className="mx-auto max-w-container">
         <RevealOnScroll>
           <div className="mb-14 flex items-center justify-center gap-5">
-            <WheatDecoration variant="spray" lean="left" className="h-9 w-24 text-gold/60 max-[560px]:hidden" />
+            <WheatDecoration variant="spray" lean="left" className="h-11 w-28 text-gold/70 max-[560px]:hidden" />
             <h2 className="font-display text-[clamp(24px,3vw,32px)]">おすすめのパン</h2>
-            <WheatDecoration variant="spray" lean="right" className="h-9 w-24 text-gold/60 max-[560px]:hidden" />
+            <WheatDecoration variant="spray" lean="right" className="h-11 w-28 text-gold/70 max-[560px]:hidden" />
           </div>
         </RevealOnScroll>
 

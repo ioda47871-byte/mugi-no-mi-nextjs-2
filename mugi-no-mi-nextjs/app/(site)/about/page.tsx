@@ -78,7 +78,7 @@ export default async function AboutPage() {
               <div className="relative max-[860px]:text-center">
                 <WillowDecoration
                   variant="sprig"
-                  className="pointer-events-none absolute -left-6 -top-8 h-16 w-8 text-gold/30 max-[860px]:hidden"
+                  className="pointer-events-none absolute -left-7 -top-9 h-24 w-11 text-brand-deep/40 max-[860px]:hidden"
                 />
                 <div className="relative">
                   <span className="eyebrow">Space</span>
@@ -130,7 +130,7 @@ export default async function AboutPage() {
               <div className="relative max-[860px]:order-2 max-[860px]:text-center">
                 <WillowDecoration
                   variant="sprig"
-                  className="pointer-events-none absolute -left-9 -top-8 h-20 w-9 text-gold/30 max-[1100px]:hidden"
+                  className="pointer-events-none absolute -left-9 -top-9 h-24 w-11 text-gold/35 max-[1100px]:hidden"
                 />
                 <div className="relative">
                   <p className="text-[clamp(20px,2.6vw,25px)] font-display leading-loose">

@@ -102,7 +102,7 @@ export default async function AccessPage() {
             <WillowDecoration
               variant="sprig"
               flip
-              className="pointer-events-none absolute -bottom-4 -right-4 h-28 w-12 text-gold/25"
+              className="pointer-events-none absolute -bottom-5 -right-5 h-32 w-14 text-gold/30"
             />
             <div className="relative flex items-start gap-5">
               <ParkingIcon />

@@ -96,13 +96,19 @@ export function Hero({ imageUrl, imageAlt }: HeroProps) {
         className="pointer-events-none absolute -top-8 left-[32%] hidden h-[440px] w-[360px] text-gold/[0.32] min-[900px]:block"
       />
       {/* LEVEL2(中): Hero左端、ページの外から本物の枝が垂れてきたように見せる柳。
-          マスクで根元(ページ端)側を濃く、内側(コンテンツに近い側)を薄くする */}
+          マスクで根元(ページ端)側を濃く、内側(コンテンツに近い側)を薄くする。
+          tall variant(viewBox 110x520)は幅:高さ比が細長いため、コンテナも
+          同じ比率(w-28に対しh-[520px]程度)に合わせている。branch variant
+          (110x260)のまま高さだけ%指定で引き伸ばすと、SVGのpreserveAspectRatio
+          既定(xMidYMid meet)により縦方向がレターボックスされ、実際には
+          コンテナの7割程度の長さしか描画されない(=柳が短く/薄く見える)
+          問題があったため、丈の長いtall variantに切り替えている。 */}
       <WillowDecoration
-        variant="branch"
-        className="pointer-events-none absolute -left-9 top-[8%] hidden h-[62%] w-32 text-gold/[0.4] min-[900px]:block"
+        variant="tall"
+        className="pointer-events-none absolute -left-10 top-8 hidden h-[520px] w-28 text-gold/[0.5] min-[900px]:block"
         style={{
-          maskImage: 'linear-gradient(100deg, black 15%, transparent 70%)',
-          WebkitMaskImage: 'linear-gradient(100deg, black 15%, transparent 70%)',
+          maskImage: 'linear-gradient(100deg, black 30%, transparent 82%)',
+          WebkitMaskImage: 'linear-gradient(100deg, black 30%, transparent 82%)',
         }}
       />
 

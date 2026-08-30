@@ -26,8 +26,8 @@ export function PageHero({ eyebrow, title, description, photoUrl, photoAlt, chil
           テキストへ重ならないよう左端に寄せ、マスクで内側へ向かって消す。 */}
       <WillowDecoration
         variant="branch"
-        className="pointer-events-none absolute -left-8 top-[180px] hidden h-[280px] w-24 text-gold/25 min-[900px]:block"
-        style={{ maskImage: 'linear-gradient(100deg, black 20%, transparent 75%)', WebkitMaskImage: 'linear-gradient(100deg, black 20%, transparent 75%)' }}
+        className="pointer-events-none absolute -left-9 top-[150px] hidden h-[260px] w-28 text-gold/35 min-[900px]:block"
+        style={{ maskImage: 'linear-gradient(100deg, black 35%, transparent 85%)', WebkitMaskImage: 'linear-gradient(100deg, black 35%, transparent 85%)' }}
       />
 
       <div className="relative mx-auto grid max-w-container grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] items-center gap-10 px-8 max-[900px]:grid-cols-1 max-[900px]:gap-8 max-[640px]:px-5">

@@ -62,7 +62,7 @@ export default async function ContactPage() {
             <WillowDecoration
               variant="sprig"
               flip
-              className="pointer-events-none absolute -bottom-4 -right-4 h-28 w-12 text-gold/20"
+              className="pointer-events-none absolute -bottom-5 -right-5 h-32 w-14 text-gold/28"
             />
             <div className="relative mb-6 text-center">
               <span aria-hidden className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-brand-pale text-brand-text">
@@ -85,7 +85,7 @@ export default async function ContactPage() {
               <WillowDecoration
                 variant="sprig"
                 flip
-                className="pointer-events-none absolute -right-9 -top-8 h-20 w-9 text-gold/30 max-[1100px]:hidden"
+                className="pointer-events-none absolute -right-9 -top-9 h-24 w-11 text-gold/35 max-[1100px]:hidden"
               />
               <div className="relative">
                 <h2 className="text-2xl">お気軽にお問い合わせください</h2>
@@ -112,7 +112,7 @@ function PhoneReservationCard() {
       <WillowDecoration
         variant="sprig"
         flip
-        className="pointer-events-none absolute -bottom-4 -right-4 h-28 w-12 text-gold/20"
+        className="pointer-events-none absolute -bottom-5 -right-5 h-32 w-14 text-gold/28"
       />
       <div className="relative">
         <span aria-hidden className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-brand-pale text-brand-text">

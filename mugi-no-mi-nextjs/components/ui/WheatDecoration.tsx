@@ -49,8 +49,8 @@ function buildStalk(baseX: number, baseY: number, config: StalkConfig, lean: 'le
     const tangent = cubicTangentAngleDeg(p0, p1, p2, p3, t);
     const side = i % 2 === 0 ? 1 : -1;
     const bulge = Math.sin(Math.PI * ((t - zoneStart) / (zoneEnd - zoneStart)));
-    const grainAngle = tangent - 90 + side * (32 + (1 - bulge) * 12);
-    const scale = config.grainScale * (0.6 + 0.42 * bulge);
+    const grainAngle = tangent - 90 + side * (34 + (1 - bulge) * 13);
+    const scale = config.grainScale * (0.72 + 0.46 * bulge);
 
     return { x, y, angle: grainAngle, scale };
   });
@@ -59,8 +59,8 @@ function buildStalk(baseX: number, baseY: number, config: StalkConfig, lean: 'le
     const [x, y] = cubicPoint(p0, p1, p2, p3, t);
     const tangent = cubicTangentAngleDeg(p0, p1, p2, p3, t);
     const side = i % 2 === 0 ? 1 : -1;
-    const leafLen = config.height * 0.22;
-    return willowLeafPath([x, y], tangent - 90 + side * 32, leafLen, leafLen * 0.17);
+    const leafLen = config.height * 0.25;
+    return willowLeafPath([x, y], tangent - 90 + side * 32, leafLen, leafLen * 0.19);
   });
 
   return { stemPath, tipX, tipY, grains, leaves };
@@ -68,8 +68,8 @@ function buildStalk(baseX: number, baseY: number, config: StalkConfig, lean: 'le
 
 // 粒はやや細身の紡錘形(参考画像の繊細な粒に合わせ、幅を絞っている)。
 // 芒(のぎ)は粒の先からさらに長く伸ばし、麦らしい「棘立った」印象を出す。
-const GRAIN_D = 'M0 0 C-1.6 -5.8 -1.2 -13.4 0 -19 C1.2 -13.4 1.6 -5.8 0 0 Z';
-const AWN_D = 'M0 -19 L1.5 -37';
+const GRAIN_D = 'M0 0 C-2.3 -6.4 -1.8 -14.6 0 -21 C1.8 -14.6 2.3 -6.4 0 0 Z';
+const AWN_D = 'M0 -21 L1.8 -39';
 
 /**
  * 見出し脇に添える、横方向へ緩やかに波打つ茎(spray variant)。
@@ -94,7 +94,7 @@ function buildSpray(lean: 'left' | 'right') {
     const side = i % 2 === 0 ? 1 : -1;
     const jitter = pseudoJitter(i * 4.1 + 0.6);
     const grainAngle = tangent + side * (66 + jitter * 10);
-    const scale = 0.62 + 0.32 * Math.sin(Math.PI * ((t - grainZone[0]) / (grainZone[1] - grainZone[0]))) + jitter * 0.1;
+    const scale = 0.78 + 0.4 * Math.sin(Math.PI * ((t - grainZone[0]) / (grainZone[1] - grainZone[0]))) + jitter * 0.12;
     return { x, y, angle: grainAngle, scale };
   });
 
@@ -104,8 +104,8 @@ function buildSpray(lean: 'left' | 'right') {
     const tangent = cubicTangentAngleDeg(p0, p1, p2, p3, t);
     const side = i % 2 === 0 ? -1 : 1;
     const jitter = pseudoJitter(i * 6.2 + 3);
-    const leafLen = 12 + jitter * 3;
-    return willowLeafPath([x, y], tangent + side * (26 + jitter * 6), leafLen, leafLen * 0.18);
+    const leafLen = 15 + jitter * 4;
+    return willowLeafPath([x, y], tangent + side * (26 + jitter * 6), leafLen, leafLen * 0.22);
   });
 
   return { stemPath, grains, leaves };
@@ -151,7 +151,7 @@ export function WheatDecoration({ className = '', variant = 'sprig', lean = 'rig
         viewBox="0 0 140 46"
         fill="none"
         stroke="currentColor"
-        strokeWidth={0.65}
+        strokeWidth={0.85}
         strokeLinecap="round"
         strokeLinejoin="round"
         aria-hidden="true"
@@ -190,7 +190,7 @@ export function WheatDecoration({ className = '', variant = 'sprig', lean = 'rig
         viewBox="0 0 60 152"
         fill="none"
         stroke="currentColor"
-        strokeWidth={0.68}
+        strokeWidth={0.78}
         strokeLinecap="round"
         strokeLinejoin="round"
         aria-hidden="true"
@@ -216,7 +216,7 @@ export function WheatDecoration({ className = '', variant = 'sprig', lean = 'rig
       viewBox="0 0 60 130"
       fill="none"
       stroke="currentColor"
-      strokeWidth={0.68}
+      strokeWidth={0.78}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"

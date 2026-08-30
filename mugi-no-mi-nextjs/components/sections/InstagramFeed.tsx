@@ -23,12 +23,12 @@ export async function InstagramFeed() {
     <section className="relative overflow-hidden bg-brand-pale px-8 py-24 max-[640px]:px-5 max-[640px]:py-16">
       <WillowDecoration
         variant="branch"
-        className="pointer-events-none absolute -left-6 top-8 hidden h-64 w-20 text-gold/20 min-[1024px]:block"
+        className="pointer-events-none absolute -left-8 top-8 hidden h-64 w-28 text-gold/25 min-[1024px]:block"
       />
       <WillowDecoration
         variant="branch"
         flip
-        className="pointer-events-none absolute -right-6 top-8 hidden h-64 w-20 text-gold/20 min-[1024px]:block"
+        className="pointer-events-none absolute -right-8 top-8 hidden h-64 w-28 text-gold/25 min-[1024px]:block"
       />
       <div className="relative mx-auto max-w-container">
         <RevealOnScroll>

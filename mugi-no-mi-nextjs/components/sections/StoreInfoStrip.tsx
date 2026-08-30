@@ -36,8 +36,12 @@ export function StoreInfoStrip({ showFollowButton = false, showStoreName = false
     <section className={`relative overflow-hidden border-t border-line bg-ivory px-8 py-10 max-[640px]:px-5 max-[640px]:py-8 ${className}`}>
       <WillowDecoration
         variant="sprig"
+        className="pointer-events-none absolute -left-2 -top-2 hidden h-24 w-11 text-gold/20 min-[860px]:block"
+      />
+      <WillowDecoration
+        variant="sprig"
         flip
-        className="pointer-events-none absolute -right-2 -top-2 hidden h-28 w-12 text-gold/20 min-[860px]:block"
+        className="pointer-events-none absolute -right-2 -top-2 hidden h-28 w-12 text-gold/25 min-[860px]:block"
       />
       <div className="relative mx-auto flex max-w-container flex-wrap items-start justify-between gap-x-6 gap-y-7 max-[860px]:justify-center max-[860px]:text-center">
         {showStoreName && (

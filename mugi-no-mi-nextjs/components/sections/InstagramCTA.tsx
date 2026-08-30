@@ -12,7 +12,7 @@ export function InstagramCTA() {
       <WillowDecoration
         variant="sprig"
         flip
-        className="pointer-events-none absolute -bottom-4 -right-3 h-24 w-10 text-gold/20 max-[640px]:hidden"
+        className="pointer-events-none absolute -bottom-5 -right-4 h-28 w-12 text-gold/28 max-[640px]:hidden"
       />
       <div className="relative flex items-center gap-4 text-center sm:text-left">
         <span aria-hidden className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-pale text-brand-text">
