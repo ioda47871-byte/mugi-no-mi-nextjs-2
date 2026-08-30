@@ -401,4 +401,165 @@ npm run dev
 | 管理者なのにアップロードできない(403エラー) | ログインセッションが古い、または `admin_users` への登録直後でセッションが更新されていない | 一度ログアウトして再ログインする |
 | 同じ画像を選び直しても反応しない | ブラウザのファイル選択の仕様上、同一ファイルの再選択イベントが発火しないことがある | 実装では選択後に毎回inputの値をリセットしているため通常は発生しませんが、再現する場合はページを再読み込みしてください |
 
+## 9. Instagram連携(最新投稿の自動表示・トークン自動更新)
+
+トップページ下部にInstagramの最新投稿6件を自動表示します。表示に使うアクセストークンは
+Supabaseに保存され、Vercel Cronが約30日ごとに自動更新するため、手動でのトークン更新は
+基本的に不要です。
+
+### 9-1. 初回トークンの設定方法
+
+1. Meta for Developersで、投稿を取得したいInstagram Business/Creatorアカウントに対する
+   **長期アクセストークン(Long-lived Access Token、有効期間 約60日)** を発行する
+   (短期トークンをそのまま使うことはできません。短期トークンから長期トークンへの
+   交換は、Instagram Graph APIの `access_token` エンドポイントで行います)。
+2. 発行したトークンを `INSTAGRAM_INITIAL_ACCESS_TOKEN` として、対象アカウントの
+   ユーザーIDを `INSTAGRAM_USER_ID` としてVercelの環境変数に設定する。
+3. 初回アクセス時、Supabaseにまだトークンが保存されていなければ
+   `INSTAGRAM_INITIAL_ACCESS_TOKEN` が使用され、可能であれば自動的に
+   `instagram_credentials` テーブルへ保存されます。以後はSupabase側のトークンが
+   正となり、`INSTAGRAM_INITIAL_ACCESS_TOKEN` は(次に空のSupabaseへ再セットアップ
+   する場合を除き)参照されなくなります。
+
+### 9-2. Supabaseマイグレーションの適用方法
+
+`supabase/instagram-credentials-setup.sql` の内容を、SupabaseダッシュボードのSQL Editorで
+そのまま実行してください。実行内容:
+
+1. `instagram_credentials` テーブルの作成(`id`列を1に固定するCHECK制約により、
+   常に1件のみ保持する「singleton table」)
+2. RLSの有効化(ポリシーは0件。anon/authenticatedからは一切アクセス不可)
+3. テーブルへの直接権限を`public`/`anon`/`authenticated`から明示的に剥奪
+
+このテーブルへの読み書きは、`SUPABASE_SERVICE_ROLE_KEY` を使うサーバー専用コード
+(`lib/instagram/token-store.ts`)経由のみに限定されています。
+
+### 9-3. Vercelに設定する環境変数一覧
+
+| 変数名 | 公開範囲 | 用途 |
+|---|---|---|
+| `INSTAGRAM_USER_ID` | サーバー専用 | 投稿取得対象のInstagramユーザーID |
+| `INSTAGRAM_INITIAL_ACCESS_TOKEN` | サーバー専用 | 初回のみ使用する初期長期アクセストークン |
+| `SUPABASE_SERVICE_ROLE_KEY` | サーバー専用 | Supabaseのservice_roleキー(RLSを完全にバイパスするため取り扱い注意) |
+| `CRON_SECRET` | サーバー専用 | Vercel Cronエンドポイントの保護用秘密値 |
+
+いずれも `NEXT_PUBLIC_` を付けず、ブラウザには一切公開されません。
+
+### 9-4. Cronの仕組み
+
+`vercel.json` の `crons` 設定により、Vercelが `/api/cron/refresh-instagram-token`
+(`app/api/cron/refresh-instagram-token/route.ts`)を **毎月1日 0:00 UTC** に自動的に
+呼び出します(cron式は「30日ごと」を厳密には表現できないため、実運用上ほぼ同等な
+「毎月1日」を採用しています。トークンは発行から24時間以内は更新できない仕様のため、
+毎日実行する必要はありません)。
+
+Vercelは、プロジェクトに `CRON_SECRET` が設定されている場合、Cronからのリクエストへ
+自動的に `Authorization: Bearer {CRON_SECRET}` ヘッダーを付与します。ルート側では
+このヘッダーを検証し、一致しない場合は401を返します。
+
+処理の流れ:
+
+1. Supabaseに保存済みのトークン(無ければ`INSTAGRAM_INITIAL_ACCESS_TOKEN`)を取得
+2. Instagram公式の `GET https://graph.instagram.com/refresh_access_token
+   ?grant_type=ig_refresh_token&access_token=...` を呼び出す
+3. 新しい `access_token` / `expires_at` / `last_refreshed_at` / `updated_at` を
+   Supabaseへ保存
+4. 投稿一覧のキャッシュ(約1時間)を即時に無効化し、次回アクセス時に新しいトークンで
+   再取得されるようにする
+
+レスポンス・ログのいずれにも、アクセストークンの値そのものは一切含まれません
+(成功時は `success` / `refreshedAt` / `expiresAt` のみを返します)。
+
+### 9-5. 自動更新に失敗した場合の手動復旧方法
+
+1. Vercelの当該Cron実行のログを確認し、`no_token_to_refresh` / `save_failed` /
+   `refresh_failed` のいずれのエラーかを確認する
+2. Instagram側でトークンが無効化されている場合(後述9-6)は、9-1の手順で
+   長期アクセストークンを再発行し、Supabase SQL Editorから直接
+   `instagram_credentials` テーブルを更新する:
+   ```sql
+   update public.instagram_credentials
+   set access_token = '再発行したトークン',
+       expires_at = now() + interval '60 days',
+       last_refreshed_at = now(),
+       updated_at = now()
+   where id = 1;
+   ```
+3. Supabase自体に問題がある場合は、`INSTAGRAM_INITIAL_ACCESS_TOKEN` を新しいトークンに
+   更新した上で `instagram_credentials` の行を削除すれば、次回アクセス時に
+   初期トークンが再登録されます
+4. 復旧までの間、サイトは技術的なエラーを表示せず、「最新情報はInstagramをご覧
+   ください。」という案内とボタンのみを表示し続けます(9-6も参照)
+
+### 9-6. 運用上の注意点
+
+- 長期アクセストークン・初期トークンのいずれも**永久に有効ではありません**。
+  Cronによる自動更新は「有効なトークンを、期限が切れる前に新しいトークンへ
+  差し替え続ける」仕組みであり、トークンそのものが失効しないことを保証するものでは
+  ありません。
+- Instagram側でパスワードを変更した場合、連携アプリの権限を取り消した場合、
+  Meta for Developers側のアプリ設定を変更・削除した場合などは、既存のトークンが
+  即座に無効化され、Cronでのリフレッシュも失敗します。この場合は9-1の手順で
+  改めて認証・トークン発行をやり直す必要があります。
+- 上記いずれの場合も、サイトの他の機能(商品一覧・お問い合わせ・管理画面など)には
+  一切影響しません。Instagramセクションのみがフォールバック表示に切り替わります。
+
+## 10. サイト写真アップロード機能(Hero・外観・入口・店内・厨房・ショーケース・雑貨・ディスプレイ)
+
+`public/images/`への静的ファイル配置に代えて、管理画面(`/admin/site-photos`)から
+8つの固定スロットの写真をアップロードできます。Supabase Storage(`site-photos`
+バケット)に保存され、Git pushや再デプロイなしで公開サイトへ反映されます
+(最大60秒のISR + アップロード直後のオンデマンド再検証)。
+
+### 10-1. Supabaseマイグレーションの適用方法
+
+`supabase/site-photos-setup.sql` の内容を、SupabaseダッシュボードのSQL Editorで
+そのまま実行してください(`admin-setup.sql` が実行済みであることが前提)。実行内容:
+
+1. `site_photos` テーブルの作成・7行の初期シード
+2. `anon`/`authenticated` への明示的な権限付与(SELECT公開・UPDATE管理者限定)
+3. RLSポリシー(公開SELECT・管理者限定UPDATE。INSERT/DELETEポリシーは意図的に
+   作成していません)
+4. `site-photos` バケットの作成(公開バケット、`file_size_limit` 10MB・
+   `allowed_mime_types` jpeg/png/webpを設定)
+5. Storageポリシー(公開SELECT・管理者限定INSERT/DELETE)
+
+同ファイルの末尾にロールバック用SQL(コメントアウト状態)も用意しています。
+
+その後、`supabase/kitchen-photo-slot-setup.sql` を実行すると、Aboutページの
+「OUR KITCHEN」セクションとGalleryが共通で参照する`kitchen`スロットが追加されます
+(既存7スロットのデータ・運用には影響しません)。こちらも末尾にロールバック用SQLを
+コメントアウト状態で用意しています。
+
+### 10-2. アップロードの仕組み
+
+1. ブラウザがTUS(再開可能アップロード)でSupabase Storageへ直接アップロード
+   (`temp/{slot}/original-{uuid}.{ext}`)
+2. アップロード完了後、Server Action(`finalizeSitePhotoUploadAction`)が
+   サーバー側でダウンロード→検証(サイズ・実フォーマット・アニメーション有無)→
+   EXIF補正→長辺3000pxリサイズ→WebP変換→再アップロード(`{slot}/optimized-{uuid}.webp`)
+   →DB更新を行う
+3. 公開サイトは常に最適化済み(WebP)のURLのみを参照する
+
+### 10-3. 孤立ファイルの自動削除(Cron)
+
+`app/api/cron/cleanup-orphaned-site-photos/route.ts` が、`site_photos` テーブルの
+どの行からも参照されておらず、作成から24時間以上経過したStorageオブジェクトを
+毎日自動削除します(`vercel.json` の `schedule: "0 3 * * *"`、毎日3:00 UTC)。
+
+**重要: Vercel CronはProductionデプロイURLに対してのみ実行されます。**
+Previewだけを運用している間(本番ドメインが未確定・本番公開前)は、この
+Cronは自動実行されません。本番公開前に孤立ファイルの状況を確認したい場合は、
+以下のように手動実行してください(削除は行わず候補件数のみ返す `dryRun` モード
+での確認を推奨します):
+
+```bash
+curl -H "Authorization: Bearer {CRON_SECRETの値}" \
+  "https://{Previewのデプロイ URL}/api/cron/cleanup-orphaned-site-photos?dryRun=true"
+```
+
+`dryRun=true` を外すと実際に削除が実行されます。レスポンスにはファイルパスなどの
+詳細は含まれず、件数(`scannedCount` / `candidateCount` / `deletedCount` /
+`failedCount`)のみが返ります。
+
 

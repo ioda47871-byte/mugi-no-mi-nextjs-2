@@ -1,52 +1,42 @@
 import Link from 'next/link';
 import { PhotoFrame } from '@/components/ui/PhotoFrame';
 import { RevealOnScroll } from '@/components/ui/RevealOnScroll';
-import { siteContent } from '@/lib/placeholder-content';
+import { NoBreakText } from '@/components/ui/NoBreakText';
+import { siteContent, FOUNDER_QUOTE_PROTECTED_PHRASES } from '@/lib/placeholder-content';
+import { getSitePhoto } from '@/lib/site-photos';
 
 /**
- * 職人紹介(Home = 短縮版)。
- * founderPortrait.value が null の場合は、写真なし・中央寄せ・余白主体の
- * レイアウトに自動的に切り替わります。実店舗の写真が用意でき次第、
- * lib/placeholder-content.ts の founderPortrait.value にURL(またはpublic/images内のパス)
- * を設定すれば、2カラムの写真ありレイアウトになります。
+ * 店舗紹介(Home = 短縮版)。
+ * 実在の代表者名は確認できていないため、個人の顔写真・名前つきの
+ * 「職人紹介」形式ではなく、店舗紹介文(第三者紹介トーン)を表示しています。
+ * 写真はlib/site-photos.ts経由(interiorスロット)で取得し、未設定の場合も
+ * 既存の静的ファイルにフォールバックするため常に写真ありレイアウトになります。
  */
-export function ArtisanCompact() {
-  const hasPhoto = Boolean(siteContent.founderPortrait.value);
+export async function ArtisanCompact() {
+  const interiorPhoto = await getSitePhoto('interior');
 
   return (
     <section className="bg-brand-pale px-8 py-24 max-[640px]:px-5 max-[640px]:py-16">
       <div className="mx-auto max-w-container">
         <RevealOnScroll>
-          {hasPhoto ? (
-            <div className="mx-auto grid max-w-3xl grid-cols-[0.6fr_1fr] items-center gap-12 max-[700px]:grid-cols-1 max-[700px]:text-center">
-              <PhotoFrame src={siteContent.founderPortrait.value} alt={`${siteContent.founderName.value}のポートレート`} aspect="aspect-[3/4]" />
-              <ArtisanText />
-            </div>
-          ) : (
-            <div className="mx-auto max-w-xl text-center">
-              <ArtisanText />
-            </div>
-          )}
+          <div className="mx-auto grid max-w-3xl grid-cols-[minmax(0,0.6fr)_minmax(0,1fr)] items-center gap-12 max-[700px]:grid-cols-1 max-[700px]:text-center">
+            <PhotoFrame src={interiorPhoto.url} alt={interiorPhoto.alt} aspect="aspect-[3/4]" />
+            <IntroText />
+          </div>
         </RevealOnScroll>
       </div>
     </section>
   );
 }
 
-function ArtisanText() {
+function IntroText() {
   return (
     <div>
-      <blockquote className="font-display text-[clamp(21px,2.8vw,27px)] leading-loose">
-        「{siteContent.founderQuote.value}」
-      </blockquote>
-      <p className="mt-5 text-[15px] text-kura">
-        {siteContent.founderName.value}
-        <span className="mt-1 block font-accent text-[13.5px] italic text-brand-deep">
-          {siteContent.founderRole.value}
-        </span>
+      <p className="font-display text-[clamp(19px,2.4vw,23px)] leading-loose">
+        <NoBreakText text={siteContent.founderQuote.value} phrases={FOUNDER_QUOTE_PROTECTED_PHRASES} />
       </p>
-      <div className="mt-5">
-        <Link href="/about" className="link-gold">職人の想いをもっと読む →</Link>
+      <div className="mt-6">
+        <Link href="/about" className="link-gold">Brot yanagiについてもっと読む →</Link>
       </div>
     </div>
   );

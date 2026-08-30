@@ -13,6 +13,7 @@ export interface AdminProduct {
   isActive: boolean;
   isSoldOut: boolean;
   isSeasonal: boolean;
+  isFeaturedHome: boolean;
   displayOrder: number;
   createdAt: string;
 }
@@ -29,12 +30,13 @@ interface ProductRow {
   is_active: boolean;
   is_sold_out: boolean;
   is_seasonal: boolean;
+  is_featured_home: boolean;
   display_order: number;
   created_at: string;
 }
 
 const SELECT_COLUMNS =
-  'id, name, category_id, description, price, image, tag, is_popular, is_active, is_sold_out, is_seasonal, display_order, created_at';
+  'id, name, category_id, description, price, image, tag, is_popular, is_active, is_sold_out, is_seasonal, is_featured_home, display_order, created_at';
 
 function mapRow(row: ProductRow): AdminProduct {
   return {
@@ -49,6 +51,7 @@ function mapRow(row: ProductRow): AdminProduct {
     isActive: row.is_active,
     isSoldOut: row.is_sold_out,
     isSeasonal: row.is_seasonal,
+    isFeaturedHome: row.is_featured_home,
     displayOrder: row.display_order,
     createdAt: row.created_at,
   };

@@ -8,14 +8,21 @@
     "start": "next start",
     "lint": "next lint",
     "check:placeholders": "node scripts/check-placeholders.mjs",
-    "check:placeholders:strict": "node scripts/check-placeholders.mjs --strict"
+    "check:placeholders:strict": "node scripts/check-placeholders.mjs --strict",
+    "check:rate-limit": "tsx scripts/test-rate-limit.ts"
   },
   "dependencies": {
-    "@supabase/ssr": "0.5.2",
-    "@supabase/supabase-js": "2.45.4",
+    "@supabase/ssr": "^0.12.3",
+    "@supabase/supabase-js": "^2.110.5",
+    "@upstash/ratelimit": "^2.0.5",
+    "@upstash/redis": "^1.34.3",
     "next": "^14.2.35",
     "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react-dom": "18.3.1",
+    "resend": "^4.0.1",
+    "server-only": "^0.0.1",
+    "sharp": "^0.35.3",
+    "tus-js-client": "^4.3.1"
   },
   "devDependencies": {
     "@types/node": "20.14.9",

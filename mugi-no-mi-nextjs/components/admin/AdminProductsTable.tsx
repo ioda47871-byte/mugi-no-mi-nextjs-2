@@ -28,13 +28,20 @@ const TOGGLES: ToggleDef[] = [
     toneOn: 'bg-brand-deep text-white border-brand-deep',
   },
   { field: 'is_sold_out', label: '売り切れ', isOn: (p) => p.isSoldOut, toneOn: 'bg-red-100 text-red-700 border-red-300' },
+  {
+    field: 'is_featured_home',
+    label: 'ホームおすすめ',
+    isOn: (p) => p.isFeaturedHome,
+    toneOn: 'bg-ink text-brand-pale border-ink',
+  },
 ];
 
 function applyToggle(product: AdminProduct, field: ToggleField, value: boolean): AdminProduct {
   if (field === 'is_active') return { ...product, isActive: value };
   if (field === 'is_popular') return { ...product, isPopular: value };
   if (field === 'is_seasonal') return { ...product, isSeasonal: value };
-  return { ...product, isSoldOut: value };
+  if (field === 'is_sold_out') return { ...product, isSoldOut: value };
+  return { ...product, isFeaturedHome: value };
 }
 
 /**

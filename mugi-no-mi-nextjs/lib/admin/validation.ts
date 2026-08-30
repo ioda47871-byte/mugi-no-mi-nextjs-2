@@ -1,3 +1,5 @@
+import { parseJstDatetimeLocalToIso } from '@/lib/datetime';
+
 export const CATEGORY_OPTIONS = [
   { id: 'shokupan', label: '食パン' },
   { id: 'savory', label: '惣菜パン' },
@@ -33,12 +35,77 @@ export interface ProductWriteData {
   is_active: boolean;
   is_sold_out: boolean;
   is_seasonal: boolean;
+  is_featured_home: boolean;
   display_order: number;
 }
 
 export interface ValidationResult {
   values: ProductWriteData | null;
   fieldErrors: Record<string, string>;
+}
+
+/**
+ * フォームから受け取ってよいお知らせの書き込み用データ形状。
+ * published_at / expires_at はすでにUTCのISO文字列に変換済み(lib/datetime.ts)
+ * であることを前提とする(このファイルではJST⇔UTC変換は行わない)。
+ */
+export interface AnnouncementWriteData {
+  title: string;
+  body: string;
+  published_at: string;
+  expires_at: string | null;
+  is_published: boolean;
+}
+
+export interface AnnouncementValidationResult {
+  values: AnnouncementWriteData | null;
+  fieldErrors: Record<string, string>;
+}
+
+/**
+ * FormDataを検証し、Supabaseへ書き込んでよい形に整形する。
+ * published_at / expires_at は<input type="datetime-local">の値(JST壁時計時刻)
+ * を受け取り、parseJstDatetimeLocalToIso()でUTCのISO文字列へ変換する。
+ * 1つでもエラーがあれば values は null になる。
+ */
+export function parseAnnouncementForm(formData: FormData): AnnouncementValidationResult {
+  const fieldErrors: Record<string, string> = {};
+
+  const title = String(formData.get('title') ?? '').trim();
+  if (!title) fieldErrors.title = 'タイトルを入力してください。';
+
+  const body = String(formData.get('body') ?? '').trim();
+  if (!body) fieldErrors.body = '本文を入力してください。';
+
+  const publishedAtRaw = String(formData.get('published_at') ?? '').trim();
+  const publishedAt = parseJstDatetimeLocalToIso(publishedAtRaw);
+  if (!publishedAt) fieldErrors.published_at = '公開開始日時を入力してください。';
+
+  const expiresAtRaw = String(formData.get('expires_at') ?? '').trim();
+  const expiresAt = parseJstDatetimeLocalToIso(expiresAtRaw);
+  if (expiresAtRaw && !expiresAt) {
+    fieldErrors.expires_at = '公開終了日時の形式が正しくありません。';
+  }
+  if (publishedAt && expiresAt && expiresAt <= publishedAt) {
+    fieldErrors.expires_at = '公開終了日時は公開開始日時より後にしてください。';
+  }
+
+  const isPublished = formData.get('is_published') === 'on';
+
+  if (Object.keys(fieldErrors).length > 0) {
+    return { values: null, fieldErrors };
+  }
+
+  return {
+    values: {
+      title,
+      body,
+      published_at: publishedAt as string,
+      expires_at: expiresAt,
+      is_published: isPublished,
+    },
+    fieldErrors: {},
+  };
 }
 
 /**
@@ -88,6 +155,7 @@ export function parseProductForm(formData: FormData): ValidationResult {
   const isActive = formData.get('is_active') === 'on';
   const isSoldOut = formData.get('is_sold_out') === 'on';
   const isSeasonal = formData.get('is_seasonal') === 'on';
+  const isFeaturedHome = formData.get('is_featured_home') === 'on';
 
   if (Object.keys(fieldErrors).length > 0) {
     return { values: null, fieldErrors };
@@ -105,6 +173,7 @@ export function parseProductForm(formData: FormData): ValidationResult {
       is_active: isActive,
       is_sold_out: isSoldOut,
       is_seasonal: isSeasonal,
+      is_featured_home: isFeaturedHome,
       display_order: displayOrder,
     },
     fieldErrors: {},

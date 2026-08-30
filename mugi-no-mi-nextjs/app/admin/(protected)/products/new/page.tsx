@@ -10,7 +10,7 @@ export default function NewProductPage() {
   return (
     <div>
       <div className="mb-6">
-        <Link href="/admin" className="text-sm text-kura hover:text-ink">
+        <Link href="/admin/products" className="text-sm text-kura hover:text-ink">
           ← 商品一覧に戻る
         </Link>
       </div>

@@ -17,8 +17,8 @@ interface ProductCardProps {
  */
 export function ProductCard({ product, priority = false }: ProductCardProps) {
   return (
-    <article>
-      <div className="relative mb-5">
+    <article className="group">
+      <div className="relative mb-4 overflow-hidden rounded-[2px]">
         <PhotoFrame
           src={product.image}
           alt={product.name}
@@ -50,13 +50,17 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
         )}
       </div>
 
-      <div className="flex items-baseline justify-between gap-3">
-        <h3 className="text-xl leading-snug">{product.name}</h3>
-        <span className="shrink-0 font-accent text-[22px] text-brand-deep">
-          ¥{product.price.toLocaleString()}
-        </span>
+      <div className="border-t border-line pt-3.5">
+        <div className="flex items-baseline justify-between gap-3">
+          <h3 className="text-[17px] leading-snug transition-colors duration-200 group-hover:text-brand-deep">
+            {product.name}
+          </h3>
+          <span className="shrink-0 font-accent text-[19px] text-brand-text">
+            ¥{product.price.toLocaleString()}
+          </span>
+        </div>
+        <p className="mt-2 max-w-[36ch] text-[13px] leading-relaxed text-kura">{product.description}</p>
       </div>
-      <p className="mt-2.5 text-[13.5px] text-kura">{product.description}</p>
     </article>
   );
 }

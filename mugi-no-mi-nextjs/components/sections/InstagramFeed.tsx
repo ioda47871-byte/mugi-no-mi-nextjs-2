@@ -1,23 +1,36 @@
-import { PhotoFrame } from '@/components/ui/PhotoFrame';
 import { RevealOnScroll } from '@/components/ui/RevealOnScroll';
+import { PhotoFrame } from '@/components/ui/PhotoFrame';
+import { WillowDecoration } from '@/components/ui/WillowDecoration';
 import { InstagramEmbedPost } from './InstagramEmbedPost';
-import { getLatestInstagramPosts } from '@/lib/instagram';
 import { siteContent } from '@/lib/placeholder-content';
+import { getLatestInstagramPosts } from '@/lib/instagram';
 
 /**
  * About = Instagramと連携したページ。
+ * - 実投稿の写真グリッド(取得できた場合のみ。件数はInstagram側のAPIレスポンス次第)
  * - 公式oEmbed(実投稿URLがある場合)またはプレースホルダーカード
- * - 最新投稿一覧(仮データ。本番はInstagram Graph APIに差し替え)
- * - 「焼きたて情報はこちら」バナー
+ * - 「最新情報はこちら」バナー
  * - フォローボタン
+ * 写真グリッドはHomeのInstagramGrid.tsxと同じlib/instagram経由の取得ロジックを
+ * 再利用しており(取得失敗・未設定時は空配列→グリッド非表示という既存の安全な
+ * フォールバック挙動もそのまま)、新しいデータ取得ロジックは追加していない。
  */
-export function InstagramFeed() {
-  const posts = getLatestInstagramPosts(6);
+export async function InstagramFeed() {
   const hasFeaturedPost = Boolean(siteContent.instagramFeaturedPostUrl.value);
+  const posts = await getLatestInstagramPosts();
 
   return (
-    <section className="bg-brand-pale px-8 py-24 max-[640px]:px-5 max-[640px]:py-16">
-      <div className="mx-auto max-w-container">
+    <section className="relative overflow-hidden bg-brand-pale px-8 py-24 max-[640px]:px-5 max-[640px]:py-16">
+      <WillowDecoration
+        variant="branch"
+        className="pointer-events-none absolute -left-8 top-8 hidden h-64 w-28 text-gold/25 min-[1024px]:block"
+      />
+      <WillowDecoration
+        variant="branch"
+        flip
+        className="pointer-events-none absolute -right-8 top-8 hidden h-64 w-28 text-gold/25 min-[1024px]:block"
+      />
+      <div className="relative mx-auto max-w-container">
         <RevealOnScroll>
           <div className="mb-14 text-center">
             <span className="eyebrow justify-center">Instagram</span>
@@ -28,52 +41,45 @@ export function InstagramFeed() {
           </div>
         </RevealOnScroll>
 
-        {/* 焼きたて情報はこちら バナー */}
+        {posts.length > 0 && (
+          <RevealOnScroll>
+            <div className="mb-14 grid grid-cols-4 gap-3 max-[640px]:grid-cols-2">
+              {posts.slice(0, 4).map((post) => (
+                <a key={post.id} href={post.permalink} target="_blank" rel="noreferrer" aria-label={post.caption || 'Instagramの投稿を見る'}>
+                  <PhotoFrame
+                    src={post.imageUrl}
+                    alt={post.caption || 'Instagramの投稿'}
+                    aspect="aspect-square"
+                    sizes="(max-width: 640px) 45vw, 22vw"
+                  />
+                </a>
+              ))}
+            </div>
+          </RevealOnScroll>
+        )}
+
+        {/* 最新情報はこちら バナー */}
         <RevealOnScroll>
           <a
             href={siteContent.instagramUrl.value}
             className="mb-14 flex flex-col items-center justify-between gap-4 rounded-2xl border border-brand/40 bg-white px-8 py-6 text-center transition-colors hover:border-brand max-[640px]:px-6 sm:flex-row sm:text-left"
           >
             <div>
-              <p className="font-display text-lg">焼きたて情報はこちら</p>
+              <p className="font-display text-lg">最新情報はこちら</p>
               <p className="mt-1.5 text-[13.5px] text-kura">今日焼いたパンや、売り切れ状況をリアルタイムでお知らせしています。</p>
             </div>
             <span className="link-gold shrink-0 text-sm">Instagramを見る →</span>
           </a>
         </RevealOnScroll>
 
-        {/* 公式oEmbed または プレースホルダー */}
-        <RevealOnScroll>
-          <div className="mb-14">
-            {hasFeaturedPost ? (
+        {/* 公式oEmbed(特定の投稿URLが確定している場合のみ表示。未確定の間は何も表示しない) */}
+        {hasFeaturedPost && (
+          <RevealOnScroll>
+            <div className="mb-14">
               <InstagramEmbedPost url={siteContent.instagramFeaturedPostUrl.value as string} />
-            ) : (
-              <div className="mx-auto max-w-md rounded-2xl border border-dashed border-kura/30 bg-white/60 px-8 py-12 text-center">
-                <p className="text-sm text-kura">
-                  ここに、実際のInstagram投稿(公式埋め込み)が表示されます。
-                  <br />
-                  投稿URLが確定したら、<code className="text-xs">instagramFeaturedPostUrl</code> に設定してください。
-                </p>
-              </div>
-            )}
-          </div>
-        </RevealOnScroll>
-
-        {/* 最新投稿一覧(仮データ) */}
-        <RevealOnScroll>
-          <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-            {posts.map((post) => (
-              <a
-                key={post.id}
-                href={post.permalink ?? siteContent.instagramUrl.value}
-                aria-label={post.caption}
-                className="group"
-              >
-                <PhotoFrame src={post.image} alt={`${post.caption}(仮写真)`} aspect="aspect-square" />
-              </a>
-            ))}
-          </div>
-        </RevealOnScroll>
+            </div>
+          </RevealOnScroll>
+        )}
 
         {/* フォローボタン */}
         <RevealOnScroll>

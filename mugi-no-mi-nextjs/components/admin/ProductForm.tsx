@@ -123,6 +123,11 @@ export function ProductForm({ action, initialValues, submitLabel }: ProductFormP
         <Toggle name="is_seasonal" label="季節限定にする" defaultChecked={initialValues?.isSeasonal ?? false} />
         <Toggle name="is_sold_out" label="売り切れにする" defaultChecked={initialValues?.isSoldOut ?? false} />
         <Toggle name="is_active" label="公開する" defaultChecked={initialValues?.isActive ?? true} />
+        <Toggle
+          name="is_featured_home"
+          label="ホームのおすすめ商品に表示する(最大6件)"
+          defaultChecked={initialValues?.isFeaturedHome ?? false}
+        />
       </div>
 
       <SubmitButton label={submitLabel} />
