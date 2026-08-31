@@ -1,4 +1,4 @@
-import { redactSecrets, type RakutenCredentials } from './config';
+import { readApiReferer, redactSecrets, type RakutenCredentials } from './config';
 import { normalizeItems, type RakutenItem } from './types';
 
 /**
@@ -164,9 +164,15 @@ export class RakutenClient {
 
       let response: Response;
       try {
+        const referer = readApiReferer();
         response = await this.fetchImpl(url, {
           signal: AbortSignal.timeout(this.timeoutMs),
-          headers: { accept: 'application/json' },
+          headers: {
+            accept: 'application/json',
+            // 楽天のアプリ登録「許可されたWebサイト」に合わせて送信元を名乗る。
+            // 自分が登録・所有しているドメインだけを設定すること。
+            ...(referer ? { referer } : {}),
+          },
         });
       } catch (error) {
         // ネットワーク障害・タイムアウト

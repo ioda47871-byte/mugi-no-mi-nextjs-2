@@ -64,6 +64,9 @@ jobs:
           # リポジトリの Secrets に設定する。ログには出力されない。
           RAKUTEN_APPLICATION_ID: ${{ secrets.RAKUTEN_APPLICATION_ID }}
           RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
+          # 「許可されたWebサイト」の制限に合わせて送信元を名乗る場合に設定する。
+          # 自分が登録し所有しているドメインのみ。未設定なら送らない。
+          RAKUTEN_API_REFERER: ${{ vars.RAKUTEN_API_REFERER }}
           # 書き込みを行う実行だけ true にする
           AUTOMATION_ENABLED: ${{ inputs.apply }}
           CATALOG_DATASET: production

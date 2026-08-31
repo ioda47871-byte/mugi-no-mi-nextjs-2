@@ -40,6 +40,29 @@ export function readRakutenCredentials(): CredentialStatus {
   };
 }
 
+/**
+ * APIリクエストの送信元として名乗るサイト（Referer）。
+ *
+ * 楽天ウェブサービスのアプリ登録には「許可されたWebサイト」欄があり、
+ * 「APIリクエストは、登録されているWebサイトからのみ受け付けます」と案内されています。
+ * 取得ジョブは GitHub Actions などサイト外から動くため、
+ * 登録済みのドメインを Referer として明示できるようにします。
+ *
+ * **必ず、自分が登録し所有しているドメインを設定してください。**
+ * 他人のサイトを名乗ることはできません。未設定なら Referer を送りません。
+ */
+export function readApiReferer(): string | null {
+  const raw = read('RAKUTEN_API_REFERER');
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 /** 自動実行の有効化フラグ。既定は false（計画書 12-3節）。 */
 export function isAutomationEnabled(): boolean {
   return read('AUTOMATION_ENABLED') === 'true';

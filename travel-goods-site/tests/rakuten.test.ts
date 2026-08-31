@@ -367,3 +367,54 @@ describe('取得先の限定', () => {
     }
   });
 });
+
+describe('送信元サイトの申告（Referer）', () => {
+  it('設定されていれば Referer を送る', async () => {
+    process.env.RAKUTEN_API_REFERER = 'https://example.com/';
+    try {
+      let headers: Record<string, string> | undefined;
+      const client = new RakutenClient(CREDS, {
+        fetchImpl: (async (_url: unknown, init: RequestInit) => {
+          headers = init.headers as Record<string, string>;
+          return jsonResponse({ Items: [] });
+        }) as unknown as typeof fetch,
+        minIntervalMs: 0,
+      });
+      await client.search({ keyword: 'a' });
+      expect(headers?.referer).toBe('https://example.com/');
+    } finally {
+      delete process.env.RAKUTEN_API_REFERER;
+    }
+  });
+
+  it('未設定なら Referer を送らない', async () => {
+    let headers: Record<string, string> | undefined;
+    const client = new RakutenClient(CREDS, {
+      fetchImpl: (async (_url: unknown, init: RequestInit) => {
+        headers = init.headers as Record<string, string>;
+        return jsonResponse({ Items: [] });
+      }) as unknown as typeof fetch,
+      minIntervalMs: 0,
+    });
+    await client.search({ keyword: 'a' });
+    expect(headers?.referer).toBeUndefined();
+  });
+
+  it('URLとして不正な値は無視する', async () => {
+    process.env.RAKUTEN_API_REFERER = 'not-a-url';
+    try {
+      let headers: Record<string, string> | undefined;
+      const client = new RakutenClient(CREDS, {
+        fetchImpl: (async (_url: unknown, init: RequestInit) => {
+          headers = init.headers as Record<string, string>;
+          return jsonResponse({ Items: [] });
+        }) as unknown as typeof fetch,
+        minIntervalMs: 0,
+      });
+      await client.search({ keyword: 'a' });
+      expect(headers?.referer).toBeUndefined();
+    } finally {
+      delete process.env.RAKUTEN_API_REFERER;
+    }
+  });
+});
