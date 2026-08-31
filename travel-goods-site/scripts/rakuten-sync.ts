@@ -370,6 +370,34 @@ async function discover(products: Product[], client: RakutenClient): Promise<voi
     };
   });
 
+  // 紹介URLが返っているか（affiliateId の設定確認）とホスト名。
+  // **URL 自体は出さない。** 紹介URLにはアフィリエイトIDが含まれる。
+  const withAffiliate = incoming.filter((entry) => entry.affiliateUrl !== null);
+  const hosts = [
+    ...new Set(
+      withAffiliate.map((entry) => {
+        try {
+          return new URL(entry.affiliateUrl as string).hostname;
+        } catch {
+          return '(URLとして不正)';
+        }
+      }),
+    ),
+  ];
+  console.log(
+    `  紹介URL(affiliateUrl)あり: ${withAffiliate.length} / ${incoming.length} 件` +
+      (hosts.length > 0 ? `（ホスト: ${hosts.join(', ')}）` : ''),
+  );
+
+  const matched = incoming.filter((entry) => entry.matchedProductId !== null);
+  if (matched.length > 0) {
+    console.log(`  既存商品と結び付いた: ${matched.length} 件`);
+    for (const entry of matched.slice(0, 10)) {
+      console.log(`    - ${entry.matchedProductId}（一致度 ${entry.matchConfidence}）`);
+      for (const reason of entry.matchReasons.slice(0, 3)) console.log(`      ${reason}`);
+    }
+  }
+
   const newOnes = incoming.filter((entry) => entry.matchedProductId === null);
   console.log(`  うち既存商品と結び付かない候補: ${newOnes.length} 件`);
   for (const entry of newOnes.slice(0, 10)) {
