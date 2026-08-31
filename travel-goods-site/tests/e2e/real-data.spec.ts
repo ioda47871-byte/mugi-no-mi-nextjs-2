@@ -9,17 +9,17 @@ import { expect, test } from '@playwright/test';
 
 test('取り込んだ実商品が正しい件数だけ公開されている', async ({ page }) => {
   await page.goto('/categories/suitcases/');
-  await expect(page.getByTestId('result-count')).toContainText('全 1 件');
+  await expect(page.getByTestId('result-count')).toContainText('全 9 件');
 
   await page.goto('/categories/backpacks/');
-  await expect(page.getByTestId('result-count')).toContainText('全 1 件');
+  await expect(page.getByTestId('result-count')).toContainText('全 5 件');
 
   await page.goto('/categories/pouches/');
-  await expect(page.getByTestId('result-count')).toContainText('全 1 件');
+  await expect(page.getByTestId('result-count')).toContainText('全 4 件');
 
-  // モバイルバッテリーは安全確認が未完了のため review 状態＝非公開
+  // モバイルバッテリーは公開4件。安全確認が未完了の1件は review 状態＝非公開のまま
   await page.goto('/categories/power-banks/');
-  await expect(page.getByTestId('empty-state')).toBeVisible();
+  await expect(page.getByTestId('result-count')).toContainText('全 4 件');
   await expect(page.locator('article[data-product-id="elecom-de-c63-10000bk"]')).toHaveCount(0);
 });
 

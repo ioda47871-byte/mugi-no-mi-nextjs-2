@@ -70,5 +70,227 @@
       "圧縮で小さくなるのは体積です。荷物の重量は変わりません（ポーチ自身の重量は加わります）。"
     ],
     "image": null
+  },
+  {
+    "id": "ace-forquette-67153-s-dark-navy",
+    "category": "pouches",
+    "brand": "エース（ace. TOKYO LABEL）",
+    "model": "フォルケット 67153",
+    "variant": "Sサイズ 6L / 03 ダークネイビー",
+    "status": "published",
+    "summary": "スーツケースの中で使うインナーポーチ Sサイズ。容量6L、寸法W30×H23×D9cm。素材はリサイクルナイロン210dnリップストップ。",
+    "weightG": {
+      "value": null,
+      "sourceId": null,
+      "checkedAt": null,
+      "note": "商品ページに重量の公表がありません"
+    },
+    "outerSizeMm": {
+      "value": [
+        300,
+        230,
+        90
+      ],
+      "sourceId": "src-ace-forquette-67153",
+      "checkedAt": "2026-08-31"
+    },
+    "sizeBasis": "unspecified",
+    "measurementState": "not-applicable",
+    "capacityL": {
+      "value": 6,
+      "sourceId": "src-ace-forquette-67153",
+      "checkedAt": "2026-08-31"
+    },
+    "alternateMeasurements": [],
+    "specs": {
+      "usageType": {
+        "value": "トラベルポーチ（インナーポーチ）",
+        "sourceId": "src-ace-forquette-67153",
+        "checkedAt": "2026-08-31"
+      },
+      "compartmentCount": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に気室（仕切り）数の記載を確認できていません"
+      },
+      "hangingHook": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に吊り下げ機能の記載を確認できていません"
+      },
+      "compression": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に圧縮機能の記載を確認できていません"
+      },
+      "waterResistantMaterial": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に撥水性能の記載を確認できていません"
+      },
+      "packedThicknessMm": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "収納時の厚みは公表されていません"
+      }
+    },
+    "caveats": [
+      "寸法の測定条件（ファスナーや持ち手を含むか）は公表されていません。",
+      "重量が公表されていないため掲載していません。ポーチ自身の重量は預け入れ・持ち込みの総重量に加算されます。"
+    ],
+    "image": null
+  },
+  {
+    "id": "ace-forquette-67154-m-dark-navy",
+    "category": "pouches",
+    "brand": "エース（ace. TOKYO LABEL）",
+    "model": "フォルケット 67154",
+    "variant": "Mサイズ 10L / 03 ダークネイビー",
+    "status": "published",
+    "summary": "スーツケースの中で使うインナーポーチ Mサイズ。容量10L、寸法W35×H26×D11cm。素材はリサイクルナイロン210dnリップストップ。",
+    "weightG": {
+      "value": null,
+      "sourceId": null,
+      "checkedAt": null,
+      "note": "商品ページに重量の公表がありません"
+    },
+    "outerSizeMm": {
+      "value": [
+        350,
+        260,
+        110
+      ],
+      "sourceId": "src-ace-forquette-67154",
+      "checkedAt": "2026-08-31"
+    },
+    "sizeBasis": "unspecified",
+    "measurementState": "not-applicable",
+    "capacityL": {
+      "value": 10,
+      "sourceId": "src-ace-forquette-67154",
+      "checkedAt": "2026-08-31"
+    },
+    "alternateMeasurements": [],
+    "specs": {
+      "usageType": {
+        "value": "トラベルポーチ（インナーポーチ）",
+        "sourceId": "src-ace-forquette-67154",
+        "checkedAt": "2026-08-31"
+      },
+      "compartmentCount": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に気室（仕切り）数の記載を確認できていません"
+      },
+      "hangingHook": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に吊り下げ機能の記載を確認できていません"
+      },
+      "compression": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に圧縮機能の記載を確認できていません"
+      },
+      "waterResistantMaterial": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に撥水性能の記載を確認できていません"
+      },
+      "packedThicknessMm": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "収納時の厚みは公表されていません"
+      }
+    },
+    "caveats": [
+      "寸法の測定条件（ファスナーや持ち手を含むか）は公表されていません。",
+      "重量が公表されていないため掲載していません。ポーチ自身の重量は預け入れ・持ち込みの総重量に加算されます。"
+    ],
+    "image": null
+  },
+  {
+    "id": "ace-forquette-67155-l-dark-navy",
+    "category": "pouches",
+    "brand": "エース（ace. TOKYO LABEL）",
+    "model": "フォルケット 67155",
+    "variant": "Lサイズ 16L / 03 ダークネイビー",
+    "status": "published",
+    "summary": "スーツケースの中で使うインナーポーチ Lサイズ。容量16L、寸法W40×H29×D14cm。素材はリサイクルナイロン210dnリップストップ。",
+    "weightG": {
+      "value": null,
+      "sourceId": null,
+      "checkedAt": null,
+      "note": "商品ページに重量の公表がありません"
+    },
+    "outerSizeMm": {
+      "value": [
+        400,
+        290,
+        140
+      ],
+      "sourceId": "src-ace-forquette-67155",
+      "checkedAt": "2026-08-31"
+    },
+    "sizeBasis": "unspecified",
+    "measurementState": "not-applicable",
+    "capacityL": {
+      "value": 16,
+      "sourceId": "src-ace-forquette-67155",
+      "checkedAt": "2026-08-31"
+    },
+    "alternateMeasurements": [],
+    "specs": {
+      "usageType": {
+        "value": "トラベルポーチ（インナーポーチ）",
+        "sourceId": "src-ace-forquette-67155",
+        "checkedAt": "2026-08-31"
+      },
+      "compartmentCount": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に気室（仕切り）数の記載を確認できていません"
+      },
+      "hangingHook": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に吊り下げ機能の記載を確認できていません"
+      },
+      "compression": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に圧縮機能の記載を確認できていません"
+      },
+      "waterResistantMaterial": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に撥水性能の記載を確認できていません"
+      },
+      "packedThicknessMm": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "収納時の厚みは公表されていません"
+      }
+    },
+    "caveats": [
+      "寸法の測定条件（ファスナーや持ち手を含むか）は公表されていません。",
+      "重量が公表されていないため掲載していません。ポーチ自身の重量は預け入れ・持ち込みの総重量に加算されます。"
+    ],
+    "image": null
   }
 ]

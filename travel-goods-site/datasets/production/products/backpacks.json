@@ -98,5 +98,376 @@
       "背負い心地や実際に入る衣類量は、メーカー公表仕様からは判断できないため掲載していません。"
     ],
     "image": null
+  },
+  {
+    "id": "ace-spaceopt-17901-18l-black",
+    "category": "backpacks",
+    "brand": "エース（ace. GENE LABEL）",
+    "model": "スペースオプト 17901",
+    "variant": "18/24L / 01 ブラック",
+    "status": "published",
+    "summary": "真空圧縮機能と拡張機能を持つ旅行用リュック。容量18L（拡張時24L）、重量1,500g。15.6インチPC対応、ボトルホルダー・チェストベルト・キャリーオン通しを備える。",
+    "weightG": {
+      "value": 1500,
+      "sourceId": "src-ace-spaceopt-17901",
+      "checkedAt": "2026-08-31"
+    },
+    "outerSizeMm": {
+      "value": [
+        300,
+        460,
+        150
+      ],
+      "sourceId": "src-ace-spaceopt-17901",
+      "checkedAt": "2026-08-31"
+    },
+    "sizeBasis": "unspecified",
+    "measurementState": "normal",
+    "capacityL": {
+      "value": 18,
+      "sourceId": "src-ace-spaceopt-17901",
+      "checkedAt": "2026-08-31"
+    },
+    "alternateMeasurements": [
+      {
+        "label": "拡張時",
+        "state": "expanded",
+        "sizeMm": {
+          "value": [
+            300,
+            460,
+            190
+          ],
+          "sourceId": "src-ace-spaceopt-17901",
+          "checkedAt": "2026-08-31"
+        },
+        "sizeBasis": "unspecified",
+        "capacityL": {
+          "value": 24,
+          "sourceId": "src-ace-spaceopt-17901",
+          "checkedAt": "2026-08-31"
+        }
+      }
+    ],
+    "specs": {
+      "openingType": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に開き方の記載を確認できていません"
+      },
+      "laptopCompartment": {
+        "value": true,
+        "sourceId": "src-ace-spaceopt-17901",
+        "checkedAt": "2026-08-31"
+      },
+      "chestStrap": {
+        "value": true,
+        "sourceId": "src-ace-spaceopt-17901",
+        "checkedAt": "2026-08-31"
+      },
+      "waistStrap": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様にウエストベルトの記載を確認できていません"
+      },
+      "packableIntoSelf": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に本体収納（パッカブル）の記載を確認できていません"
+      },
+      "exteriorBottlePocket": {
+        "value": true,
+        "sourceId": "src-ace-spaceopt-17901",
+        "checkedAt": "2026-08-31"
+      },
+      "luggagePassThrough": {
+        "value": true,
+        "sourceId": "src-ace-spaceopt-17901",
+        "checkedAt": "2026-08-31"
+      }
+    },
+    "caveats": [
+      "寸法にショルダーベルトやハンドルを含むかは公表されていません。機内持ち込みの規定はそれらを含む寸法で判断されることがあります。",
+      "メーカーは容量を18/24Lと併記しています。当サイトは小さい方を通常時、大きい方を拡張時として掲載しています。",
+      "真空圧縮したときの寸法・容量は公表されていません。圧縮で小さくなるのは体積で、荷物の重量は変わりません。"
+    ],
+    "image": null
+  },
+  {
+    "id": "ace-spaceopt-17902-31l-black",
+    "category": "backpacks",
+    "brand": "エース（ace. GENE LABEL）",
+    "model": "スペースオプト 17902",
+    "variant": "31/39L / 01 ブラック",
+    "status": "published",
+    "summary": "真空圧縮機能と拡張機能を持つ旅行用リュック。容量31L（拡張時39L）、重量1,700g。15.6インチPC対応、ボトルホルダー・チェストベルト・キャリーオン通しを備える。",
+    "weightG": {
+      "value": 1700,
+      "sourceId": "src-ace-spaceopt-17902",
+      "checkedAt": "2026-08-31"
+    },
+    "outerSizeMm": {
+      "value": [
+        320,
+        510,
+        200
+      ],
+      "sourceId": "src-ace-spaceopt-17902",
+      "checkedAt": "2026-08-31"
+    },
+    "sizeBasis": "unspecified",
+    "measurementState": "normal",
+    "capacityL": {
+      "value": 31,
+      "sourceId": "src-ace-spaceopt-17902",
+      "checkedAt": "2026-08-31"
+    },
+    "alternateMeasurements": [
+      {
+        "label": "拡張時",
+        "state": "expanded",
+        "sizeMm": {
+          "value": [
+            320,
+            510,
+            250
+          ],
+          "sourceId": "src-ace-spaceopt-17902",
+          "checkedAt": "2026-08-31"
+        },
+        "sizeBasis": "unspecified",
+        "capacityL": {
+          "value": 39,
+          "sourceId": "src-ace-spaceopt-17902",
+          "checkedAt": "2026-08-31"
+        }
+      }
+    ],
+    "specs": {
+      "openingType": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に開き方の記載を確認できていません"
+      },
+      "laptopCompartment": {
+        "value": true,
+        "sourceId": "src-ace-spaceopt-17902",
+        "checkedAt": "2026-08-31"
+      },
+      "chestStrap": {
+        "value": true,
+        "sourceId": "src-ace-spaceopt-17902",
+        "checkedAt": "2026-08-31"
+      },
+      "waistStrap": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様にウエストベルトの記載を確認できていません"
+      },
+      "packableIntoSelf": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に本体収納（パッカブル）の記載を確認できていません"
+      },
+      "exteriorBottlePocket": {
+        "value": true,
+        "sourceId": "src-ace-spaceopt-17902",
+        "checkedAt": "2026-08-31"
+      },
+      "luggagePassThrough": {
+        "value": true,
+        "sourceId": "src-ace-spaceopt-17902",
+        "checkedAt": "2026-08-31"
+      }
+    },
+    "caveats": [
+      "寸法にショルダーベルトやハンドルを含むかは公表されていません。機内持ち込みの規定はそれらを含む寸法で判断されることがあります。",
+      "メーカーは容量を31/39Lと併記しています。当サイトは小さい方を通常時、大きい方を拡張時として掲載しています。",
+      "真空圧縮したときの寸法・容量は公表されていません。圧縮で小さくなるのは体積で、荷物の重量は変わりません。"
+    ],
+    "image": null
+  },
+  {
+    "id": "ace-ragrentis-68324-29l-black",
+    "category": "backpacks",
+    "brand": "エース（ace. GENE LABEL）",
+    "model": "ラグレンティス 68324",
+    "variant": "29/37L / 01 ブラック",
+    "status": "published",
+    "summary": "拡張機能付きの2気室リュック。容量29L（拡張時37L）、重量1,150g。B4ファイルと15.6インチPCの収納に対応。",
+    "weightG": {
+      "value": 1150,
+      "sourceId": "src-ace-ragrentis-68324",
+      "checkedAt": "2026-08-31"
+    },
+    "outerSizeMm": {
+      "value": [
+        310,
+        530,
+        180
+      ],
+      "sourceId": "src-ace-ragrentis-68324",
+      "checkedAt": "2026-08-31"
+    },
+    "sizeBasis": "unspecified",
+    "measurementState": "normal",
+    "capacityL": {
+      "value": 29,
+      "sourceId": "src-ace-ragrentis-68324",
+      "checkedAt": "2026-08-31"
+    },
+    "alternateMeasurements": [
+      {
+        "label": "拡張時",
+        "state": "expanded",
+        "sizeMm": {
+          "value": [
+            310,
+            530,
+            220
+          ],
+          "sourceId": "src-ace-ragrentis-68324",
+          "checkedAt": "2026-08-31"
+        },
+        "sizeBasis": "unspecified",
+        "capacityL": {
+          "value": 37,
+          "sourceId": "src-ace-ragrentis-68324",
+          "checkedAt": "2026-08-31"
+        }
+      }
+    ],
+    "specs": {
+      "openingType": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に開き方の記載を確認できていません"
+      },
+      "laptopCompartment": {
+        "value": true,
+        "sourceId": "src-ace-ragrentis-68324",
+        "checkedAt": "2026-08-31"
+      },
+      "chestStrap": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様にチェストストラップの記載を確認できていません"
+      },
+      "waistStrap": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様にウエストベルトの記載を確認できていません"
+      },
+      "packableIntoSelf": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に本体収納（パッカブル）の記載を確認できていません"
+      },
+      "exteriorBottlePocket": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に外側ボトルポケットの記載を確認できていません"
+      },
+      "luggagePassThrough": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様にキャリーオン通しの記載を確認できていません"
+      }
+    },
+    "caveats": [
+      "寸法にショルダーベルトやハンドルを含むかは公表されていません。機内持ち込みの規定はそれらを含む寸法で判断されることがあります。",
+      "メーカーは容量を29/37Lと併記しています。当サイトは小さい方を通常時、大きい方を拡張時として掲載しています。"
+    ],
+    "image": null
+  },
+  {
+    "id": "ace-ragmaster2-17763-31l-black",
+    "category": "backpacks",
+    "brand": "エース（ace. GENE LABEL）",
+    "model": "ラグマスター2 17763",
+    "variant": "31L / 01 ブラック",
+    "status": "published",
+    "summary": "2気室の旅行・通勤兼用リュック。容量31L、重量930g。B4ファイルと15.6インチPCの収納に対応。素材はナイロン。",
+    "weightG": {
+      "value": 930,
+      "sourceId": "src-ace-ragmaster2-17763",
+      "checkedAt": "2026-08-31"
+    },
+    "outerSizeMm": {
+      "value": [
+        300,
+        500,
+        160
+      ],
+      "sourceId": "src-ace-ragmaster2-17763",
+      "checkedAt": "2026-08-31"
+    },
+    "sizeBasis": "unspecified",
+    "measurementState": "not-applicable",
+    "capacityL": {
+      "value": 31,
+      "sourceId": "src-ace-ragmaster2-17763",
+      "checkedAt": "2026-08-31"
+    },
+    "alternateMeasurements": [],
+    "specs": {
+      "openingType": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に開き方の記載を確認できていません"
+      },
+      "laptopCompartment": {
+        "value": true,
+        "sourceId": "src-ace-ragmaster2-17763",
+        "checkedAt": "2026-08-31"
+      },
+      "chestStrap": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様にチェストストラップの記載を確認できていません"
+      },
+      "waistStrap": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様にウエストベルトの記載を確認できていません"
+      },
+      "packableIntoSelf": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に本体収納（パッカブル）の記載を確認できていません"
+      },
+      "exteriorBottlePocket": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に外側ボトルポケットの記載を確認できていません"
+      },
+      "luggagePassThrough": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様にキャリーオン通しの記載を確認できていません"
+      }
+    },
+    "caveats": [
+      "寸法にショルダーベルトやハンドルを含むかは公表されていません。機内持ち込みの規定はそれらを含む寸法で判断されることがあります。"
+    ],
+    "image": null
   }
 ]
