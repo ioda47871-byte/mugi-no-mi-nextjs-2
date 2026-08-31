@@ -61,10 +61,13 @@ export function readApiReferer(): string | null {
   try {
     const url = new URL(raw);
     if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
-    return url.toString();
   } catch {
     return null;
   }
+  // URL として妥当かだけを見て、**設定された文字列をそのまま送る**。
+  // new URL().toString() は末尾スラッシュを補ってしまい、登録したURLと
+  // 1文字違いになる。楽天側が完全一致で照合している場合に効く。
+  return raw;
 }
 
 /** 自動実行の有効化フラグ。既定は false（計画書 12-3節）。 */

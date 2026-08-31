@@ -21,6 +21,24 @@ import { fact, makeCatalogInput, makeProduct, TEST_TODAY } from './fixtures/cata
 const CREDS = { applicationId: 'test-app-id-000', affiliateId: 'test-affiliate-id-000', accessKey: 'test-access-key-000' };
 afterEach(() => vi.unstubAllEnvs());
 
+describe('送信元(Referer)の扱い', () => {
+  it('設定された文字列をそのまま送る（末尾スラッシュを補わない）', async () => {
+    const { readApiReferer } = await import('@/lib/rakuten/config');
+    vi.stubEnv('RAKUTEN_API_REFERER', 'https://example.com');
+    expect(readApiReferer()).toBe('https://example.com');
+    vi.stubEnv('RAKUTEN_API_REFERER', 'https://example.com/');
+    expect(readApiReferer()).toBe('https://example.com/');
+  });
+
+  it('URLとして不正なら送らない', async () => {
+    const { readApiReferer } = await import('@/lib/rakuten/config');
+    vi.stubEnv('RAKUTEN_API_REFERER', 'example.com');
+    expect(readApiReferer()).toBeNull();
+    vi.stubEnv('RAKUTEN_API_REFERER', 'javascript:alert(1)');
+    expect(readApiReferer()).toBeNull();
+  });
+});
+
 describe('楽天APIの認証設定', () => {
   it('アプリIDと紹介IDだけでは実行できず、空白のアクセスキーも未設定とする', () => {
     vi.stubEnv('RAKUTEN_APPLICATION_ID', CREDS.applicationId);
