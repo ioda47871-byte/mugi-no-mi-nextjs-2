@@ -60,6 +60,28 @@ export class RequestBudgetExceededError extends Error {
 
 const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
+/**
+ * エラー応答から楽天が返した errorMessage だけを取り出す。
+ *
+ * 403 が「キーが違う」のか「登録したアクセス条件で拒否された」のかは、
+ * ステータスだけでは切り分けられない。原因を指す1行だけを拾う。
+ * 本文全体は出さず、長さを切り、資格情報が混じっていれば伏せる。
+ */
+export async function readApiErrorMessage(response: {
+  json: () => Promise<unknown>;
+}): Promise<string | null> {
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    return null;
+  }
+  const errors = (body as { errors?: unknown } | null)?.errors;
+  const message = (errors as { errorMessage?: unknown } | null)?.errorMessage;
+  if (typeof message !== 'string' || message.trim().length === 0) return null;
+  return redactSecrets(message.trim().slice(0, 200));
+}
+
 export class RakutenClient {
   private readonly credentials: RakutenCredentials;
   private readonly minIntervalMs: number;
@@ -201,8 +223,10 @@ export class RakutenClient {
       // 429（レート超過）と 5xx のみ再試行する。400番台の他は設定ミスなので即失敗。
       const retryable = response.status === 429 || response.status >= 500;
       if (!retryable || attempt >= this.maxRetries) {
+        const apiMessage = await readApiErrorMessage(response);
         throw new RakutenApiError(
           `楽天APIがエラーを返しました (HTTP ${response.status})。` +
+            (apiMessage ? ` 楽天からの説明: ${apiMessage}` : '') +
             (response.status === 400
               ? ' パラメータ・アプリID・アクセスキーを確認してください。'
               : response.status === 401 || response.status === 403

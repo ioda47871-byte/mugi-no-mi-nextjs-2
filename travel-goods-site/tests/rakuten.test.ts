@@ -212,6 +212,22 @@ describe('APIクライアント', () => {
     expect(described).not.toContain(CREDS.accessKey);
   });
 
+  it('403 の原因を切り分けるため、楽天が返した説明だけを例外に載せる', async () => {
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse({ errors: { errorCode: 403, errorMessage: 'Invalid Access Key' } }, 403),
+    ) as unknown as typeof fetch;
+    const client = new RakutenClient(CREDS, { fetchImpl, minIntervalMs: 0 });
+    const error = await client.search({ keyword: 'pouch' }).catch((error: Error) => error);
+    expect((error as Error).message).toContain('Invalid Access Key');
+    expect((error as Error).message).not.toContain(CREDS.accessKey);
+  });
+
+  it('説明が無い応答でも例外を投げられる', async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse('not json object', 403)) as unknown as typeof fetch;
+    const client = new RakutenClient(CREDS, { fetchImpl, minIntervalMs: 0 });
+    await expect(client.search({ keyword: 'pouch' })).rejects.toThrow('HTTP 403');
+  });
+
   it.each([401, 403])('認証・アクセス拒否 HTTP %i は再試行しない', async (status) => {
     const fetchImpl = vi.fn(async () => jsonResponse({}, status)) as unknown as typeof fetch;
     const client = new RakutenClient(CREDS, { fetchImpl, minIntervalMs: 0 });
