@@ -1,6 +1,6 @@
 # 実装・内容・収益化・公開の状態
 
-最終更新: 2026-08-31（Vercelにプレビュー公開）
+最終更新: 2026-08-31（外部アクセスの再確認と、保存物からの取り込み経路を追加）
 
 現時点の正確な表現は **「サイト基盤完成、実データ投入を開始した段階」** です。
 計画書の Task 5（約30商品・10記事）、Task 6の一部、Task 8の実リンク・本番確認は**未完了**です。
@@ -59,16 +59,27 @@ HTTPS が遮断されているため、資料の提供を受けて取り込み�
 
 | フィールド | 値 | 意味 |
 |---|---|---|
-| `provenance` | `provided-document` | 別環境で調査された資料からの取り込み |
+| `provenance` | `provided-document` | 第三者がまとめた資料からの取り込み |
 | `checkedAt` | `2026-08-31` | **資料に記載された「公式ページを確認した日」** |
 | `importedFrom.document` | `datasets/production/research-materials/…` | 根拠資料の保管場所 |
 | `importedFrom.importedAt` | `2026-08-31` | **このリポジトリへ取り込んだ作業日** |
 | `automatedFetch` | `unverified` | 自動取得の可否は未確認（資料の提供は許可ではない） |
 | `llmInput` | `unverified` | 原文を外部AIへ渡す権限は未確認 |
 
+`provenance` には3つの値があります。
+
+| 値 | 意味 | `checkedAt` の意味 |
+|---|---|---|
+| `direct-fetch` | この環境から公式ページへ接続して確認 | ページを開いた日 |
+| `archived-primary-source` | 公式ページの**保存物**を読んで取り込み | 保存物が取得された日 |
+| `provided-document` | 第三者がまとめた資料から取り込み | 資料記載の確認日 |
+
+強さは `direct-fetch` ≒ `archived-primary-source` > `provided-document`。
+保存物は一次資料そのものなので、まとめ資料より確かです。
+
 検証で次を強制しています。
 
-- `provided-document` なのに `importedFrom` が無ければエラー
+- `direct-fetch` 以外なのに `importedFrom` が無ければエラー
 - `direct-fetch` なのに `importedFrom` があればエラー（自力確認と偽れない）
 - 取込日が未来ならエラー
 

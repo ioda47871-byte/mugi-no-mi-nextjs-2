@@ -121,18 +121,37 @@ export const VERIFICATION_METHOD_LABELS: Record<VerificationMethod, string> = {
 };
 
 /**
- * 事実の入手経路。
- * - direct-fetch      … この実装環境から当該ページへ接続して確認した
- * - provided-document … 別環境で調査された資料の提供を受けて取り込んだ
+ * 事実の入手経路。何をもってその値を知ったかを、あとから追えるようにする。
  *
- * 提供資料からの取り込みを「自分で接続して確認した」と記録しないために分ける。
+ * - direct-fetch            … この実装環境から当該ページへ接続して確認した
+ * - archived-primary-source … 公式ページの保存物（HTML/PDF等）を読んで取り込んだ。
+ *                             一次資料そのものだが、こちらが回線越しに開いたわけではない
+ * - provided-document       … 第三者が調査してまとめた資料の提供を受けて取り込んだ。
+ *                             一次資料そのものではなく、転記を経ている
+ *
+ * 強さは direct-fetch ≒ archived-primary-source > provided-document。
+ * 取り込み経路を「自分で接続して確認した」と偽れないように分ける。
  */
-export type SourceProvenance = 'direct-fetch' | 'provided-document';
+export const SOURCE_PROVENANCES = [
+  'direct-fetch',
+  'archived-primary-source',
+  'provided-document',
+] as const;
+export type SourceProvenance = (typeof SOURCE_PROVENANCES)[number];
+
+export const SOURCE_PROVENANCE_LABELS: Record<SourceProvenance, string> = {
+  'direct-fetch': '当環境から公式ページへ接続して確認',
+  'archived-primary-source': '公式ページの保存物を読んで取り込み',
+  'provided-document': '第三者がまとめた資料から取り込み',
+};
 
 export type ImportRecord = {
-  /** 提供資料の識別子（ファイル名など）。 */
+  /**
+   * 元になった資料。リポジトリ内のパスを推奨（あとから同じものを開けるように）。
+   * 例: datasets/production/research-materials/2026-09-01-elecom-bma-xxx.pdf
+   */
   document: string;
-  /** 取り込み作業を行った日（資料の確認日とは別）。 */
+  /** 取り込み作業を行った日。資料の checkedAt とは別。 */
   importedAt: string;
 };
 
@@ -140,7 +159,12 @@ export type Source = {
   id: string;
   url: string;
   publisher: string;
-  /** 資料に記載された「公式ページを確認した日」。 */
+  /**
+   * その内容が正しいと確認できた日。経路によって意味が変わる。
+   *   direct-fetch            … ページを開いた日
+   *   archived-primary-source … 保存物が取得された日（保存日）
+   *   provided-document       … 資料に記載された「公式ページを確認した日」
+   */
   checkedAt: string;
   provenance: SourceProvenance;
   /** provenance が provided-document のときだけ値を持つ。 */

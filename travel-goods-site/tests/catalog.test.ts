@@ -209,6 +209,29 @@ describe('validateCatalog: 根拠のないデータを通さない', () => {
     expect(errorCodes(makeCatalogInput({ sources }))).toContain('source.missing-import-record');
   });
 
+  it('保存物からの取り込みにも元資料と取込日を要求する', () => {
+    const sources = [
+      { ...testSources[0]!, provenance: 'archived-primary-source', importedFrom: null },
+      testSources[1]!,
+    ];
+    expect(errorCodes(makeCatalogInput({ sources }))).toContain('source.missing-import-record');
+  });
+
+  it('保存物の出典は元資料のパスと取込日があれば通る', () => {
+    const sources = [
+      {
+        ...testSources[0]!,
+        provenance: 'archived-primary-source',
+        importedFrom: {
+          document: 'datasets/production/research-materials/2026-08-20-maker-spec.pdf',
+          importedAt: '2026-08-20',
+        },
+      },
+      testSources[1]!,
+    ];
+    expect(errorCodes(makeCatalogInput({ sources }))).toHaveLength(0);
+  });
+
   it('自力で接続していない出典を direct-fetch として記録できない', () => {
     const sources = [
       {

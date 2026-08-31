@@ -45,7 +45,30 @@ npm run check:release -- --out out   # 公開前チェック
 }
 ```
 
-**別環境で調査された資料の提供を受けて取り込む場合:**
+**公式ページの保存物（PDF/HTML）から取り込む場合:**
+
+```json
+{
+  "id": "src-メーカー名-製品名",
+  "url": "https://メーカーの仕様ページ",
+  "publisher": "メーカー名",
+  "checkedAt": "2026-09-01",
+  "provenance": "archived-primary-source",
+  "importedFrom": {
+    "document": "datasets/production/research-materials/2026-09-01-xxx.pdf",
+    "importedAt": "2026-09-02"
+  },
+  "locator": "仕様表 / 「サイズ・重量」の欄",
+  "editorialUse": "verified",
+  "automatedFetch": "unverified",
+  "llmInput": "unverified",
+  "usageNote": "公式ページの保存物から取り込み。回線越しに開いてはいない。"
+}
+```
+
+`checkedAt` は**保存物が取得された日**（＝その内容が正しかった日）です。
+
+**第三者がまとめた資料の提供を受けて取り込む場合:**
 
 ```json
 {

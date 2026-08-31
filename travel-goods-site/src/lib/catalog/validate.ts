@@ -267,13 +267,13 @@ export function inspectCatalog(input: CatalogInput, options: ValidateOptions = {
     sourceMap.set(source.id, source);
 
     // 入手経路と取込記録の整合（提供資料からの取り込みを自力確認と記録させない）
-    if (source.provenance === 'provided-document' && source.importedFrom === null) {
+    if (source.provenance !== 'direct-fetch' && source.importedFrom === null) {
       issues.push({
         severity: 'error',
         code: 'source.missing-import-record',
         subject: source.id,
         path: 'importedFrom',
-        message: "provenance: 'provided-document' には提供資料名と取込日(importedFrom)が必要です",
+        message: `provenance: '${source.provenance}' には元資料(document)と取込日(importedAt)が必要です`,
       });
     }
     if (source.provenance === 'direct-fetch' && source.importedFrom !== null) {

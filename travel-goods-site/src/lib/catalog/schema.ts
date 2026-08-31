@@ -4,6 +4,7 @@ import {
   MEASUREMENT_STATES,
   PUBLICATION_STATUSES,
   SIZE_BASES,
+  SOURCE_PROVENANCES,
   VERIFICATION_METHODS,
 } from './types';
 
@@ -206,7 +207,7 @@ export const sourceSchema = z
     url: z.string().url(),
     publisher: z.string().min(1).max(120),
     checkedAt: isoDate,
-    provenance: z.enum(['direct-fetch', 'provided-document']),
+    provenance: z.enum(SOURCE_PROVENANCES),
     importedFrom: z
       .object({
         document: z.string().min(1).max(200),
