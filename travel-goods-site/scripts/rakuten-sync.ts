@@ -20,7 +20,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { readDatasetInput, resolveDatasetDir, resolveDatasetKind } from '../src/lib/catalog/load';
 import { inspectCatalog } from '../src/lib/catalog/validate';
-import { isAutomationEnabled, readRakutenCredentials, redactSecrets } from '../src/lib/rakuten/config';
+import {
+  isAutomationEnabled,
+  readApiReferer,
+  readRakutenCredentials,
+  redactSecrets,
+} from '../src/lib/rakuten/config';
 import { RakutenClient } from '../src/lib/rakuten/client';
 import {
   isHumanVerifiedLink,
@@ -110,6 +115,9 @@ async function main(): Promise<void> {
   console.log(`データセット : ${datasetKind}`);
   console.log(`書き込み     : ${apply ? 'あり' : 'なし（dry-run）'}`);
   console.log(`自動 verified: ${autoVerify ? 'あり（strong一致のみ）' : 'なし'}`);
+  // 楽天の「許可されたWebサイト」の判定に使われる。送ったかどうかが分からないと
+  // 403 の原因を切り分けられないため、値（秘密ではない）をそのまま出す。
+  console.log(`送信元(Referer): ${readApiReferer() ?? '送らない（RAKUTEN_API_REFERER 未設定または不正なURL）'}`);
   console.log('');
 
   if (mode === 'links') {
