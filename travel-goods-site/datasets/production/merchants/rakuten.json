@@ -7,7 +7,161 @@
     "matchedVariant": "Mサイズ / ブラック",
     "verifiedAt": "2026-08-31",
     "status": "verified",
-    "note": "楽天アフィリエイト管理画面で発行された紹介URL（2026-08-31受領）を加工せず登録。同日、運営者がリンク先を開いて商品・サイズ（M）・色（ブラック）の一致を目視確認済み。型番 BMA-TRCS01MBK / JAN 4549550317535。価格・在庫・画像は取り込まない。",
-    "verificationMethod": "visual"
+    "verificationMethod": "visual",
+    "note": "楽天アフィリエイト管理画面で発行された紹介URL（2026-08-31受領）を加工せず登録。同日、運営者がリンク先を開いて商品・サイズ（M）・色（ブラック）の一致を目視確認済み。型番 BMA-TRCS01MBK / JAN 4549550317535。価格・在庫・画像は取り込まない。"
+  },
+  {
+    "productId": "ace-spaceopt-17901-18l-black",
+    "merchant": "rakuten",
+    "externalProductId": "ils-web:10001396",
+    "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00t68oo.53joybb8.g00t68oo.53joz391/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fils-web%2Flac0017901-0010%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fils-web%2Fi%2F10001396%2F&rafcid=wsc_i_is_405c3c6d-b4e4-495c-bff6-588841008bee",
+    "matchedVariant": "18/24L / 01 ブラック",
+    "verifiedAt": null,
+    "status": "unverified",
+    "verificationMethod": null,
+    "note": "楽天APIで自動取得（2026-08-31、一致度 weak）。型番 スペースオプト 17901 が販売ページの文言に含まれる 表示するには色・サイズを目視確認して verified にしてください。"
+  },
+  {
+    "productId": "ace-spaceopt-17902-31l-black",
+    "merchant": "rakuten",
+    "externalProductId": "ils-web:10001397",
+    "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00t68oo.53joybb8.g00t68oo.53joz391/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fils-web%2Flac0017902-0010%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fils-web%2Fi%2F10001397%2F&rafcid=wsc_i_is_405c3c6d-b4e4-495c-bff6-588841008bee",
+    "matchedVariant": "31/39L / 01 ブラック",
+    "verifiedAt": null,
+    "status": "unverified",
+    "verificationMethod": null,
+    "note": "楽天APIで自動取得（2026-08-31、一致度 weak）。型番 スペースオプト 17902 が販売ページの文言に含まれる 表示するには色・サイズを目視確認して verified にしてください。"
+  },
+  {
+    "productId": "ace-ragrentis-68324-29l-black",
+    "merchant": "rakuten",
+    "externalProductId": "arukikata-travel:10007425",
+    "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00t79fo.53joy03b.g00t79fo.53joz3fc/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Farukikata-travel%2F10168324%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Farukikata-travel%2Fi%2F10007425%2F&rafcid=wsc_i_is_405c3c6d-b4e4-495c-bff6-588841008bee",
+    "matchedVariant": "29/37L / 01 ブラック",
+    "verifiedAt": null,
+    "status": "unverified",
+    "verificationMethod": null,
+    "note": "楽天APIで自動取得（2026-08-31、一致度 weak）。型番 ラグレンティス 68324 が販売ページの文言に含まれる 表示するには色・サイズを目視確認して verified にしてください。"
+  },
+  {
+    "productId": "ace-ragmaster2-17763-31l-black",
+    "merchant": "rakuten",
+    "externalProductId": "galleria:10040743",
+    "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00pyapo.53joye34.g00pyapo.53joz533/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fgalleria%2Facg00563%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fgalleria%2Fi%2F10040743%2F&rafcid=wsc_i_is_405c3c6d-b4e4-495c-bff6-588841008bee",
+    "matchedVariant": "31L / 01 ブラック",
+    "verifiedAt": null,
+    "status": "unverified",
+    "verificationMethod": null,
+    "note": "楽天APIで自動取得（2026-08-31、一致度 weak）。型番 ラグマスター2 17763 が販売ページの文言に含まれる 表示するには色・サイズを目視確認して verified にしてください。"
+  },
+  {
+    "productId": "ace-forquette-67153-s-dark-navy",
+    "merchant": "rakuten",
+    "externalProductId": "galleria:10044212",
+    "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00pyapo.53joye34.g00pyapo.53joz533/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fgalleria%2Fatk00265%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fgalleria%2Fi%2F10044212%2F&rafcid=wsc_i_is_405c3c6d-b4e4-495c-bff6-588841008bee",
+    "matchedVariant": "Sサイズ 6L / 03 ダークネイビー",
+    "verifiedAt": null,
+    "status": "unverified",
+    "verificationMethod": null,
+    "note": "楽天APIで自動取得（2026-08-31、一致度 weak）。型番 フォルケット 67153 が販売ページの文言に含まれる 表示するには色・サイズを目視確認して verified にしてください。"
+  },
+  {
+    "productId": "ace-forquette-67154-m-dark-navy",
+    "merchant": "rakuten",
+    "externalProductId": "galleria-annex:10047422",
+    "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00tww9o.53joy1db.g00tww9o.53joz500/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fgalleria-annex%2Fatk00266%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fgalleria-annex%2Fi%2F10047422%2F&rafcid=wsc_i_is_405c3c6d-b4e4-495c-bff6-588841008bee",
+    "matchedVariant": "Mサイズ 10L / 03 ダークネイビー",
+    "verifiedAt": null,
+    "status": "unverified",
+    "verificationMethod": null,
+    "note": "楽天APIで自動取得（2026-08-31、一致度 weak）。型番 フォルケット 67154 が販売ページの文言に含まれる 表示するには色・サイズを目視確認して verified にしてください。"
+  },
+  {
+    "productId": "ace-forquette-67155-l-dark-navy",
+    "merchant": "rakuten",
+    "externalProductId": "galleria:10044216",
+    "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00pyapo.53joye34.g00pyapo.53joz533/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fgalleria%2Fatk00267%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fgalleria%2Fi%2F10044216%2F&rafcid=wsc_i_is_405c3c6d-b4e4-495c-bff6-588841008bee",
+    "matchedVariant": "Lサイズ 16L / 03 ダークネイビー",
+    "verifiedAt": null,
+    "status": "unverified",
+    "verificationMethod": null,
+    "note": "楽天APIで自動取得（2026-08-31、一致度 weak）。型番 フォルケット 67155 が販売ページの文言に含まれる 表示するには色・サイズを目視確認して verified にしてください。"
+  },
+  {
+    "productId": "anker-a110d-10000-black",
+    "merchant": "rakuten",
+    "externalProductId": "nafco:10376009",
+    "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00swq7o.53joy520.g00swq7o.53joz70e/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fnafco%2Fn24156301%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fnafco%2Fi%2F10376009%2F&rafcid=wsc_i_is_405c3c6d-b4e4-495c-bff6-588841008bee",
+    "matchedVariant": "10000mAh / ブラック",
+    "verifiedAt": null,
+    "status": "unverified",
+    "verificationMethod": null,
+    "note": "楽天APIで自動取得（2026-08-31、一致度 weak）。型番 A110DN11 が販売ページの文言に含まれる 表示するには色・サイズを目視確認して verified にしてください。"
+  },
+  {
+    "productId": "ace-cresta2-06936-35l-black-hairline",
+    "merchant": "rakuten",
+    "externalProductId": "galleria:10031233",
+    "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00pyapo.53joye34.g00pyapo.53joz533/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fgalleria%2Face00028%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fgalleria%2Fi%2F10031233%2F&rafcid=wsc_i_is_405c3c6d-b4e4-495c-bff6-588841008bee",
+    "matchedVariant": "35L / 01 ブラックヘアライン",
+    "verifiedAt": null,
+    "status": "unverified",
+    "verificationMethod": null,
+    "note": "楽天APIで自動取得（2026-08-31、一致度 weak）。型番 クレスタ2 06936 が販売ページの文言に含まれる 表示するには色・サイズを目視確認して verified にしてください。"
+  },
+  {
+    "productId": "ace-crestas-09161-35l-gunmetallic",
+    "merchant": "rakuten",
+    "externalProductId": "galleria:10043011",
+    "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00pyapo.53joye34.g00pyapo.53joz533/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fgalleria%2Face00092%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fgalleria%2Fi%2F10043011%2F&rafcid=wsc_i_is_405c3c6d-b4e4-495c-bff6-588841008bee",
+    "matchedVariant": "35/42L / 02 ガンメタリック",
+    "verifiedAt": null,
+    "status": "unverified",
+    "verificationMethod": null,
+    "note": "楽天APIで自動取得（2026-08-31、一致度 weak）。型番 クレスタS 09161 が販売ページの文言に含まれる 表示するには色・サイズを目視確認して verified にしてください。"
+  },
+  {
+    "productId": "ace-crestas-09162-60l-gunmetallic",
+    "merchant": "rakuten",
+    "externalProductId": "galleria-annex:10046240",
+    "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00tww9o.53joy1db.g00tww9o.53joz500/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fgalleria-annex%2Face00093%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fgalleria-annex%2Fi%2F10046240%2F&rafcid=wsc_i_is_405c3c6d-b4e4-495c-bff6-588841008bee",
+    "matchedVariant": "60/73L / 02 ガンメタリック",
+    "verifiedAt": null,
+    "status": "unverified",
+    "verificationMethod": null,
+    "note": "楽天APIで自動取得（2026-08-31、一致度 weak）。型番 クレスタS 09162 が販売ページの文言に含まれる 表示するには色・サイズを目視確認して verified にしてください。"
+  },
+  {
+    "productId": "proteca-solie3-12871-24l-black",
+    "merchant": "rakuten",
+    "externalProductId": "galleria-annex:10012892",
+    "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00tww9o.53joy1db.g00tww9o.53joz500/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fgalleria-annex%2Fprt00147%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fgalleria-annex%2Fi%2F10012892%2F&rafcid=wsc_i_is_405c3c6d-b4e4-495c-bff6-588841008bee",
+    "matchedVariant": "24L / 01 ブラック",
+    "verifiedAt": null,
+    "status": "unverified",
+    "verificationMethod": null,
+    "note": "楽天APIで自動取得（2026-08-31、一致度 weak）。型番 ソリエ3 12871 が販売ページの文言に含まれる 表示するには色・サイズを目視確認して verified にしてください。"
+  },
+  {
+    "productId": "worldtraveler-plymouth-06703-46l-gunmetallic",
+    "merchant": "rakuten",
+    "externalProductId": "galleria:10044151",
+    "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00pyapo.53joye34.g00pyapo.53joz533/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fgalleria%2Fwtr00139%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fgalleria%2Fi%2F10044151%2F&rafcid=wsc_i_is_405c3c6d-b4e4-495c-bff6-588841008bee",
+    "matchedVariant": "46/56L / 02 ガンメタリック",
+    "verifiedAt": null,
+    "status": "unverified",
+    "verificationMethod": null,
+    "note": "楽天APIで自動取得（2026-08-31、一致度 weak）。型番 プリマス 06703 が販売ページの文言に含まれる 表示するには色・サイズを目視確認して verified にしてください。"
+  },
+  {
+    "productId": "worldtraveler-bottombay-06951-34l-turquoise",
+    "merchant": "rakuten",
+    "externalProductId": "galleria-annex:10034872",
+    "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00tww9o.53joy1db.g00tww9o.53joz500/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fgalleria-annex%2Fwtr00063%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fgalleria-annex%2Fi%2F10034872%2F&rafcid=wsc_i_is_405c3c6d-b4e4-495c-bff6-588841008bee",
+    "matchedVariant": "34L / 12 ターコイズカーボン",
+    "verifiedAt": null,
+    "status": "unverified",
+    "verificationMethod": null,
+    "note": "楽天APIで自動取得（2026-08-31、一致度 weak）。型番 ボトムベイ 06951 が販売ページの文言に含まれる 表示するには色・サイズを目視確認して verified にしてください。"
   }
 ]
