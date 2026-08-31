@@ -147,3 +147,4 @@ docs/             状態・公開手順・運用手順・調査ログ
 | `docs/research-log.md` | 実施できた／できなかった調査の記録 |
 | `docs/rakuten-automation.md` | 楽天からの自動取得（何が自動で、どこから人が確認するか） |
 | `docs/unattended-operation.md` | 無人運用はどこまでできるか（維持は可能、成長は不可） |
+| `docs/vercel-setup.md` | Vercel プロジェクトの分離手順と設定値 |
