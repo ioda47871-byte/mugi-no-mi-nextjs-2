@@ -24,6 +24,10 @@ on:
         description: 'strong 一致を自動で表示対象にする（apply が必要）'
         type: boolean
         default: false
+      max_requests:
+        description: 'APIリクエスト数の上限（商品が増えたら上げる。既定30）'
+        type: string
+        default: '30'
   # 定期実行を使う場合はコメントを外す。初期の上限は1日1回（計画書 12-3節）。
   # schedule:
   #   - cron: '0 21 * * *'   # UTC 21:00 = JST 06:00
@@ -73,6 +77,7 @@ jobs:
         run: |
           npm run rakuten:sync -- \
             --mode "${{ inputs.mode }}" \
+            --max-requests "${{ inputs.max_requests }}" \
             ${{ inputs.keyword && format('--keyword "{0}"', inputs.keyword) || '' }} \
             ${{ inputs.apply && '--apply' || '' }} \
             ${{ inputs.auto_verify && '--auto-verify' || '' }}

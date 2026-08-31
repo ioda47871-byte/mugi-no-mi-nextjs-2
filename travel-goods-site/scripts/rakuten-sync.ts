@@ -22,7 +22,12 @@ import { readDatasetInput, resolveDatasetDir, resolveDatasetKind } from '../src/
 import { inspectCatalog } from '../src/lib/catalog/validate';
 import { isAutomationEnabled, readRakutenCredentials, redactSecrets } from '../src/lib/rakuten/config';
 import { RakutenClient } from '../src/lib/rakuten/client';
-import { matchProduct, pickBestMatch, searchKeywordsFor } from '../src/lib/rakuten/match';
+import {
+  isHumanVerifiedLink,
+  matchProduct,
+  pickBestMatch,
+  searchKeywordsFor,
+} from '../src/lib/rakuten/match';
 import {
   mergeCandidates,
   pruneCandidates,
@@ -125,13 +130,27 @@ async function syncLinks(
   client: RakutenClient,
 ): Promise<void> {
   // 対象は「公開または確認中」で、JANか十分な長さの型番を持つ商品。
-  const targets = products.filter(
+  const existingByProduct = new Map(
+    existingLinks.filter((link) => link.merchant === 'rakuten').map((link) => [link.productId, link]),
+  );
+  const candidates = products.filter(
     (product) =>
       (product.status === 'published' || product.status === 'review') &&
       searchKeywordsFor(product).length > 0,
   );
+  // 目視確認済みのリンクは自動取得で置き換えない（根拠の強い方を残す）。
+  const protectedProducts = candidates.filter((product) =>
+    isHumanVerifiedLink(existingByProduct.get(product.id)),
+  );
+  const targets = candidates.filter((product) => !isHumanVerifiedLink(existingByProduct.get(product.id)));
 
   console.log(`対象商品: ${targets.length} 件`);
+  if (protectedProducts.length > 0) {
+    console.log(`目視確認済みのため対象外: ${protectedProducts.length} 件`);
+    for (const product of protectedProducts) {
+      console.log(`  ${product.id}: 既存リンクが verified / visual のため触りません`);
+    }
+  }
   const updates: MerchantLink[] = [];
   const skipped: string[] = [];
 

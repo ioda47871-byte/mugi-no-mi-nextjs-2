@@ -185,23 +185,90 @@ CATALOG_DATASET=production AUTOMATION_ENABLED=true npm run rakuten:sync -- \
 
 ---
 
-## 7. 初回に必ず確認すること
+## 7. 資格情報が届く前に済ませた確認（2026-08-31）
 
-**実レスポンスとの突き合わせはまだできていません。**
-（2026-08-31 の点検で、楽天APIのエンドポイント自体には到達できることを確認しました。
-アプリIDが無いため 401 が返る状態で、実データの形式は未確認のままです。）
-初回の実行時に、次を確認してください。
+アプリIDが無い状態でも確認できることは、先に済ませてあります。
 
-- [ ] `Items` の形式（`[{Item:{…}}]` か `[{…}]` か）— どちらでも読めるようにしてありますが、
-      0件しか返らない場合はレスポンス形式を確認してください。
-- [ ] `affiliateUrl` が実際に返っているか（affiliateId の設定漏れだと返りません）。
+### 7-1. 公式ドキュメントとの突き合わせ
+
+`webservice.rakuten.co.jp` の商品検索API（`IchibaItem/Search/20220601`）の
+ドキュメントを取得して、実装の前提を確認しました。
+
+| 確認したこと | 結果 |
+|---|---|
+| `affiliateUrl` が返る条件 | **affiliateId を入力パラメータに含めたときだけ**返ると明記。実装と一致 |
+| `itemUrl` の扱い | affiliateId を含めると `itemUrl` も `affiliateUrl` と同じ値になる（2015/7/1〜）。**`itemUrl` を「紹介URLでないURL」として扱ってはいけません** |
+| レスポンスの形 | ドキュメントの例は小文字（`items[0].item.itemName`）。一方、実際の商品検索APIは大文字（`Items` / `Item`）で返ります |
+
+3点目は**0件しか返らない**という形で表面化します。どちらの表記でも読めるように
+パーサーを直し、単体テストを追加しました（`tests/rakuten.test.ts`）。
+
+### 7-2. ローカルのモックで通し確認
+
+`RAKUTEN_API_ENDPOINT_OVERRIDE`（ループバックのみ許可）を使い、
+楽天APIの応答を模したサーバーに対してジョブを最後まで通しました。
+
+```bash
+npm run rakuten:mock          # 別のターミナルで起動（127.0.0.1:8791）
+# MOCK_FORMAT=lower を付けると小文字形式の応答を返します
+
+mkdir -p .preview/rehearsal && cp -r datasets/production/* .preview/rehearsal/
+RAKUTEN_APPLICATION_ID=dummy RAKUTEN_AFFILIATE_ID=dummy \
+RAKUTEN_API_ENDPOINT_OVERRIDE=http://127.0.0.1:8791/ \
+CATALOG_DATASET=production CATALOG_DATASET_DIR=.preview/rehearsal \
+  npm run rakuten:sync -- --mode links
+```
+
+本番のデータセットを触らずに済むよう、**コピーに対して実行してください**
+（`CATALOG_DATASET_DIR`）。確認できたことは次のとおりです。
+
+| 場面 | 結果 |
+|---|---|
+| 型番とJANの両方が一致 | `strong`。`--auto-verify` を付けたときだけ `verified` になる |
+| 型番だけ一致（JAN未登録） | `weak`。`unverified` で保存され、画面には出ない |
+| `affiliateUrl` が無い応答 | 採用しない（リンクを作らない） |
+| 小文字形式（`items` / `item`）の応答 | 7-1 の修正後は正しく読める |
+| `--mode audit` | 販売継続を確認できた／できなかったを報告する |
+| `--mode discover` | 既存商品と結び付かない候補だけを候補ファイルに残す |
+
+### 7-3. 見つけて直した問題：目視確認済みリンクの上書き
+
+通し確認の途中で、**`--apply --auto-verify` が、運営者が目視確認した既存リンクを
+自動取得の結果で上書きしていました。** 販売ページが別の店舗のURLに黙って差し替わり、
+根拠も `visual` から `identifier-match` に下がります。
+
+`verified` かつ `verificationMethod: visual` のリンクを持つ商品は、自動取得の
+対象から外すように直しました。ジョブの出力にも「目視確認済みのため対象外」として
+表示されます。
+
+### 7-4. 初回の実行で期待できること
+
+**いま登録している23商品のうち、JANを持つのはエレコムの3商品だけです。**
+`strong` 一致には型番とJANの両方が必要なので、**残りの商品は `weak` 止まりで、
+`--auto-verify` を付けても表示対象にはなりません。**
+
+つまり自動取得だけでは購入ボタンは増えません。実際の流れはこうなります。
+
+1. ジョブが `unverified` のリンク（紹介URL付き）をまとめて作る
+2. プルリクエストで内容を確認する
+3. 運営者がリンク先を開き、色・サイズの一致を確認する
+4. `npm run link:set --verify --visual-check` で表示対象にする
+
+**3番目は人の作業です。** 探す手間は自動化できますが、確認は自動化しません。
+
+### 7-5. 実レスポンスで確認が残っていること
+
 - [ ] 返ってきた `affiliateUrl` のホストが `hb.afl.rakuten.co.jp` か `a.r10.to` か。
       **違うホストなら `src/lib/affiliate/rakuten.ts` の許可リストに追記が必要です**
       （現状は追記するまでリンクが拒否されます）。
 - [ ] JANで検索して該当商品が出るか。出ない場合は型番での検索に切り替わります。
-- [ ] APIの利用規約・レート制限の現行値（実装時点の想定と変わっている可能性があります）。
-- [ ] 「許可されたWebサイト」の制限が、サーバー側（GitHub Actions）からのリクエストに
-      どう適用されるか。拒否される場合は `RAKUTEN_API_REFERER` を設定してください。
+- [ ] 型番だけの商品（エース各シリーズ）で、意図した商品ページが返るか。
+      「クレスタS 09161」のような検索語は、関係のない商品を拾う可能性があります。
+- [ ] APIの利用規約・レート制限の現行値。
+- [ ] 「許可されたWebサイト」の制限が、GitHub Actions からのリクエストにどう適用されるか。
+      拒否される場合は `RAKUTEN_API_REFERER` を設定してください。
+- [ ] リクエスト数の上限。商品23件で **24リクエスト**を使いました（既定の上限は30）。
+      商品を増やすときは、ワークフローの `max_requests` を上げてください。
 
 ---
 

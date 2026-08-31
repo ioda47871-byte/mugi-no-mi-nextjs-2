@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import { RakutenClient, RakutenApiError, RequestBudgetExceededError } from '@/lib/rakuten/client';
-import { matchProduct, pickBestMatch, normalizeForMatch, searchKeywordsFor } from '@/lib/rakuten/match';
+import {
+  isHumanVerifiedLink,
+  matchProduct,
+  pickBestMatch,
+  normalizeForMatch,
+  searchKeywordsFor,
+} from '@/lib/rakuten/match';
 import { normalizeItems } from '@/lib/rakuten/types';
 import { mergeCandidates, pruneCandidates, type Candidate } from '@/lib/rakuten/candidates';
 import { redactSecrets } from '@/lib/rakuten/config';
@@ -53,6 +59,14 @@ describe('レスポンスの正規化', () => {
 
   it('Items:[{…}] 形式も読める', () => {
     expect(normalizeItems({ Items: [item()] })).toHaveLength(1);
+  });
+
+  it('小文字の items:[{item:{…}}] 形式も読める（公式ドキュメントの表記）', () => {
+    expect(normalizeItems({ items: [{ item: item() }] })).toHaveLength(1);
+  });
+
+  it('小文字の items:[{…}] 形式も読める', () => {
+    expect(normalizeItems({ items: [item()] })).toHaveLength(1);
   });
 
   it('想定外の形なら空配列を返す（例外で止めない）', () => {
@@ -418,5 +432,34 @@ describe('送信元サイトの申告（Referer）', () => {
     } finally {
       delete process.env.RAKUTEN_API_REFERER;
     }
+  });
+});
+
+describe('目視確認済みリンクの保護', () => {
+  const base = {
+    productId: 'p-1',
+    merchant: 'rakuten' as const,
+    externalProductId: 'shop:item-1',
+    affiliateUrl: AFFILIATE_URL,
+    matchedVariant: 'Mサイズ / ブラック',
+    verifiedAt: '2026-08-31',
+  };
+
+  it('verified かつ visual なら自動取得の対象外にする', () => {
+    expect(
+      isHumanVerifiedLink({ ...base, status: 'verified', verificationMethod: 'visual' }),
+    ).toBe(true);
+  });
+
+  it('型番一致だけで verified になったリンクは上書きしてよい', () => {
+    expect(
+      isHumanVerifiedLink({ ...base, status: 'verified', verificationMethod: 'identifier-match' }),
+    ).toBe(false);
+  });
+
+  it('unverified や未登録は対象外にしない', () => {
+    expect(isHumanVerifiedLink({ ...base, status: 'unverified', verificationMethod: null })).toBe(false);
+    expect(isHumanVerifiedLink(undefined)).toBe(false);
+    expect(isHumanVerifiedLink(null)).toBe(false);
   });
 });
