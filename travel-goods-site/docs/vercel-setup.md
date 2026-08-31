@@ -11,17 +11,13 @@ Vercel の操作は運営者が行ってください。Claude は Vercel にア�
 
 ---
 
-## 0. 先に決めること：本番ブランチをどうするか
+## 0. 本番ブランチ：`main` のままで進められます
 
-**`main` にはまだ `travel-goods-site/` がありません。** そのまま Root Directory を
-指定すると、本番ビルドが「ディレクトリが無い」で失敗します。
+`travel-goods-site/` は **`main` にマージ済み**です（確認日: 2026-08-31）。
+Vercel の Production Branch は既定の `main` のままで構いません。
+特別な設定は要りません。
 
-| 方法 | 内容 | 向いている場面 |
-|---|---|---|
-| **A. 先に main へマージする** | 作業ブランチを main に入れてから作る | そのまま進めるなら推奨 |
-| **B. 本番ブランチを作業ブランチにする** | Vercel の Production Branch に `claude/phase-1-implementation-preview-82nryt` を指定 | main をまだ触りたくない場合 |
-
-A を選んでも**パン屋には影響しません**。`mugi-no-mi-nextjs/vercel.json` の判定は
+パン屋側にも影響しません。`mugi-no-mi-nextjs/vercel.json` の判定は
 「本番（main）は必ずビルド」なので、これまでどおり動きます。
 
 ---
