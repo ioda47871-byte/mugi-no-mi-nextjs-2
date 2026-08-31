@@ -57,7 +57,9 @@ APIキー・紹介ID・データベースは不要です。未設定の機能は
 | `npm test` | 単体テスト（Vitest） |
 | `npm run test:e2e` | E2E（デモデータ + CTA表示確認 / desktop 1440px・mobile 360px） |
 | `npm run test:e2e:production` | E2E（本番データ：実商品の寸法条件・件数） |
+| `npm run test:e2e:linkcheck` | 購入導線の通し確認（表示・遷移先・クリック計測。本番データは変更しない） |
 | `npm run preview:cta` | 購入ボタン4状態の確認ページを `.preview/cta/` に生成 |
+| `npm run link:set -- ...` | 発行済み紹介URL／照合済みASINを登録・有効化（ホスト検証つき） |
 | `npm run validate:content` | 商品・出典・販売先・記事の検証 |
 | `npm run validate:content:all` | production と demo の両方を検証 |
 | `npm run create:draft -- ...` | 記事の下書きを生成（必ず `status: draft`） |

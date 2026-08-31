@@ -17,6 +17,26 @@ import type { Catalog, DatasetKind } from './types';
 
 export const DATASET_ROOT = path.resolve(process.cwd(), 'datasets');
 
+/**
+ * 検証用にデータセットの読み込み元を差し替える（CATALOG_DATASET_DIR）。
+ *
+ * 用途: 未発行の紹介URLを待たずに、購入導線の表示・遷移先・計測を確認するための
+ *       一時的なデータ一式を、リポジトリのデータセットを汚さずに読ませる。
+ *
+ * 安全のための制約: SITE_MODE=production では使用できない。
+ * 本番の配信物を、その場限りのディレクトリから作れないようにするため。
+ */
+export function resolveDatasetDir(kind: DatasetKind): string {
+  const override = process.env.CATALOG_DATASET_DIR?.trim();
+  if (!override) return path.join(DATASET_ROOT, kind);
+  if (SITE_MODE === 'production') {
+    throw new Error(
+      'SITE_MODE=production では CATALOG_DATASET_DIR を使用できません。本番は datasets/production のみを読み込みます。',
+    );
+  }
+  return path.resolve(process.cwd(), override);
+}
+
 export function resolveDatasetKind(): DatasetKind {
   const requested = process.env.CATALOG_DATASET?.trim();
   if (requested === 'production' || requested === 'demo') {
@@ -78,7 +98,7 @@ function readArticles(dir: string): unknown[] {
 }
 
 export function readDatasetInput(kind: DatasetKind): CatalogInput {
-  const root = path.join(DATASET_ROOT, kind);
+  const root = resolveDatasetDir(kind);
   if (!fs.existsSync(root)) {
     throw new Error(`データセットが見つかりません: ${root}`);
   }

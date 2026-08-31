@@ -26,6 +26,15 @@ const argv = process.argv.slice(2);
 const outIndex = argv.indexOf('--out');
 const outDir = outIndex >= 0 ? (argv[outIndex + 1] ?? 'out') : null;
 
+// --- 0. 一時的な読み込み元の差し替えがないこと -------------------------
+add(
+  '読み込み元の差し替えなし',
+  !process.env.CATALOG_DATASET_DIR?.trim(),
+  process.env.CATALOG_DATASET_DIR?.trim()
+    ? `CATALOG_DATASET_DIR=${process.env.CATALOG_DATASET_DIR} が設定されています。検証用の一時データから本番を作らないでください`
+    : '設定なし（datasets/ 配下のみを読み込み）',
+);
+
 // --- 1. 公開モードとデータセット -------------------------------------
 add(
   '公開モード',

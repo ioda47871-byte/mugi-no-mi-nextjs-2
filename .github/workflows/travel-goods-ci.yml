@@ -61,8 +61,13 @@ jobs:
       - name: E2E テスト（本番データ）
         run: npm run test:e2e:production
 
+      - name: E2E テスト（購入導線の通し確認：表示・遷移先・クリック計測）
+        run: npm run test:e2e:linkcheck
+
       - name: 本番データでの公開前チェック（配信物に架空データが無いこと）
-        run: CATALOG_DATASET=production npm run check:release -- --out out || true
+        run: |
+          CATALOG_DATASET=production npm run build:only
+          CATALOG_DATASET=production npm run check:release -- --out out || true
 
       - uses: actions/upload-artifact@v4
         if: failure()

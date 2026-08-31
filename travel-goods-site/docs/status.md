@@ -1,6 +1,6 @@
 # 実装・内容・収益化・公開の状態
 
-最終更新: 2026-08-31（実データ投入・画面仕上げ回）
+最終更新: 2026-08-31（購入導線の通し確認回）
 
 現時点の正確な表現は **「サイト基盤完成、実データ投入を開始した段階」** です。
 計画書の Task 5（約30商品・10記事）、Task 6の一部、Task 8の実リンク・本番確認は**未完了**です。
@@ -105,7 +105,39 @@ HTTPS が遮断されているため、資料の提供を受けて取り込み�
 | 項目 | 状態 |
 |---|---|
 | 4状態の画面確認（両方／楽天のみ／Amazonのみ／どちらもなし） | **完了**（テスト専用データ・外部通信遮断） |
-| 実際の紹介URLでの遷移確認 | **未実施**（有効な紹介URLが未提供のため） |
+| カテゴリ画面・記事画面でのボタン表示 | **完了**（テスト専用URLでの通し確認） |
+| href が登録した紹介URLと完全一致すること | **完了**（クエリ追加・中継なしを確認） |
+| クリック計測の送信内容 | **完了**（`affiliate_click` の中身を確認） |
+| 計測失敗時にリンクが機能すること | **完了** |
+| **実際の紹介URLでの遷移確認** | **未実施**（有効な紹介URLが未提供のため） |
+| **リンク先の商品・サイズ・色の照合** | **未実施**（URL未提供、かつ外部接続不可） |
+
+### 通し確認のやり方（`npm run test:e2e:linkcheck`）
+
+1. `datasets/production` を `.preview/linkcheck-dataset` へ複製する。
+2. 複製側のポーチの楽天リンクだけを、**テスト専用の架空URL**で `verified` にする。
+3. `CATALOG_DATASET_DIR` でその複製を読ませてビルドし、e2e を実行する。
+
+**本番データセットは変更していません**（`status: "unverified"` / `affiliateUrl: null` のまま）。
+`.preview/` は git 管理外です。`SITE_MODE=production` では `CATALOG_DATASET_DIR` を
+使用できず（ビルド時に例外）、`check:release` も設定されていれば失敗します。
+
+### 確認できた内容
+
+| 確認項目 | 結果 |
+|---|---|
+| カテゴリ画面のボタン | 楽天ボタンが1つ。紹介ID未設定のAmazonボタンは出ない |
+| 記事画面のボタン | 同じ商品カードに同じボタンが1つ |
+| 遷移先 | 登録した紹介URLと**完全一致**。クエリ文字列の追加なし、中継ページなし、HTTPS、許可ホストのみ |
+| リンク属性 | `rel="sponsored noopener noreferrer"` / `target="_blank"` / 新規タブである旨の読み上げ用テキスト |
+| 広告表示 | ページ上部の広告表示と、ボタン直下の「広告リンクです」 |
+| クリック計測（カテゴリから） | `{article_slug:"", category_id:"pouches", product_id:"elecom-bma-trcs01mbk-m-black", merchant:"rakuten", placement:"category-card"}` |
+| クリック計測（記事から） | `{article_slug:"pouch-size-weight-compartments", category_id:"", product_id:"…", merchant:"rakuten", placement:"article-card"}` |
+| 送信内容の安全性 | URL・クエリ文字列・メールアドレスを含まない。キーは識別子5つのみ |
+| 計測失敗時 | `gtag` が例外を投げてもクリックは通常どおり進む（遷移を妨げない） |
+
+計測は外部通信を遮断した状態で、ページ自身の `gtag` シムが `dataLayer` に積んだ内容を
+読んで確認しました。**Google へは何も送信していません。**
 
 `npm run preview:cta` が `.preview/cta/index.html` を生成します。
 このページは **本番の静的出力（`out/`）には含まれません**。使用している ASIN・紹介URL・
@@ -114,6 +146,17 @@ HTTPS が遮断されているため、資料の提供を受けて取り込み�
 `tests/e2e/cta-preview.spec.ts` が、`file://` 以外の通信をすべて遮断したうえで、
 ボタン数・rel属性・target・ホスト・クリック領域の高さ・フォーカス・スマートフォンでの
 縦積みを検証します（12件成功）。
+
+### 実導線の確認に残っていること
+
+**リンク先の商品・サイズ・色の照合はできていません。** 理由は2つです。
+
+1. 楽天の紹介URLがまだ届いていません（メッセージに含まれていませんでした）。
+2. この実装環境からは `hb.afl.rakuten.co.jp` / `item.rakuten.co.jp` / `a.r10.to` を含む
+   外部ドメインへ接続できません（今回も再確認済み。すべて到達不可）。
+
+URLを受け取っても、**リンク先ページを開いて商品・サイズ・色を確認する作業は
+当方では実施できません。** その照合はご確認いただく必要があります。
 
 ### 実導線の確認を始めるのに必要なもの
 
@@ -125,6 +168,20 @@ HTTPS が遮断されているため、資料の提供を受けて取り込み�
 
 現在この商品ページURLは `affiliateUrl: null` / `status: "unverified"` として記録しており、
 **通常の商品URLを紹介URLとして代用していません**。
+
+### 受け取った紹介URLの登録方法
+
+```bash
+CATALOG_DATASET=production npm run link:set -- \
+  --product elecom-bma-trcs01mbk-m-black --merchant rakuten \
+  --url "<管理画面で発行した紹介URL>" --verify
+```
+
+- ホストが `hb.afl.rakuten.co.jp` / `a.r10.to` 以外なら**登録を拒否**します
+  （`item.rakuten.co.jp` の通常商品URLは拒否されることを確認済み）。
+- `matchedVariant` は商品の `variant` を自動で使うため、不一致で非表示になることがありません。
+- 書き込み前にカタログ全体の検証を通します。`--dry-run` で内容だけ確認できます。
+- `--verify` を付けなければ `unverified` のまま登録します（画面には出ません）。
 
 ---
 

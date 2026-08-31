@@ -229,9 +229,59 @@ npm run preview:cta    # .preview/cta/index.html を生成
 `npm run test:e2e` に含まれる `cta-preview.spec.ts` が、外部通信をすべて遮断した状態で
 ボタン数・rel属性・クリック領域・キーボード操作・スマートフォンでの並びを検証します。
 
+## 紹介リンクを登録・有効化する
+
+管理画面で発行した紹介URLを受け取ったら、JSON を手で編集せずにコマンドで登録します。
+
+```bash
+# 楽天（発行済み紹介URL）
+CATALOG_DATASET=production npm run link:set -- \
+  --product <商品ID> --merchant rakuten --url "<紹介URL>" --verify
+
+# Amazon（照合済みASIN）
+CATALOG_DATASET=production npm run link:set -- \
+  --product <商品ID> --merchant amazon --asin <ASIN10桁> --verify
+```
+
+- ホストが許可リスト外なら登録を拒否します（通常の商品URLは紹介URLとして扱いません）。
+- `matchedVariant` は商品の `variant` を自動で使います。
+- 書き込み前にカタログ全体の検証を通します。`--dry-run` で内容確認のみ。
+- `--verify` を付けない場合は `unverified` のまま登録し、画面には出しません。
+
+登録後:
+
+```bash
+npm run validate:content -- --dataset production
+CATALOG_DATASET=production npm run build:only
+npm run test:e2e:production
+```
+
+最後に、**リンク先を目視で開いて商品・型番・サイズ・色が一致することを確認してください**
+（購入はしません）。この照合はコマンドでは代替できません。
+
+## 購入導線を通しで確認する（紹介URLが無くても可能）
+
+```bash
+npm run test:e2e:linkcheck
+```
+
+`datasets/production` を `.preview/linkcheck-dataset` に複製し、テスト専用の架空URLで
+1件だけ `verified` にしてビルドし、カテゴリ画面・記事画面での
+
+- ボタンの表示
+- href が登録した紹介URLと完全一致すること（クエリ追加・中継なし）
+- クリック計測の送信内容
+- 計測が失敗してもリンクが機能すること
+
+を確認します。外部通信はすべて遮断され、実店舗にも計測サーバーにもアクセスしません。
+**本番データセットは変更されません。**
+
+`SITE_MODE=production` では `CATALOG_DATASET_DIR` を使えないため、
+この一時データから本番の配信物を作ることはできません。
+
 ## 紹介リンクを差し替える
 
-1. `datasets/production/merchants/*.json` の該当エントリを編集する。
+1. `datasets/production/merchants/*.json` の該当エントリを編集する（または上の `link:set`）。
 2. 型番・容量・バリエーションを再照合し、`verifiedAt` を更新する。
 3. 一致しなくなった場合は `status` を `unverified` か `unavailable` に変える。**リンクを消す前にステータスを変えるだけで、画面からは消えます。**
 4. `npm run validate:content && npm run build:only`。

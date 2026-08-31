@@ -13,11 +13,22 @@ const BASE_URL = `http://127.0.0.1:${PORT}`;
  *   production   … real-data.spec.ts（取り込んだ実商品の表示を確認）
  * cta-preview.spec.ts はデータセットに依存しないため常に実行する。
  */
-const DATASET = process.env.E2E_DATASET === 'production' ? 'production' : 'demo';
+const DATASET =
+  process.env.E2E_DATASET === 'production'
+    ? 'production'
+    : process.env.E2E_DATASET === 'linkcheck'
+      ? 'linkcheck'
+      : 'demo';
+
+const IGNORED: Record<string, string[]> = {
+  demo: ['**/real-data.spec.ts', '**/link-flow.spec.ts'],
+  production: ['**/site.spec.ts', '**/link-flow.spec.ts'],
+  linkcheck: ['**/site.spec.ts', '**/real-data.spec.ts'],
+};
 
 export default defineConfig({
   testDir: './tests/e2e',
-  testIgnore: DATASET === 'production' ? ['**/site.spec.ts'] : ['**/real-data.spec.ts'],
+  testIgnore: IGNORED[DATASET],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
