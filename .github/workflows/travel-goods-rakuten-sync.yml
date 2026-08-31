@@ -1,0 +1,106 @@
+name: travel-goods-site 楽天リンク取得
+
+# Phase 2-1 の取得ジョブ。サイト本体とは別に動く（計画書 12-3節）。
+#
+# 既定は「手動実行のみ」。定期実行は下の schedule のコメントを外し、
+# かつ AUTOMATION_ENABLED=true を設定したときだけ有効になります。
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'links（登録済み商品の紹介URL取得）または discover（新規候補の収集）'
+        type: choice
+        options: [links, discover]
+        default: links
+      keyword:
+        description: 'discover のときの検索語'
+        type: string
+        required: false
+      apply:
+        description: '結果を書き込む（オフなら dry-run）'
+        type: boolean
+        default: false
+      auto_verify:
+        description: 'strong 一致を自動で表示対象にする（apply が必要）'
+        type: boolean
+        default: false
+  # 定期実行を使う場合はコメントを外す。初期の上限は1日1回（計画書 12-3節）。
+  # schedule:
+  #   - cron: '0 21 * * *'   # UTC 21:00 = JST 06:00
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  # 同一ジョブの重複実行を防ぐ
+  group: rakuten-sync
+  cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: travel-goods-site
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: travel-goods-site/package-lock.json
+
+      - run: npm ci
+
+      - name: 取得前の検証
+        run: npm run validate:content -- --dataset production
+
+      - name: 楽天から取得
+        env:
+          # リポジトリの Secrets に設定する。ログには出力されない。
+          RAKUTEN_APPLICATION_ID: ${{ secrets.RAKUTEN_APPLICATION_ID }}
+          RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
+          # 書き込みを行う実行だけ true にする
+          AUTOMATION_ENABLED: ${{ inputs.apply }}
+          CATALOG_DATASET: production
+        run: |
+          npm run rakuten:sync -- \
+            --mode "${{ inputs.mode }}" \
+            ${{ inputs.keyword && format('--keyword "{0}"', inputs.keyword) || '' }} \
+            ${{ inputs.apply && '--apply' || '' }} \
+            ${{ inputs.auto_verify && '--auto-verify' || '' }}
+
+      - name: 取得後の検証
+        run: npm run validate:content -- --dataset production
+
+      - name: ビルドが通ることを確認
+        env:
+          CATALOG_DATASET: production
+        run: npm run build:only
+
+      # 自動でmainへ入れない。人が差分を見て判断する。
+      - name: 変更があればプルリクエストを作る
+        if: ${{ inputs.apply }}
+        uses: peter-evans/create-pull-request@v7
+        with:
+          path: .
+          branch: automation/rakuten-sync
+          commit-message: 'chore(travel-goods-site): 楽天リンクの自動取得結果'
+          title: '楽天リンクの自動取得結果'
+          body: |
+            楽天商品検索APIから取得した結果です。**内容を確認してからマージしてください。**
+
+            確認する点:
+            - `status: verified` になったリンクは、リンク先の商品・型番・サイズ・色が一致しているか
+            - `unverified` のままのものは、なぜ一致しなかったか（note を参照）
+            - 候補ファイル（`candidates/rakuten.json`）に採用したい商品があるか
+
+            仕様の出典は自動取得の対象外です。新規商品を採用する場合は、
+            メーカー公表仕様を別途確認して `products/` と `sources.json` に登録してください。
+          add-paths: |
+            travel-goods-site/datasets/production/merchants/rakuten.json
+            travel-goods-site/datasets/production/candidates/rakuten.json
