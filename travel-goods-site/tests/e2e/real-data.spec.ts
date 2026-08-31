@@ -20,7 +20,7 @@ test('取り込んだ実商品が正しい件数だけ公開されている', as
   // モバイルバッテリーは安全確認が未完了のため review 状態＝非公開
   await page.goto('/categories/power-banks/');
   await expect(page.getByTestId('empty-state')).toBeVisible();
-  await expect(page.locator('[data-product-id="elecom-de-c63-10000bk"]')).toHaveCount(0);
+  await expect(page.locator('article[data-product-id="elecom-de-c63-10000bk"]')).toHaveCount(0);
 });
 
 test('review状態の商品は直接URLからも出てこない', async ({ page }) => {
@@ -34,16 +34,16 @@ test('review状態の商品は直接URLからも出てこない', async ({ page 
 test('単位変換が正しい（g→kg の閾値と表示）', async ({ page }) => {
   await page.goto('/categories/suitcases/');
   // 2900g は 2.9 kg
-  await expect(page.locator('[data-product-id="ace-cresta2-06936-35l-black-hairline"]')).toContainText(
+  await expect(page.locator('article[data-product-id="ace-cresta2-06936-35l-black-hairline"]')).toContainText(
     '2.9 kg',
   );
 
   await page.goto('/categories/pouches/');
   // 220g は g のまま
-  await expect(page.locator('[data-product-id="elecom-bma-trcs01mbk-m-black"]')).toContainText('220 g');
+  await expect(page.locator('article[data-product-id="elecom-bma-trcs01mbk-m-black"]')).toContainText('220 g');
 
   await page.goto('/categories/backpacks/');
-  await expect(page.locator('[data-product-id="elecom-bm-bptrcsepbk-30l-black"]')).toContainText(
+  await expect(page.locator('article[data-product-id="elecom-bm-bptrcsepbk-30l-black"]')).toContainText(
     '1.25 kg',
   );
 });
@@ -53,7 +53,7 @@ test('ハンドルを除く寸法が「ハンドル・キャスター含む」�
   await page.locator('[data-testid="product-card"] details').first().evaluate((el) => {
     (el as HTMLDetailsElement).open = true;
   });
-  const card = page.locator('[data-product-id="elecom-bma-trcs01mbk-m-black"]');
+  const card = page.locator('article[data-product-id="elecom-bma-trcs01mbk-m-black"]');
   await expect(card).toContainText('拡張時の外寸（ハンドルを除く）');
   await expect(card).not.toContainText('ハンドル・キャスター含む');
   await expect(card).toContainText('240 × 340 × 140 mm');
@@ -64,7 +64,7 @@ test('スーツケースは外寸と本体寸法を分けて表示する', async
   await page.locator('[data-testid="product-card"] details').first().evaluate((el) => {
     (el as HTMLDetailsElement).open = true;
   });
-  const card = page.locator('[data-product-id="ace-cresta2-06936-35l-black-hairline"]');
+  const card = page.locator('article[data-product-id="ace-cresta2-06936-35l-black-hairline"]');
   await expect(card).toContainText('外寸（ハンドル・キャスター含む）');
   await expect(card).toContainText('350 × 550 × 250 mm');
   await expect(card).toContainText('本体寸法（本体のみ）');
@@ -76,7 +76,7 @@ test('リュックは通常時と拡張時を区別して表示する', async ({
   await page.locator('[data-testid="product-card"] details').first().evaluate((el) => {
     (el as HTMLDetailsElement).open = true;
   });
-  const card = page.locator('[data-product-id="elecom-bm-bptrcsepbk-30l-black"]');
+  const card = page.locator('article[data-product-id="elecom-bm-bptrcsepbk-30l-black"]');
   await expect(card).toContainText('通常時の容量');
   await expect(card).toContainText('30 L');
   await expect(card).toContainText('拡張時の容量');
@@ -109,10 +109,56 @@ test('実データの記事が公開され、出典が実在のメーカーを�
   );
 });
 
-test('購入リンクが未発行のうちはCTAを出さない', async ({ page }) => {
+/** 楽天アフィリエイト管理画面で発行され、そのまま登録した紹介URL。加工しない。 */
+const RAKUTEN_AFFILIATE_URL =
+  'https://hb.afl.rakuten.co.jp/ichiba/5701a01f.9678bdb7.5701a020.aecdb911/' +
+  '?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fnanshindo%2Fj197439%2F&link_type=picttext' +
+  '&ut=eyJwYWdlIjoiaXRlbSIsInR5cGUiOiJwaWN0dGV4dCIsInNpemUiOiIyNDB4MjQwIiwibmFtIjoxLCJuYW1wIjoic' +
+  'mlnaHQiLCJjb20iOjEsImNvbXAiOiJkb3duIiwicHJpY2UiOjEsImJvciI6MSwiY29sIjoxLCJiYnRuIjoxLCJwcm9kIjowLCJhbXAiOmZhbHNlfQ%3D%3D';
+
+test('照合済みのポーチには楽天ボタンが出て、発行されたURLと完全一致する', async ({ page }) => {
   for (const path of ['/categories/pouches/', '/articles/pouch-size-weight-compartments/']) {
     await page.goto(path);
-    await expect(page.locator('a[rel*="sponsored"]')).toHaveCount(0);
+    const cta = page.locator(
+      'article[data-product-id="elecom-bma-trcs01mbk-m-black"] a[rel*="sponsored"]',
+    );
+    await expect(cta).toHaveCount(1);
+    await expect(cta).toHaveText(/楽天市場で商品を見る/);
+    // 発行された紹介URLを加工しない（クエリの追加・削除をしない）
+    await expect(cta).toHaveAttribute('href', RAKUTEN_AFFILIATE_URL);
+  }
+});
+
+test('広告リンクの rel は発行元のコードに合わせる', async ({ page }) => {
+  await page.goto('/categories/pouches/');
+  const rel =
+    (await page.locator('a[rel*="sponsored"]').first().getAttribute('rel')) ?? '';
+  expect(rel).toContain('sponsored');
+  expect(rel).toContain('nofollow');
+  expect(rel).toContain('noopener');
+  // 成果判定にリファラが使われる可能性があるため noreferrer は付けない
+  expect(rel).not.toContain('noreferrer');
+});
+
+test('販売先の価格・在庫・画像を取り込まない', async ({ page }) => {
+  for (const path of ['/categories/pouches/', '/articles/pouch-size-weight-compartments/']) {
+    await page.goto(path);
+    const body = await page.locator('body').innerText();
+    expect(body).not.toContain('3,186');
+    expect(body).not.toContain('円');
+    // 楽天が配信する商品画像を転載しない
+    await expect(page.locator('img[src*="rakuten.co.jp"]')).toHaveCount(0);
+  }
+});
+
+test('リンク未発行の商品にはCTAもダミーリンクも出さない', async ({ page }) => {
+  for (const [path, productId] of [
+    ['/categories/suitcases/', 'ace-cresta2-06936-35l-black-hairline'],
+    ['/categories/backpacks/', 'elecom-bm-bptrcsepbk-30l-black'],
+  ] as const) {
+    await page.goto(path);
+    const card = page.locator(`article[data-product-id="${productId}"]`);
+    await expect(card.locator('a[rel*="sponsored"]')).toHaveCount(0);
     await expect(page.locator('a[href="#"]')).toHaveCount(0);
   }
 });

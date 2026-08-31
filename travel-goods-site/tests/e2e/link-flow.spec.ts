@@ -107,8 +107,9 @@ test.describe('遷移先', () => {
       await expect(cta).toHaveAttribute('target', '_blank');
       const rel = (await cta.getAttribute('rel')) ?? '';
       expect(rel).toContain('sponsored');
+      expect(rel).toContain('nofollow');
       expect(rel).toContain('noopener');
-      expect(rel).toContain('noreferrer');
+      expect(rel).not.toContain('noreferrer');
     });
   }
 

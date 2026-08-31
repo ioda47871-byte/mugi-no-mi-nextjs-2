@@ -60,8 +60,10 @@ test('広告リンクの属性が正しい', async ({ page }) => {
     const link = links.nth(index);
     const rel = (await link.getAttribute('rel')) ?? '';
     expect(rel).toContain('sponsored');
+    expect(rel).toContain('nofollow');
     expect(rel).toContain('noopener');
-    expect(rel).toContain('noreferrer');
+    // noreferrer は付けない（成果判定にリファラが使われる可能性があるため）
+    expect(rel).not.toContain('noreferrer');
     expect(await link.getAttribute('target')).toBe('_blank');
 
     const href = (await link.getAttribute('href')) ?? '';
