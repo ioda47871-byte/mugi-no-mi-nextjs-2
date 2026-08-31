@@ -1,0 +1,66 @@
+name: travel-goods-site CI
+
+# 旅行用品比較サイト（travel-goods-site/）専用のCI。
+# 同じリポジトリにある既存サイト（mugi-no-mi-nextjs/）には触れない。
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'travel-goods-site/**'
+      - '.github/workflows/travel-goods-ci.yml'
+  pull_request:
+    paths:
+      - 'travel-goods-site/**'
+      - '.github/workflows/travel-goods-ci.yml'
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: travel-goods-site
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: travel-goods-site/package-lock.json
+
+      - name: 依存関係のインストール
+        run: npm ci
+
+      - name: 型検査
+        run: npm run typecheck
+
+      - name: lint
+        run: npm run lint
+
+      - name: 単体テスト
+        run: npm test
+
+      - name: データ・記事の検証（本番／デモ両方）
+        run: npm run validate:content:all
+
+      - name: 本番ビルド（静的出力）
+        run: npm run build:only
+
+      - name: 公開前チェック（プレビュー設定では未達項目が出るため参考表示）
+        run: npm run check:release -- --out out || true
+
+      - name: Playwright ブラウザの取得
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E テスト
+        run: npm run test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: travel-goods-site/playwright-report/
+          retention-days: 7

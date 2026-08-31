@@ -1,0 +1,68 @@
+[
+  {
+    "id": "src-demo-01",
+    "url": "https://example.invalid/demo/src-demo-01/spec",
+    "publisher": "デモA社（架空メーカー・デモ用）",
+    "checkedAt": "2026-08-28",
+    "locator": "製品仕様表（デモ）",
+    "editorialUse": "verified",
+    "automatedFetch": "unverified",
+    "llmInput": "not-allowed",
+    "usageNote": "デモ用の架空データです。実在しないメーカー・実在しないURLです。本番データには使用しません。"
+  },
+  {
+    "id": "src-demo-02",
+    "url": "https://example.invalid/demo/src-demo-02/spec",
+    "publisher": "デモB社（架空メーカー・デモ用）",
+    "checkedAt": "2026-08-28",
+    "locator": "製品仕様表（デモ）",
+    "editorialUse": "verified",
+    "automatedFetch": "unverified",
+    "llmInput": "not-allowed",
+    "usageNote": "デモ用の架空データです。実在しないメーカー・実在しないURLです。本番データには使用しません。"
+  },
+  {
+    "id": "src-demo-03",
+    "url": "https://example.invalid/demo/src-demo-03/spec",
+    "publisher": "デモC社（架空メーカー・デモ用）",
+    "checkedAt": "2026-08-28",
+    "locator": "製品仕様表（デモ）",
+    "editorialUse": "verified",
+    "automatedFetch": "unverified",
+    "llmInput": "not-allowed",
+    "usageNote": "デモ用の架空データです。実在しないメーカー・実在しないURLです。本番データには使用しません。"
+  },
+  {
+    "id": "src-demo-04",
+    "url": "https://example.invalid/demo/src-demo-04/spec",
+    "publisher": "デモD社（架空メーカー・デモ用）",
+    "checkedAt": "2026-08-28",
+    "locator": "製品仕様表（デモ）",
+    "editorialUse": "verified",
+    "automatedFetch": "unverified",
+    "llmInput": "not-allowed",
+    "usageNote": "デモ用の架空データです。実在しないメーカー・実在しないURLです。本番データには使用しません。"
+  },
+  {
+    "id": "src-demo-05",
+    "url": "https://example.invalid/demo/src-demo-05/spec",
+    "publisher": "デモE社（架空メーカー・デモ用）",
+    "checkedAt": "2026-08-28",
+    "locator": "製品仕様表（デモ）",
+    "editorialUse": "verified",
+    "automatedFetch": "unverified",
+    "llmInput": "not-allowed",
+    "usageNote": "デモ用の架空データです。実在しないメーカー・実在しないURLです。本番データには使用しません。"
+  },
+  {
+    "id": "src-demo-06",
+    "url": "https://example.invalid/demo/src-demo-06/spec",
+    "publisher": "デモF社（架空メーカー・デモ用）",
+    "checkedAt": "2026-08-28",
+    "locator": "製品仕様表（デモ）",
+    "editorialUse": "verified",
+    "automatedFetch": "unverified",
+    "llmInput": "not-allowed",
+    "usageNote": "デモ用の架空データです。実在しないメーカー・実在しないURLです。本番データには使用しません。"
+  }
+]

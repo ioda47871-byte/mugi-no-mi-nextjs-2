@@ -1,0 +1,620 @@
+[
+  {
+    "id": "d-sc-lumen-38",
+    "category": "suitcases",
+    "brand": "デモA社",
+    "model": "LM-38",
+    "variant": "38L / 機内持ち込み想定",
+    "status": "published",
+    "summary": "機内持ち込みサイズ帯の軽量モデル。ストッパーと拡張機能あり。",
+    "weightG": {
+      "value": 2380,
+      "sourceId": "src-demo-01",
+      "checkedAt": "2026-08-28"
+    },
+    "outerSizeMm": {
+      "value": [
+        400,
+        540,
+        240
+      ],
+      "sourceId": "src-demo-01",
+      "checkedAt": "2026-08-28"
+    },
+    "capacityL": {
+      "value": 38,
+      "sourceId": "src-demo-01",
+      "checkedAt": "2026-08-28"
+    },
+    "specs": {
+      "stopper": {
+        "value": true,
+        "sourceId": "src-demo-01",
+        "checkedAt": "2026-08-28"
+      },
+      "expandable": {
+        "value": true,
+        "sourceId": "src-demo-01",
+        "checkedAt": "2026-08-28"
+      },
+      "openingType": {
+        "value": "両開き",
+        "sourceId": "src-demo-01",
+        "checkedAt": "2026-08-28"
+      },
+      "wheelCount": {
+        "value": 4,
+        "sourceId": "src-demo-01",
+        "checkedAt": "2026-08-28"
+      },
+      "tsaLock": {
+        "value": true,
+        "sourceId": "src-demo-01",
+        "checkedAt": "2026-08-28"
+      },
+      "shellMaterial": {
+        "value": "ポリカーボネート",
+        "sourceId": "src-demo-01",
+        "checkedAt": "2026-08-28"
+      },
+      "frontOpenPocket": {
+        "value": false,
+        "sourceId": "src-demo-01",
+        "checkedAt": "2026-08-28"
+      }
+    },
+    "caveats": [
+      "拡張時の外寸はメーカー公表がなく不明です。",
+      "航空会社ごとの持ち込み規定は各社の公式案内でご確認ください。"
+    ],
+    "image": null,
+    "bodySizeMm": {
+      "value": [
+        370,
+        505,
+        225
+      ],
+      "sourceId": "src-demo-01",
+      "checkedAt": "2026-08-28"
+    }
+  },
+  {
+    "id": "d-sc-lumen-48",
+    "category": "suitcases",
+    "brand": "デモA社",
+    "model": "LM-48",
+    "variant": "48L / 2〜4泊想定",
+    "status": "published",
+    "summary": "同シリーズの一回り大きい容量違い。ストッパー付き。",
+    "weightG": {
+      "value": 3050,
+      "sourceId": "src-demo-01",
+      "checkedAt": "2026-08-28"
+    },
+    "outerSizeMm": {
+      "value": [
+        430,
+        600,
+        260
+      ],
+      "sourceId": "src-demo-01",
+      "checkedAt": "2026-08-28"
+    },
+    "capacityL": {
+      "value": 48,
+      "sourceId": "src-demo-01",
+      "checkedAt": "2026-08-28"
+    },
+    "specs": {
+      "stopper": {
+        "value": true,
+        "sourceId": "src-demo-01",
+        "checkedAt": "2026-08-28"
+      },
+      "expandable": {
+        "value": true,
+        "sourceId": "src-demo-01",
+        "checkedAt": "2026-08-28"
+      },
+      "openingType": {
+        "value": "両開き",
+        "sourceId": "src-demo-01",
+        "checkedAt": "2026-08-28"
+      },
+      "wheelCount": {
+        "value": 4,
+        "sourceId": "src-demo-01",
+        "checkedAt": "2026-08-28"
+      },
+      "tsaLock": {
+        "value": true,
+        "sourceId": "src-demo-01",
+        "checkedAt": "2026-08-28"
+      },
+      "shellMaterial": {
+        "value": "ポリカーボネート",
+        "sourceId": "src-demo-01",
+        "checkedAt": "2026-08-28"
+      },
+      "frontOpenPocket": {
+        "value": false,
+        "sourceId": "src-demo-01",
+        "checkedAt": "2026-08-28"
+      }
+    },
+    "caveats": [
+      "容量違いのため、38Lモデルとは外寸・重量が異なります。"
+    ],
+    "image": null,
+    "bodySizeMm": {
+      "value": [
+        400,
+        560,
+        245
+      ],
+      "sourceId": "src-demo-01",
+      "checkedAt": "2026-08-28"
+    }
+  },
+  {
+    "id": "d-sc-karuta-34",
+    "category": "suitcases",
+    "brand": "デモB社",
+    "model": "KT-34",
+    "variant": "34L / フロントオープン",
+    "status": "published",
+    "summary": "前面ポケットからPCを出し入れできる構成。本体重量はやや重め。",
+    "weightG": {
+      "value": 3200,
+      "sourceId": "src-demo-02",
+      "checkedAt": "2026-08-28"
+    },
+    "outerSizeMm": {
+      "value": [
+        390,
+        545,
+        250
+      ],
+      "sourceId": "src-demo-02",
+      "checkedAt": "2026-08-28"
+    },
+    "capacityL": {
+      "value": 34,
+      "sourceId": "src-demo-02",
+      "checkedAt": "2026-08-28"
+    },
+    "specs": {
+      "stopper": {
+        "value": true,
+        "sourceId": "src-demo-02",
+        "checkedAt": "2026-08-28"
+      },
+      "expandable": {
+        "value": false,
+        "sourceId": "src-demo-02",
+        "checkedAt": "2026-08-28"
+      },
+      "openingType": {
+        "value": "フロントオープン",
+        "sourceId": "src-demo-02",
+        "checkedAt": "2026-08-28"
+      },
+      "wheelCount": {
+        "value": 4,
+        "sourceId": "src-demo-02",
+        "checkedAt": "2026-08-28"
+      },
+      "tsaLock": {
+        "value": true,
+        "sourceId": "src-demo-02",
+        "checkedAt": "2026-08-28"
+      },
+      "shellMaterial": {
+        "value": "ポリプロピレン",
+        "sourceId": "src-demo-02",
+        "checkedAt": "2026-08-28"
+      },
+      "frontOpenPocket": {
+        "value": true,
+        "sourceId": "src-demo-02",
+        "checkedAt": "2026-08-28"
+      }
+    },
+    "caveats": [
+      "フロントポケット部の容量は本体容量に含まれるかがメーカー公表から判断できません。"
+    ],
+    "image": null,
+    "bodySizeMm": {
+      "value": [
+        360,
+        505,
+        230
+      ],
+      "sourceId": "src-demo-02",
+      "checkedAt": "2026-08-28"
+    }
+  },
+  {
+    "id": "d-sc-nagi-40",
+    "category": "suitcases",
+    "brand": "デモC社",
+    "model": "NG-40",
+    "variant": "40L / 軽量重視",
+    "status": "published",
+    "summary": "同容量帯では公表重量が軽いモデル。ストッパーは非搭載。",
+    "weightG": {
+      "value": 2100,
+      "sourceId": "src-demo-03",
+      "checkedAt": "2026-08-28"
+    },
+    "outerSizeMm": {
+      "value": [
+        395,
+        550,
+        245
+      ],
+      "sourceId": "src-demo-03",
+      "checkedAt": "2026-08-28"
+    },
+    "capacityL": {
+      "value": 40,
+      "sourceId": "src-demo-03",
+      "checkedAt": "2026-08-28"
+    },
+    "specs": {
+      "stopper": {
+        "value": false,
+        "sourceId": "src-demo-03",
+        "checkedAt": "2026-08-28"
+      },
+      "expandable": {
+        "value": false,
+        "sourceId": "src-demo-03",
+        "checkedAt": "2026-08-28"
+      },
+      "openingType": {
+        "value": "両開き",
+        "sourceId": "src-demo-03",
+        "checkedAt": "2026-08-28"
+      },
+      "wheelCount": {
+        "value": 4,
+        "sourceId": "src-demo-03",
+        "checkedAt": "2026-08-28"
+      },
+      "tsaLock": {
+        "value": true,
+        "sourceId": "src-demo-03",
+        "checkedAt": "2026-08-28"
+      },
+      "shellMaterial": {
+        "value": "ポリカーボネート",
+        "sourceId": "src-demo-03",
+        "checkedAt": "2026-08-28"
+      },
+      "frontOpenPocket": {
+        "value": false,
+        "sourceId": "src-demo-03",
+        "checkedAt": "2026-08-28"
+      }
+    },
+    "caveats": [
+      "ストッパーがないため、傾斜のある場所での自走を止める機構はありません。"
+    ],
+    "image": null,
+    "bodySizeMm": {
+      "value": [
+        365,
+        510,
+        225
+      ],
+      "sourceId": "src-demo-03",
+      "checkedAt": "2026-08-28"
+    }
+  },
+  {
+    "id": "d-sc-nagi-62",
+    "category": "suitcases",
+    "brand": "デモC社",
+    "model": "NG-62",
+    "variant": "62L / 4〜7泊想定",
+    "status": "published",
+    "summary": "長めの旅行向けの容量帯。拡張機能あり。",
+    "weightG": {
+      "value": 3850,
+      "sourceId": "src-demo-03",
+      "checkedAt": "2026-08-28"
+    },
+    "outerSizeMm": {
+      "value": [
+        460,
+        690,
+        285
+      ],
+      "sourceId": "src-demo-03",
+      "checkedAt": "2026-08-28"
+    },
+    "capacityL": {
+      "value": 62,
+      "sourceId": "src-demo-03",
+      "checkedAt": "2026-08-28"
+    },
+    "specs": {
+      "stopper": {
+        "value": true,
+        "sourceId": "src-demo-03",
+        "checkedAt": "2026-08-28"
+      },
+      "expandable": {
+        "value": true,
+        "sourceId": "src-demo-03",
+        "checkedAt": "2026-08-28"
+      },
+      "openingType": {
+        "value": "両開き",
+        "sourceId": "src-demo-03",
+        "checkedAt": "2026-08-28"
+      },
+      "wheelCount": {
+        "value": 4,
+        "sourceId": "src-demo-03",
+        "checkedAt": "2026-08-28"
+      },
+      "tsaLock": {
+        "value": true,
+        "sourceId": "src-demo-03",
+        "checkedAt": "2026-08-28"
+      },
+      "shellMaterial": {
+        "value": "ポリカーボネート",
+        "sourceId": "src-demo-03",
+        "checkedAt": "2026-08-28"
+      },
+      "frontOpenPocket": {
+        "value": false,
+        "sourceId": "src-demo-03",
+        "checkedAt": "2026-08-28"
+      }
+    },
+    "caveats": [
+      "受託手荷物の規定サイズは航空会社により異なります。"
+    ],
+    "image": null,
+    "bodySizeMm": {
+      "value": [
+        430,
+        650,
+        265
+      ],
+      "sourceId": "src-demo-03",
+      "checkedAt": "2026-08-28"
+    }
+  },
+  {
+    "id": "d-sc-tobira-45",
+    "category": "suitcases",
+    "brand": "デモD社",
+    "model": "TB-45",
+    "variant": "45L / ソフトケース",
+    "status": "published",
+    "summary": "布製のソフトケース。外側ポケットあり。本体重量は公表されています。",
+    "weightG": {
+      "value": 3400,
+      "sourceId": "src-demo-04",
+      "checkedAt": "2026-08-28"
+    },
+    "outerSizeMm": {
+      "value": [
+        405,
+        585,
+        255
+      ],
+      "sourceId": "src-demo-04",
+      "checkedAt": "2026-08-28"
+    },
+    "capacityL": {
+      "value": 45,
+      "sourceId": "src-demo-04",
+      "checkedAt": "2026-08-28"
+    },
+    "specs": {
+      "stopper": {
+        "value": false,
+        "sourceId": "src-demo-04",
+        "checkedAt": "2026-08-28"
+      },
+      "expandable": {
+        "value": true,
+        "sourceId": "src-demo-04",
+        "checkedAt": "2026-08-28"
+      },
+      "openingType": {
+        "value": "片開き",
+        "sourceId": "src-demo-04",
+        "checkedAt": "2026-08-28"
+      },
+      "wheelCount": {
+        "value": 4,
+        "sourceId": "src-demo-04",
+        "checkedAt": "2026-08-28"
+      },
+      "tsaLock": {
+        "value": false,
+        "sourceId": "src-demo-04",
+        "checkedAt": "2026-08-28"
+      },
+      "shellMaterial": {
+        "value": "ポリエステル",
+        "sourceId": "src-demo-04",
+        "checkedAt": "2026-08-28"
+      },
+      "frontOpenPocket": {
+        "value": true,
+        "sourceId": "src-demo-04",
+        "checkedAt": "2026-08-28"
+      }
+    },
+    "caveats": [
+      "TSAロックは非搭載です。",
+      "ソフト素材のため、収納物の形状が外寸に影響することがあります。"
+    ],
+    "image": null,
+    "bodySizeMm": {
+      "value": [
+        380,
+        545,
+        235
+      ],
+      "sourceId": "src-demo-04",
+      "checkedAt": "2026-08-28"
+    }
+  },
+  {
+    "id": "d-sc-tobira-30",
+    "category": "suitcases",
+    "brand": "デモD社",
+    "model": "TB-30",
+    "variant": "30L / 小型2輪",
+    "status": "published",
+    "summary": "2輪の小型モデル。外寸はメーカー公表がなく不明です。",
+    "weightG": {
+      "value": 2600,
+      "sourceId": "src-demo-04",
+      "checkedAt": "2026-08-28"
+    },
+    "outerSizeMm": {
+      "value": null,
+      "sourceId": null,
+      "checkedAt": null,
+      "note": "メーカー公表仕様に外寸の記載がありません"
+    },
+    "capacityL": {
+      "value": 30,
+      "sourceId": "src-demo-04",
+      "checkedAt": "2026-08-28"
+    },
+    "specs": {
+      "stopper": {
+        "value": false,
+        "sourceId": "src-demo-04",
+        "checkedAt": "2026-08-28"
+      },
+      "expandable": {
+        "value": false,
+        "sourceId": "src-demo-04",
+        "checkedAt": "2026-08-28"
+      },
+      "openingType": {
+        "value": "両開き",
+        "sourceId": "src-demo-04",
+        "checkedAt": "2026-08-28"
+      },
+      "wheelCount": {
+        "value": 2,
+        "sourceId": "src-demo-04",
+        "checkedAt": "2026-08-28"
+      },
+      "tsaLock": {
+        "value": false,
+        "sourceId": "src-demo-04",
+        "checkedAt": "2026-08-28"
+      },
+      "shellMaterial": {
+        "value": "ABS樹脂",
+        "sourceId": "src-demo-04",
+        "checkedAt": "2026-08-28"
+      },
+      "frontOpenPocket": {
+        "value": false,
+        "sourceId": "src-demo-04",
+        "checkedAt": "2026-08-28"
+      }
+    },
+    "caveats": [
+      "外寸が不明なため、外寸を条件にした絞り込みの対象外です。",
+      "機内持ち込み可否の判断材料が足りません。"
+    ],
+    "image": null,
+    "bodySizeMm": {
+      "value": null,
+      "sourceId": null,
+      "checkedAt": null,
+      "note": "本体寸法の記載もありません"
+    }
+  },
+  {
+    "id": "d-sc-hoshi-75",
+    "category": "suitcases",
+    "brand": "デモE社",
+    "model": "HS-75",
+    "variant": "75L / 大型",
+    "status": "published",
+    "summary": "大型サイズ。重量は公表されていますが、本体寸法の公表がありません。",
+    "weightG": {
+      "value": 4200,
+      "sourceId": "src-demo-05",
+      "checkedAt": "2026-08-28"
+    },
+    "outerSizeMm": {
+      "value": [
+        490,
+        750,
+        300
+      ],
+      "sourceId": "src-demo-05",
+      "checkedAt": "2026-08-28"
+    },
+    "capacityL": {
+      "value": 75,
+      "sourceId": "src-demo-05",
+      "checkedAt": "2026-08-28"
+    },
+    "specs": {
+      "stopper": {
+        "value": true,
+        "sourceId": "src-demo-05",
+        "checkedAt": "2026-08-28"
+      },
+      "expandable": {
+        "value": false,
+        "sourceId": "src-demo-05",
+        "checkedAt": "2026-08-28"
+      },
+      "openingType": {
+        "value": "両開き",
+        "sourceId": "src-demo-05",
+        "checkedAt": "2026-08-28"
+      },
+      "wheelCount": {
+        "value": 4,
+        "sourceId": "src-demo-05",
+        "checkedAt": "2026-08-28"
+      },
+      "tsaLock": {
+        "value": true,
+        "sourceId": "src-demo-05",
+        "checkedAt": "2026-08-28"
+      },
+      "shellMaterial": {
+        "value": "ポリカーボネート",
+        "sourceId": "src-demo-05",
+        "checkedAt": "2026-08-28"
+      },
+      "frontOpenPocket": {
+        "value": false,
+        "sourceId": "src-demo-05",
+        "checkedAt": "2026-08-28"
+      }
+    },
+    "caveats": [
+      "本体寸法が不明なため、外寸のみでの比較になります。"
+    ],
+    "image": null,
+    "bodySizeMm": {
+      "value": null,
+      "sourceId": null,
+      "checkedAt": null,
+      "note": "本体寸法の公表がありません"
+    }
+  }
+]

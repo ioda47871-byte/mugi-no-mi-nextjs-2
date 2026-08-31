@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-paper text-ink antialiased;
+    text-wrap: pretty;
+  }
+
+  /* キーボード操作の可視性を明確にする（計画書 3節） */
+  :focus-visible {
+    @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-paper;
+  }
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-5xl px-4 sm:px-6;
+  }
+
+  .prose-body {
+    @apply text-[0.975rem] leading-[1.9] text-ink-soft;
+  }
+
+  .card {
+    @apply rounded-xl border border-paper-line bg-paper-card;
+  }
+
+  .link-inline {
+    @apply text-accent-dark underline underline-offset-4 hover:text-accent;
+  }
+
+  /* 比較表だけ横スクロールを許可する（本文は 360px でもはみ出さない） */
+  .table-scroll {
+    @apply -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0;
+    scrollbar-width: thin;
+  }
+}

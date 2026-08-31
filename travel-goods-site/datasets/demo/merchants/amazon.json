@@ -1,0 +1,152 @@
+[
+  {
+    "productId": "d-sc-lumen-48",
+    "merchant": "amazon",
+    "externalProductId": "B0DEMO0001",
+    "affiliateUrl": null,
+    "matchedVariant": "48L / 2〜4泊想定",
+    "verifiedAt": null,
+    "status": "unverified",
+    "note": "デモデータ。販売先の型番照合を行っていないため表示しません。"
+  },
+  {
+    "productId": "d-sc-nagi-40",
+    "merchant": "amazon",
+    "externalProductId": "B0DEMO0003",
+    "affiliateUrl": null,
+    "matchedVariant": "40L / 軽量重視",
+    "verifiedAt": null,
+    "status": "unavailable",
+    "note": "デモデータ。販売終了扱いとして表示しません。"
+  },
+  {
+    "productId": "d-sc-tobira-45",
+    "merchant": "amazon",
+    "externalProductId": "B0DEMO0005",
+    "affiliateUrl": null,
+    "matchedVariant": "45L / ソフトケース",
+    "verifiedAt": null,
+    "status": "unverified",
+    "note": "デモデータ。販売先の型番照合を行っていないため表示しません。"
+  },
+  {
+    "productId": "d-sc-hoshi-75",
+    "merchant": "amazon",
+    "externalProductId": "B0DEMO0007",
+    "affiliateUrl": null,
+    "matchedVariant": "75L / 大型",
+    "verifiedAt": null,
+    "status": "unavailable",
+    "note": "デモデータ。販売終了扱いとして表示しません。"
+  },
+  {
+    "productId": "d-bp-nagi-32",
+    "merchant": "amazon",
+    "externalProductId": "B0DEMO0009",
+    "affiliateUrl": null,
+    "matchedVariant": "32L / 背面開き",
+    "verifiedAt": null,
+    "status": "unverified",
+    "note": "デモデータ。販売先の型番照合を行っていないため表示しません。"
+  },
+  {
+    "productId": "d-bp-hane-18",
+    "merchant": "amazon",
+    "externalProductId": "B0DEMO0011",
+    "affiliateUrl": null,
+    "matchedVariant": "18L / 折りたたみ",
+    "verifiedAt": null,
+    "status": "unavailable",
+    "note": "デモデータ。販売終了扱いとして表示しません。"
+  },
+  {
+    "productId": "d-bp-tobira-28",
+    "merchant": "amazon",
+    "externalProductId": "B0DEMO0013",
+    "affiliateUrl": null,
+    "matchedVariant": "28L / 拡張あり",
+    "verifiedAt": null,
+    "status": "unverified",
+    "note": "デモデータ。販売先の型番照合を行っていないため表示しません。"
+  },
+  {
+    "productId": "d-bp-lumen-35",
+    "merchant": "amazon",
+    "externalProductId": "B0DEMO0015",
+    "affiliateUrl": null,
+    "matchedVariant": "35L / 前面開き",
+    "verifiedAt": null,
+    "status": "unavailable",
+    "note": "デモデータ。販売終了扱いとして表示しません。"
+  },
+  {
+    "productId": "d-pc-karuta-c2",
+    "merchant": "amazon",
+    "externalProductId": "B0DEMO0017",
+    "affiliateUrl": null,
+    "matchedVariant": "衣類用 / Lサイズ",
+    "verifiedAt": null,
+    "status": "unverified",
+    "note": "デモデータ。販売先の型番照合を行っていないため表示しません。"
+  },
+  {
+    "productId": "d-pc-hane-t2",
+    "merchant": "amazon",
+    "externalProductId": "B0DEMO0019",
+    "affiliateUrl": null,
+    "matchedVariant": "洗面用 / 小型",
+    "verifiedAt": null,
+    "status": "unavailable",
+    "note": "デモデータ。販売終了扱いとして表示しません。"
+  },
+  {
+    "productId": "d-pc-lumen-w1",
+    "merchant": "amazon",
+    "externalProductId": "B0DEMO0021",
+    "affiliateUrl": null,
+    "matchedVariant": "衣類用 / 撥水",
+    "verifiedAt": null,
+    "status": "unverified",
+    "note": "デモデータ。販売先の型番照合を行っていないため表示しません。"
+  },
+  {
+    "productId": "d-pc-hoshi-x1",
+    "merchant": "amazon",
+    "externalProductId": "B0DEMO0023",
+    "affiliateUrl": null,
+    "matchedVariant": "衣類用 / 容量非公表",
+    "verifiedAt": null,
+    "status": "unavailable",
+    "note": "デモデータ。販売終了扱いとして表示しません。"
+  },
+  {
+    "productId": "d-pb-hane-p10",
+    "merchant": "amazon",
+    "externalProductId": "B0DEMO0025",
+    "affiliateUrl": null,
+    "matchedVariant": "10000mAh / ケーブル内蔵",
+    "verifiedAt": null,
+    "status": "unverified",
+    "note": "デモデータ。販売先の型番照合を行っていないため表示しません。"
+  },
+  {
+    "productId": "d-pb-lumen-p20",
+    "merchant": "amazon",
+    "externalProductId": "B0DEMO0027",
+    "affiliateUrl": null,
+    "matchedVariant": "20000mAh / 高出力",
+    "verifiedAt": null,
+    "status": "unavailable",
+    "note": "デモデータ。販売終了扱いとして表示しません。"
+  },
+  {
+    "productId": "d-pb-karuta-p5",
+    "merchant": "amazon",
+    "externalProductId": "B0DEMO0029",
+    "affiliateUrl": null,
+    "matchedVariant": "5000mAh / 直挿し",
+    "verifiedAt": null,
+    "status": "unverified",
+    "note": "デモデータ。販売先の型番照合を行っていないため表示しません。"
+  }
+]

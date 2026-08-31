@@ -1,0 +1,142 @@
+[
+  {
+    "productId": "d-sc-karuta-34",
+    "merchant": "rakuten",
+    "externalProductId": "demoshop:item-0002",
+    "affiliateUrl": null,
+    "matchedVariant": "34L / フロントオープン",
+    "verifiedAt": null,
+    "status": "unverified",
+    "note": "デモデータ。発行済みの紹介URLがないため表示しません。"
+  },
+  {
+    "productId": "d-sc-nagi-40",
+    "merchant": "rakuten",
+    "externalProductId": "demoshop:item-0003",
+    "affiliateUrl": null,
+    "matchedVariant": "40L / 軽量重視",
+    "verifiedAt": null,
+    "status": "unverified",
+    "note": "デモデータ。発行済みの紹介URLがないため表示しません。"
+  },
+  {
+    "productId": "d-sc-tobira-30",
+    "merchant": "rakuten",
+    "externalProductId": "demoshop:item-0006",
+    "affiliateUrl": null,
+    "matchedVariant": "30L / 小型2輪",
+    "verifiedAt": null,
+    "status": "unverified",
+    "note": "デモデータ。発行済みの紹介URLがないため表示しません。"
+  },
+  {
+    "productId": "d-sc-hoshi-75",
+    "merchant": "rakuten",
+    "externalProductId": "demoshop:item-0007",
+    "affiliateUrl": null,
+    "matchedVariant": "75L / 大型",
+    "verifiedAt": null,
+    "status": "unverified",
+    "note": "デモデータ。発行済みの紹介URLがないため表示しません。"
+  },
+  {
+    "productId": "d-bp-karuta-20",
+    "merchant": "rakuten",
+    "externalProductId": "demoshop:item-0010",
+    "affiliateUrl": null,
+    "matchedVariant": "20L / 上部開き",
+    "verifiedAt": null,
+    "status": "unverified",
+    "note": "デモデータ。発行済みの紹介URLがないため表示しません。"
+  },
+  {
+    "productId": "d-bp-hane-18",
+    "merchant": "rakuten",
+    "externalProductId": "demoshop:item-0011",
+    "affiliateUrl": null,
+    "matchedVariant": "18L / 折りたたみ",
+    "verifiedAt": null,
+    "status": "unverified",
+    "note": "デモデータ。発行済みの紹介URLがないため表示しません。"
+  },
+  {
+    "productId": "d-bp-hoshi-22",
+    "merchant": "rakuten",
+    "externalProductId": "demoshop:item-0014",
+    "affiliateUrl": null,
+    "matchedVariant": "22L / 上部開き",
+    "verifiedAt": null,
+    "status": "unverified",
+    "note": "デモデータ。発行済みの紹介URLがないため表示しません。"
+  },
+  {
+    "productId": "d-bp-lumen-35",
+    "merchant": "rakuten",
+    "externalProductId": "demoshop:item-0015",
+    "affiliateUrl": null,
+    "matchedVariant": "35L / 前面開き",
+    "verifiedAt": null,
+    "status": "unverified",
+    "note": "デモデータ。発行済みの紹介URLがないため表示しません。"
+  },
+  {
+    "productId": "d-pc-hane-t1",
+    "merchant": "rakuten",
+    "externalProductId": "demoshop:item-0018",
+    "affiliateUrl": null,
+    "matchedVariant": "洗面用 / 吊り下げ式",
+    "verifiedAt": null,
+    "status": "unverified",
+    "note": "デモデータ。発行済みの紹介URLがないため表示しません。"
+  },
+  {
+    "productId": "d-pc-hane-t2",
+    "merchant": "rakuten",
+    "externalProductId": "demoshop:item-0019",
+    "affiliateUrl": null,
+    "matchedVariant": "洗面用 / 小型",
+    "verifiedAt": null,
+    "status": "unverified",
+    "note": "デモデータ。発行済みの紹介URLがないため表示しません。"
+  },
+  {
+    "productId": "d-pc-tobira-m1",
+    "merchant": "rakuten",
+    "externalProductId": "demoshop:item-0022",
+    "affiliateUrl": null,
+    "matchedVariant": "衣類用 / 超軽量",
+    "verifiedAt": null,
+    "status": "unverified",
+    "note": "デモデータ。発行済みの紹介URLがないため表示しません。"
+  },
+  {
+    "productId": "d-pc-hoshi-x1",
+    "merchant": "rakuten",
+    "externalProductId": "demoshop:item-0023",
+    "affiliateUrl": null,
+    "matchedVariant": "衣類用 / 容量非公表",
+    "verifiedAt": null,
+    "status": "unverified",
+    "note": "デモデータ。発行済みの紹介URLがないため表示しません。"
+  },
+  {
+    "productId": "d-pb-nagi-p10",
+    "merchant": "rakuten",
+    "externalProductId": "demoshop:item-0026",
+    "affiliateUrl": null,
+    "matchedVariant": "10000mAh / 薄型",
+    "verifiedAt": null,
+    "status": "unverified",
+    "note": "デモデータ。発行済みの紹介URLがないため表示しません。"
+  },
+  {
+    "productId": "d-pb-lumen-p20",
+    "merchant": "rakuten",
+    "externalProductId": "demoshop:item-0027",
+    "affiliateUrl": null,
+    "matchedVariant": "20000mAh / 高出力",
+    "verifiedAt": null,
+    "status": "unverified",
+    "note": "デモデータ。発行済みの紹介URLがないため表示しません。"
+  }
+]

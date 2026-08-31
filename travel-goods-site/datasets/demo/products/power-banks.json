@@ -1,0 +1,455 @@
+[
+  {
+    "id": "d-pb-hane-p5",
+    "category": "power-banks",
+    "brand": "デモF社",
+    "model": "HPB-5000",
+    "variant": "5000mAh / ケーブル内蔵",
+    "status": "published",
+    "summary": "小型のモバイルバッテリー。ケーブル内蔵で本体重量は軽め。",
+    "weightG": {
+      "value": 105,
+      "sourceId": "src-demo-06",
+      "checkedAt": "2026-08-28"
+    },
+    "outerSizeMm": {
+      "value": [
+        65,
+        105,
+        15
+      ],
+      "sourceId": "src-demo-06",
+      "checkedAt": "2026-08-28"
+    },
+    "capacityL": {
+      "value": null,
+      "sourceId": null,
+      "checkedAt": null,
+      "note": "モバイルバッテリーには容量(L)の概念がないため掲載しません"
+    },
+    "specs": {
+      "capacityMah": {
+        "value": 5000,
+        "sourceId": "src-demo-06",
+        "checkedAt": "2026-08-28"
+      },
+      "ratedWh": {
+        "value": 18.5,
+        "sourceId": "src-demo-06",
+        "checkedAt": "2026-08-28"
+      },
+      "maxOutputW": {
+        "value": 20,
+        "sourceId": "src-demo-06",
+        "checkedAt": "2026-08-28"
+      },
+      "outputPorts": {
+        "value": "USB-C×1 / 内蔵USB-C×1",
+        "sourceId": "src-demo-06",
+        "checkedAt": "2026-08-28"
+      },
+      "inputPorts": {
+        "value": "USB-C×1",
+        "sourceId": "src-demo-06",
+        "checkedAt": "2026-08-28"
+      },
+      "builtInCable": {
+        "value": true,
+        "sourceId": "src-demo-06",
+        "checkedAt": "2026-08-28"
+      },
+      "passThroughCharging": {
+        "value": false,
+        "sourceId": "src-demo-06",
+        "checkedAt": "2026-08-28"
+      },
+      "pseMarkStated": {
+        "value": true,
+        "sourceId": "src-demo-06",
+        "checkedAt": "2026-08-28"
+      }
+    },
+    "caveats": [
+      "mAh から実際の充電回数は算出できません。端末や使用状況で変わります。",
+      "機内持ち込みの可否・条件は航空会社と搭乗日の規定をご確認ください。"
+    ],
+    "image": null
+  },
+  {
+    "id": "d-pb-hane-p10",
+    "category": "power-banks",
+    "brand": "デモF社",
+    "model": "HPB-10000",
+    "variant": "10000mAh / ケーブル内蔵",
+    "status": "published",
+    "summary": "同シリーズの容量違い。ケーブル内蔵タイプ。",
+    "weightG": {
+      "value": 205,
+      "sourceId": "src-demo-06",
+      "checkedAt": "2026-08-28"
+    },
+    "outerSizeMm": {
+      "value": [
+        70,
+        145,
+        17
+      ],
+      "sourceId": "src-demo-06",
+      "checkedAt": "2026-08-28"
+    },
+    "capacityL": {
+      "value": null,
+      "sourceId": null,
+      "checkedAt": null,
+      "note": "モバイルバッテリーには容量(L)の概念がないため掲載しません"
+    },
+    "specs": {
+      "capacityMah": {
+        "value": 10000,
+        "sourceId": "src-demo-06",
+        "checkedAt": "2026-08-28"
+      },
+      "ratedWh": {
+        "value": 37.0,
+        "sourceId": "src-demo-06",
+        "checkedAt": "2026-08-28"
+      },
+      "maxOutputW": {
+        "value": 30,
+        "sourceId": "src-demo-06",
+        "checkedAt": "2026-08-28"
+      },
+      "outputPorts": {
+        "value": "USB-C×1 / USB-A×1 / 内蔵USB-C×1",
+        "sourceId": "src-demo-06",
+        "checkedAt": "2026-08-28"
+      },
+      "inputPorts": {
+        "value": "USB-C×1",
+        "sourceId": "src-demo-06",
+        "checkedAt": "2026-08-28"
+      },
+      "builtInCable": {
+        "value": true,
+        "sourceId": "src-demo-06",
+        "checkedAt": "2026-08-28"
+      },
+      "passThroughCharging": {
+        "value": true,
+        "sourceId": "src-demo-06",
+        "checkedAt": "2026-08-28"
+      },
+      "pseMarkStated": {
+        "value": true,
+        "sourceId": "src-demo-06",
+        "checkedAt": "2026-08-28"
+      }
+    },
+    "caveats": [
+      "PSE表示があることは、安全性を保証するものではありません。",
+      "定格電力量(Wh)は公表値です。持ち込み規定はWhで判断されることがあります。"
+    ],
+    "image": null
+  },
+  {
+    "id": "d-pb-nagi-p10",
+    "category": "power-banks",
+    "brand": "デモC社",
+    "model": "NPB-10000",
+    "variant": "10000mAh / 薄型",
+    "status": "published",
+    "summary": "薄型筐体のモデル。出力は控えめ。",
+    "weightG": {
+      "value": 185,
+      "sourceId": "src-demo-03",
+      "checkedAt": "2026-08-28"
+    },
+    "outerSizeMm": {
+      "value": [
+        68,
+        140,
+        14
+      ],
+      "sourceId": "src-demo-03",
+      "checkedAt": "2026-08-28"
+    },
+    "capacityL": {
+      "value": null,
+      "sourceId": null,
+      "checkedAt": null,
+      "note": "モバイルバッテリーには容量(L)の概念がないため掲載しません"
+    },
+    "specs": {
+      "capacityMah": {
+        "value": 10000,
+        "sourceId": "src-demo-03",
+        "checkedAt": "2026-08-28"
+      },
+      "ratedWh": {
+        "value": 37.0,
+        "sourceId": "src-demo-03",
+        "checkedAt": "2026-08-28"
+      },
+      "maxOutputW": {
+        "value": 18,
+        "sourceId": "src-demo-03",
+        "checkedAt": "2026-08-28"
+      },
+      "outputPorts": {
+        "value": "USB-C×1 / USB-A×1",
+        "sourceId": "src-demo-03",
+        "checkedAt": "2026-08-28"
+      },
+      "inputPorts": {
+        "value": "USB-C×1",
+        "sourceId": "src-demo-03",
+        "checkedAt": "2026-08-28"
+      },
+      "builtInCable": {
+        "value": false,
+        "sourceId": "src-demo-03",
+        "checkedAt": "2026-08-28"
+      },
+      "passThroughCharging": {
+        "value": false,
+        "sourceId": "src-demo-03",
+        "checkedAt": "2026-08-28"
+      },
+      "pseMarkStated": {
+        "value": true,
+        "sourceId": "src-demo-03",
+        "checkedAt": "2026-08-28"
+      }
+    },
+    "caveats": [
+      "ケーブルは付属状況をご確認ください。当サイトでは付属品を確認していません。"
+    ],
+    "image": null
+  },
+  {
+    "id": "d-pb-lumen-p20",
+    "category": "power-banks",
+    "brand": "デモA社",
+    "model": "LPB-20000",
+    "variant": "20000mAh / 高出力",
+    "status": "published",
+    "summary": "容量の大きいモデル。重量は大きめ。",
+    "weightG": {
+      "value": 420,
+      "sourceId": "src-demo-01",
+      "checkedAt": "2026-08-28"
+    },
+    "outerSizeMm": {
+      "value": [
+        80,
+        160,
+        26
+      ],
+      "sourceId": "src-demo-01",
+      "checkedAt": "2026-08-28"
+    },
+    "capacityL": {
+      "value": null,
+      "sourceId": null,
+      "checkedAt": null,
+      "note": "モバイルバッテリーには容量(L)の概念がないため掲載しません"
+    },
+    "specs": {
+      "capacityMah": {
+        "value": 20000,
+        "sourceId": "src-demo-01",
+        "checkedAt": "2026-08-28"
+      },
+      "ratedWh": {
+        "value": 74.0,
+        "sourceId": "src-demo-01",
+        "checkedAt": "2026-08-28"
+      },
+      "maxOutputW": {
+        "value": 65,
+        "sourceId": "src-demo-01",
+        "checkedAt": "2026-08-28"
+      },
+      "outputPorts": {
+        "value": "USB-C×2 / USB-A×1",
+        "sourceId": "src-demo-01",
+        "checkedAt": "2026-08-28"
+      },
+      "inputPorts": {
+        "value": "USB-C×1",
+        "sourceId": "src-demo-01",
+        "checkedAt": "2026-08-28"
+      },
+      "builtInCable": {
+        "value": false,
+        "sourceId": "src-demo-01",
+        "checkedAt": "2026-08-28"
+      },
+      "passThroughCharging": {
+        "value": true,
+        "sourceId": "src-demo-01",
+        "checkedAt": "2026-08-28"
+      },
+      "pseMarkStated": {
+        "value": true,
+        "sourceId": "src-demo-01",
+        "checkedAt": "2026-08-28"
+      }
+    },
+    "caveats": [
+      "定格電力量が大きい製品は、航空会社によって持ち込み条件が変わることがあります。"
+    ],
+    "image": null
+  },
+  {
+    "id": "d-pb-hoshi-p10",
+    "category": "power-banks",
+    "brand": "デモE社",
+    "model": "HPB-A10",
+    "variant": "10000mAh / Wh非公表",
+    "status": "published",
+    "summary": "定格電力量(Wh)がメーカー公表になく不明のモデル。mAhから換算はしていません。",
+    "weightG": {
+      "value": 198,
+      "sourceId": "src-demo-05",
+      "checkedAt": "2026-08-28"
+    },
+    "outerSizeMm": {
+      "value": [
+        69,
+        142,
+        16
+      ],
+      "sourceId": "src-demo-05",
+      "checkedAt": "2026-08-28"
+    },
+    "capacityL": {
+      "value": null,
+      "sourceId": null,
+      "checkedAt": null,
+      "note": "モバイルバッテリーには容量(L)の概念がないため掲載しません"
+    },
+    "specs": {
+      "capacityMah": {
+        "value": 10000,
+        "sourceId": "src-demo-05",
+        "checkedAt": "2026-08-28"
+      },
+      "ratedWh": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "メーカー公表仕様に定格電力量(Wh)の記載がありません。mAhからの換算値は掲載しません"
+      },
+      "maxOutputW": {
+        "value": 22,
+        "sourceId": "src-demo-05",
+        "checkedAt": "2026-08-28"
+      },
+      "outputPorts": {
+        "value": "USB-C×1 / USB-A×1",
+        "sourceId": "src-demo-05",
+        "checkedAt": "2026-08-28"
+      },
+      "inputPorts": {
+        "value": "USB-C×1",
+        "sourceId": "src-demo-05",
+        "checkedAt": "2026-08-28"
+      },
+      "builtInCable": {
+        "value": false,
+        "sourceId": "src-demo-05",
+        "checkedAt": "2026-08-28"
+      },
+      "passThroughCharging": {
+        "value": false,
+        "sourceId": "src-demo-05",
+        "checkedAt": "2026-08-28"
+      },
+      "pseMarkStated": {
+        "value": true,
+        "sourceId": "src-demo-05",
+        "checkedAt": "2026-08-28"
+      }
+    },
+    "caveats": [
+      "定格電力量(Wh)が不明なため、Whを条件とする持ち込み判断には使えません。"
+    ],
+    "image": null
+  },
+  {
+    "id": "d-pb-karuta-p5",
+    "category": "power-banks",
+    "brand": "デモB社",
+    "model": "KPB-5000",
+    "variant": "5000mAh / 直挿し",
+    "status": "published",
+    "summary": "コンセントプラグ一体型。充電器としても使えるとされるモデル。",
+    "weightG": {
+      "value": 168,
+      "sourceId": "src-demo-02",
+      "checkedAt": "2026-08-28"
+    },
+    "outerSizeMm": {
+      "value": [
+        55,
+        90,
+        30
+      ],
+      "sourceId": "src-demo-02",
+      "checkedAt": "2026-08-28"
+    },
+    "capacityL": {
+      "value": null,
+      "sourceId": null,
+      "checkedAt": null,
+      "note": "モバイルバッテリーには容量(L)の概念がないため掲載しません"
+    },
+    "specs": {
+      "capacityMah": {
+        "value": 5000,
+        "sourceId": "src-demo-02",
+        "checkedAt": "2026-08-28"
+      },
+      "ratedWh": {
+        "value": 18.5,
+        "sourceId": "src-demo-02",
+        "checkedAt": "2026-08-28"
+      },
+      "maxOutputW": {
+        "value": 20,
+        "sourceId": "src-demo-02",
+        "checkedAt": "2026-08-28"
+      },
+      "outputPorts": {
+        "value": "USB-C×1",
+        "sourceId": "src-demo-02",
+        "checkedAt": "2026-08-28"
+      },
+      "inputPorts": {
+        "value": "AC / USB-C×1",
+        "sourceId": "src-demo-02",
+        "checkedAt": "2026-08-28"
+      },
+      "builtInCable": {
+        "value": false,
+        "sourceId": "src-demo-02",
+        "checkedAt": "2026-08-28"
+      },
+      "passThroughCharging": {
+        "value": true,
+        "sourceId": "src-demo-02",
+        "checkedAt": "2026-08-28"
+      },
+      "pseMarkStated": {
+        "value": true,
+        "sourceId": "src-demo-02",
+        "checkedAt": "2026-08-28"
+      }
+    },
+    "caveats": [
+      "プラグ一体型のため、外寸に突起部が含まれるかは公表からは判断できません。"
+    ],
+    "image": null
+  }
+]

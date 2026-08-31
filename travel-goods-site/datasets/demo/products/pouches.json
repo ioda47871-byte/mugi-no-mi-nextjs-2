@@ -1,0 +1,517 @@
+[
+  {
+    "id": "d-pc-karuta-c1",
+    "category": "pouches",
+    "brand": "デモB社",
+    "model": "KP-C1",
+    "variant": "衣類用 / Mサイズ",
+    "status": "published",
+    "summary": "衣類の仕分け用ポーチ。圧縮ファスナー付き。",
+    "weightG": {
+      "value": 95,
+      "sourceId": "src-demo-02",
+      "checkedAt": "2026-08-28"
+    },
+    "outerSizeMm": {
+      "value": [
+        260,
+        180,
+        110
+      ],
+      "sourceId": "src-demo-02",
+      "checkedAt": "2026-08-28"
+    },
+    "capacityL": {
+      "value": 6,
+      "sourceId": "src-demo-02",
+      "checkedAt": "2026-08-28"
+    },
+    "specs": {
+      "usageType": {
+        "value": "衣類収納",
+        "sourceId": "src-demo-02",
+        "checkedAt": "2026-08-28"
+      },
+      "compartmentCount": {
+        "value": 1,
+        "sourceId": "src-demo-02",
+        "checkedAt": "2026-08-28"
+      },
+      "hangingHook": {
+        "value": false,
+        "sourceId": "src-demo-02",
+        "checkedAt": "2026-08-28"
+      },
+      "compression": {
+        "value": true,
+        "sourceId": "src-demo-02",
+        "checkedAt": "2026-08-28"
+      },
+      "waterResistantMaterial": {
+        "value": false,
+        "sourceId": "src-demo-02",
+        "checkedAt": "2026-08-28"
+      },
+      "packedThicknessMm": {
+        "value": 110,
+        "sourceId": "src-demo-02",
+        "checkedAt": "2026-08-28"
+      }
+    },
+    "caveats": [
+      "圧縮できるのは体積です。荷物の重量は変わりません。"
+    ],
+    "image": null
+  },
+  {
+    "id": "d-pc-karuta-c2",
+    "category": "pouches",
+    "brand": "デモB社",
+    "model": "KP-C2",
+    "variant": "衣類用 / Lサイズ",
+    "status": "published",
+    "summary": "同シリーズの容量違い。圧縮ファスナー付き。",
+    "weightG": {
+      "value": 130,
+      "sourceId": "src-demo-02",
+      "checkedAt": "2026-08-28"
+    },
+    "outerSizeMm": {
+      "value": [
+        340,
+        220,
+        120
+      ],
+      "sourceId": "src-demo-02",
+      "checkedAt": "2026-08-28"
+    },
+    "capacityL": {
+      "value": 11,
+      "sourceId": "src-demo-02",
+      "checkedAt": "2026-08-28"
+    },
+    "specs": {
+      "usageType": {
+        "value": "衣類収納",
+        "sourceId": "src-demo-02",
+        "checkedAt": "2026-08-28"
+      },
+      "compartmentCount": {
+        "value": 1,
+        "sourceId": "src-demo-02",
+        "checkedAt": "2026-08-28"
+      },
+      "hangingHook": {
+        "value": false,
+        "sourceId": "src-demo-02",
+        "checkedAt": "2026-08-28"
+      },
+      "compression": {
+        "value": true,
+        "sourceId": "src-demo-02",
+        "checkedAt": "2026-08-28"
+      },
+      "waterResistantMaterial": {
+        "value": false,
+        "sourceId": "src-demo-02",
+        "checkedAt": "2026-08-28"
+      },
+      "packedThicknessMm": {
+        "value": 120,
+        "sourceId": "src-demo-02",
+        "checkedAt": "2026-08-28"
+      }
+    },
+    "caveats": [
+      "圧縮後の厚みは収納物によって変わります。公表値は目安です。"
+    ],
+    "image": null
+  },
+  {
+    "id": "d-pc-hane-t1",
+    "category": "pouches",
+    "brand": "デモF社",
+    "model": "HP-T1",
+    "variant": "洗面用 / 吊り下げ式",
+    "status": "published",
+    "summary": "フックで吊り下げられる洗面ポーチ。仕切り3室。",
+    "weightG": {
+      "value": 185,
+      "sourceId": "src-demo-06",
+      "checkedAt": "2026-08-28"
+    },
+    "outerSizeMm": {
+      "value": [
+        230,
+        250,
+        90
+      ],
+      "sourceId": "src-demo-06",
+      "checkedAt": "2026-08-28"
+    },
+    "capacityL": {
+      "value": 4,
+      "sourceId": "src-demo-06",
+      "checkedAt": "2026-08-28"
+    },
+    "specs": {
+      "usageType": {
+        "value": "洗面用品",
+        "sourceId": "src-demo-06",
+        "checkedAt": "2026-08-28"
+      },
+      "compartmentCount": {
+        "value": 3,
+        "sourceId": "src-demo-06",
+        "checkedAt": "2026-08-28"
+      },
+      "hangingHook": {
+        "value": true,
+        "sourceId": "src-demo-06",
+        "checkedAt": "2026-08-28"
+      },
+      "compression": {
+        "value": false,
+        "sourceId": "src-demo-06",
+        "checkedAt": "2026-08-28"
+      },
+      "waterResistantMaterial": {
+        "value": true,
+        "sourceId": "src-demo-06",
+        "checkedAt": "2026-08-28"
+      },
+      "packedThicknessMm": {
+        "value": 90,
+        "sourceId": "src-demo-06",
+        "checkedAt": "2026-08-28"
+      }
+    },
+    "caveats": [
+      "吊り下げるにはフックを掛けられる場所が必要です。",
+      "液体物の航空機内持ち込み規定は各国・各社の案内をご確認ください。"
+    ],
+    "image": null
+  },
+  {
+    "id": "d-pc-hane-t2",
+    "category": "pouches",
+    "brand": "デモF社",
+    "model": "HP-T2",
+    "variant": "洗面用 / 小型",
+    "status": "published",
+    "summary": "小型の洗面ポーチ。吊り下げ非対応で仕切りは2室。",
+    "weightG": {
+      "value": 110,
+      "sourceId": "src-demo-06",
+      "checkedAt": "2026-08-28"
+    },
+    "outerSizeMm": {
+      "value": [
+        190,
+        200,
+        70
+      ],
+      "sourceId": "src-demo-06",
+      "checkedAt": "2026-08-28"
+    },
+    "capacityL": {
+      "value": 2,
+      "sourceId": "src-demo-06",
+      "checkedAt": "2026-08-28"
+    },
+    "specs": {
+      "usageType": {
+        "value": "洗面用品",
+        "sourceId": "src-demo-06",
+        "checkedAt": "2026-08-28"
+      },
+      "compartmentCount": {
+        "value": 2,
+        "sourceId": "src-demo-06",
+        "checkedAt": "2026-08-28"
+      },
+      "hangingHook": {
+        "value": false,
+        "sourceId": "src-demo-06",
+        "checkedAt": "2026-08-28"
+      },
+      "compression": {
+        "value": false,
+        "sourceId": "src-demo-06",
+        "checkedAt": "2026-08-28"
+      },
+      "waterResistantMaterial": {
+        "value": true,
+        "sourceId": "src-demo-06",
+        "checkedAt": "2026-08-28"
+      },
+      "packedThicknessMm": {
+        "value": 70,
+        "sourceId": "src-demo-06",
+        "checkedAt": "2026-08-28"
+      }
+    },
+    "caveats": [
+      "吊り下げ用のフックはありません。"
+    ],
+    "image": null
+  },
+  {
+    "id": "d-pc-nagi-s1",
+    "category": "pouches",
+    "brand": "デモC社",
+    "model": "NP-S1",
+    "variant": "小物用 / 3点セット",
+    "status": "published",
+    "summary": "サイズ違い3点のセット。重量はセット合計の公表値です。",
+    "weightG": {
+      "value": 145,
+      "sourceId": "src-demo-03",
+      "checkedAt": "2026-08-28"
+    },
+    "outerSizeMm": {
+      "value": [
+        300,
+        200,
+        80
+      ],
+      "sourceId": "src-demo-03",
+      "checkedAt": "2026-08-28"
+    },
+    "capacityL": {
+      "value": 8,
+      "sourceId": "src-demo-03",
+      "checkedAt": "2026-08-28"
+    },
+    "specs": {
+      "usageType": {
+        "value": "小物整理",
+        "sourceId": "src-demo-03",
+        "checkedAt": "2026-08-28"
+      },
+      "compartmentCount": {
+        "value": 3,
+        "sourceId": "src-demo-03",
+        "checkedAt": "2026-08-28"
+      },
+      "hangingHook": {
+        "value": false,
+        "sourceId": "src-demo-03",
+        "checkedAt": "2026-08-28"
+      },
+      "compression": {
+        "value": false,
+        "sourceId": "src-demo-03",
+        "checkedAt": "2026-08-28"
+      },
+      "waterResistantMaterial": {
+        "value": false,
+        "sourceId": "src-demo-03",
+        "checkedAt": "2026-08-28"
+      },
+      "packedThicknessMm": {
+        "value": 80,
+        "sourceId": "src-demo-03",
+        "checkedAt": "2026-08-28"
+      }
+    },
+    "caveats": [
+      "重量・容量はセット合計の公表値で、1点あたりの内訳は不明です。",
+      "単品モデルとは別のバリエーションとして扱っています。"
+    ],
+    "image": null
+  },
+  {
+    "id": "d-pc-lumen-w1",
+    "category": "pouches",
+    "brand": "デモA社",
+    "model": "LP-W1",
+    "variant": "衣類用 / 撥水",
+    "status": "published",
+    "summary": "撥水素材の衣類ポーチ。圧縮機能はありません。",
+    "weightG": {
+      "value": 120,
+      "sourceId": "src-demo-01",
+      "checkedAt": "2026-08-28"
+    },
+    "outerSizeMm": {
+      "value": [
+        300,
+        200,
+        100
+      ],
+      "sourceId": "src-demo-01",
+      "checkedAt": "2026-08-28"
+    },
+    "capacityL": {
+      "value": 9,
+      "sourceId": "src-demo-01",
+      "checkedAt": "2026-08-28"
+    },
+    "specs": {
+      "usageType": {
+        "value": "衣類収納",
+        "sourceId": "src-demo-01",
+        "checkedAt": "2026-08-28"
+      },
+      "compartmentCount": {
+        "value": 1,
+        "sourceId": "src-demo-01",
+        "checkedAt": "2026-08-28"
+      },
+      "hangingHook": {
+        "value": false,
+        "sourceId": "src-demo-01",
+        "checkedAt": "2026-08-28"
+      },
+      "compression": {
+        "value": false,
+        "sourceId": "src-demo-01",
+        "checkedAt": "2026-08-28"
+      },
+      "waterResistantMaterial": {
+        "value": true,
+        "sourceId": "src-demo-01",
+        "checkedAt": "2026-08-28"
+      },
+      "packedThicknessMm": {
+        "value": 100,
+        "sourceId": "src-demo-01",
+        "checkedAt": "2026-08-28"
+      }
+    },
+    "caveats": [
+      "撥水は防水ではありません。浸水を防ぐ性能は公表されていません。"
+    ],
+    "image": null
+  },
+  {
+    "id": "d-pc-tobira-m1",
+    "category": "pouches",
+    "brand": "デモD社",
+    "model": "TP-M1",
+    "variant": "衣類用 / 超軽量",
+    "status": "published",
+    "summary": "同カテゴリで公表重量が最も軽いモデル。容量は小さめ。",
+    "weightG": {
+      "value": 48,
+      "sourceId": "src-demo-04",
+      "checkedAt": "2026-08-28"
+    },
+    "outerSizeMm": {
+      "value": [
+        240,
+        160,
+        80
+      ],
+      "sourceId": "src-demo-04",
+      "checkedAt": "2026-08-28"
+    },
+    "capacityL": {
+      "value": 4,
+      "sourceId": "src-demo-04",
+      "checkedAt": "2026-08-28"
+    },
+    "specs": {
+      "usageType": {
+        "value": "衣類収納",
+        "sourceId": "src-demo-04",
+        "checkedAt": "2026-08-28"
+      },
+      "compartmentCount": {
+        "value": 1,
+        "sourceId": "src-demo-04",
+        "checkedAt": "2026-08-28"
+      },
+      "hangingHook": {
+        "value": false,
+        "sourceId": "src-demo-04",
+        "checkedAt": "2026-08-28"
+      },
+      "compression": {
+        "value": false,
+        "sourceId": "src-demo-04",
+        "checkedAt": "2026-08-28"
+      },
+      "waterResistantMaterial": {
+        "value": false,
+        "sourceId": "src-demo-04",
+        "checkedAt": "2026-08-28"
+      },
+      "packedThicknessMm": {
+        "value": 80,
+        "sourceId": "src-demo-04",
+        "checkedAt": "2026-08-28"
+      }
+    },
+    "caveats": [
+      "軽量素材のため、収納物の保護性能は公表されていません。"
+    ],
+    "image": null
+  },
+  {
+    "id": "d-pc-hoshi-x1",
+    "category": "pouches",
+    "brand": "デモE社",
+    "model": "HP-X1",
+    "variant": "衣類用 / 容量非公表",
+    "status": "published",
+    "summary": "容量がメーカー公表になく不明のモデル。重量と外寸のみ確認できました。",
+    "weightG": {
+      "value": 160,
+      "sourceId": "src-demo-05",
+      "checkedAt": "2026-08-28"
+    },
+    "outerSizeMm": {
+      "value": [
+        320,
+        210,
+        110
+      ],
+      "sourceId": "src-demo-05",
+      "checkedAt": "2026-08-28"
+    },
+    "capacityL": {
+      "value": null,
+      "sourceId": null,
+      "checkedAt": null,
+      "note": "メーカー公表仕様に容量(L)の記載がありません"
+    },
+    "specs": {
+      "usageType": {
+        "value": "衣類収納",
+        "sourceId": "src-demo-05",
+        "checkedAt": "2026-08-28"
+      },
+      "compartmentCount": {
+        "value": 2,
+        "sourceId": "src-demo-05",
+        "checkedAt": "2026-08-28"
+      },
+      "hangingHook": {
+        "value": false,
+        "sourceId": "src-demo-05",
+        "checkedAt": "2026-08-28"
+      },
+      "compression": {
+        "value": true,
+        "sourceId": "src-demo-05",
+        "checkedAt": "2026-08-28"
+      },
+      "waterResistantMaterial": {
+        "value": false,
+        "sourceId": "src-demo-05",
+        "checkedAt": "2026-08-28"
+      },
+      "packedThicknessMm": {
+        "value": 110,
+        "sourceId": "src-demo-05",
+        "checkedAt": "2026-08-28"
+      }
+    },
+    "caveats": [
+      "容量が不明なため、容量を条件にした絞り込みの対象外です。"
+    ],
+    "image": null
+  }
+]
