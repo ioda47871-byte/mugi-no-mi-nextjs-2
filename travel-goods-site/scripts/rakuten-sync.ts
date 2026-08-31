@@ -197,9 +197,10 @@ async function syncLinks(
     updates.push(link);
 
     console.log(
-      `  ${product.id}\n` +
+      `  ${product.id}（${product.brand} ${product.model} / ${product.variant}）\n` +
         `    一致度   : ${best.match.confidence}\n` +
-        `    販売ページ: ${best.item.itemName.slice(0, 60)}\n` +
+        `    店舗     : ${best.item.shopName ?? '(店舗名なし)'} / ${best.item.itemCode}\n` +
+        `    販売ページ: ${best.item.itemName.slice(0, 110)}\n` +
         `    状態     : ${link.status}${shouldVerify ? '（自動で表示対象）' : '（未表示）'}`,
     );
     if (best.match.blockers.length > 0) {
