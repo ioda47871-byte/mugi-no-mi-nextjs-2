@@ -7,8 +7,17 @@ const BASE_URL = `http://127.0.0.1:${PORT}`;
  * 静的出力（out/）をそのまま配信して検証する。
  * 実行時サーバーに依存しないことを e2e でも保証する。
  */
+/**
+ * どのデータセットでビルドした out/ を検証するか。
+ *   demo（既定）… site.spec.ts（絞り込み・0件・下書き非公開などを厚く確認）
+ *   production   … real-data.spec.ts（取り込んだ実商品の表示を確認）
+ * cta-preview.spec.ts はデータセットに依存しないため常に実行する。
+ */
+const DATASET = process.env.E2E_DATASET === 'production' ? 'production' : 'demo';
+
 export default defineConfig({
   testDir: './tests/e2e',
+  testIgnore: DATASET === 'production' ? ['**/site.spec.ts'] : ['**/real-data.spec.ts'],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,

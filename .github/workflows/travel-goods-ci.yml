@@ -46,7 +46,7 @@ jobs:
       - name: データ・記事の検証（本番／デモ両方）
         run: npm run validate:content:all
 
-      - name: 本番ビルド（静的出力）
+      - name: 静的出力ビルド（デモデータ）
         run: npm run build:only
 
       - name: 公開前チェック（プレビュー設定では未達項目が出るため参考表示）
@@ -55,8 +55,14 @@ jobs:
       - name: Playwright ブラウザの取得
         run: npx playwright install --with-deps chromium
 
-      - name: E2E テスト
+      - name: E2E テスト（デモデータ + CTA表示確認）
         run: npm run test:e2e
+
+      - name: E2E テスト（本番データ）
+        run: npm run test:e2e:production
+
+      - name: 本番データでの公開前チェック（配信物に架空データが無いこと）
+        run: CATALOG_DATASET=production npm run check:release -- --out out || true
 
       - uses: actions/upload-artifact@v4
         if: failure()

@@ -76,7 +76,10 @@
       ],
       "sourceId": "src-demo-01",
       "checkedAt": "2026-08-28"
-    }
+    },
+    "sizeBasis": "with-handle-and-wheels",
+    "measurementState": "not-applicable",
+    "alternateMeasurements": []
   },
   {
     "id": "d-sc-lumen-48",
@@ -154,7 +157,10 @@
       ],
       "sourceId": "src-demo-01",
       "checkedAt": "2026-08-28"
-    }
+    },
+    "sizeBasis": "with-handle-and-wheels",
+    "measurementState": "not-applicable",
+    "alternateMeasurements": []
   },
   {
     "id": "d-sc-karuta-34",
@@ -232,7 +238,10 @@
       ],
       "sourceId": "src-demo-02",
       "checkedAt": "2026-08-28"
-    }
+    },
+    "sizeBasis": "with-handle-and-wheels",
+    "measurementState": "not-applicable",
+    "alternateMeasurements": []
   },
   {
     "id": "d-sc-nagi-40",
@@ -310,7 +319,10 @@
       ],
       "sourceId": "src-demo-03",
       "checkedAt": "2026-08-28"
-    }
+    },
+    "sizeBasis": "with-handle-and-wheels",
+    "measurementState": "not-applicable",
+    "alternateMeasurements": []
   },
   {
     "id": "d-sc-nagi-62",
@@ -388,7 +400,10 @@
       ],
       "sourceId": "src-demo-03",
       "checkedAt": "2026-08-28"
-    }
+    },
+    "sizeBasis": "with-handle-and-wheels",
+    "measurementState": "not-applicable",
+    "alternateMeasurements": []
   },
   {
     "id": "d-sc-tobira-45",
@@ -467,7 +482,10 @@
       ],
       "sourceId": "src-demo-04",
       "checkedAt": "2026-08-28"
-    }
+    },
+    "sizeBasis": "with-handle-and-wheels",
+    "measurementState": "not-applicable",
+    "alternateMeasurements": []
   },
   {
     "id": "d-sc-tobira-30",
@@ -540,7 +558,10 @@
       "sourceId": null,
       "checkedAt": null,
       "note": "本体寸法の記載もありません"
-    }
+    },
+    "sizeBasis": "with-handle-and-wheels",
+    "measurementState": "not-applicable",
+    "alternateMeasurements": []
   },
   {
     "id": "d-sc-hoshi-75",
@@ -615,6 +636,9 @@
       "sourceId": null,
       "checkedAt": null,
       "note": "本体寸法の公表がありません"
-    }
+    },
+    "sizeBasis": "with-handle-and-wheels",
+    "measurementState": "not-applicable",
+    "alternateMeasurements": []
   }
 ]

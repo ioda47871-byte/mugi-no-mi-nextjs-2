@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import InfoPage, { Section } from '@/components/InfoPage';
 import { absoluteUrl, siteConfig } from '@/config/site';
-import { getMerchantConfig } from '@/config/merchants';
 
 export const metadata: Metadata = {
   title: 'プライバシー',
@@ -11,7 +10,6 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   const gaEnabled = Boolean(siteConfig.gaMeasurementId);
-  const merchants = getMerchantConfig();
 
   return (
     <InfoPage
@@ -42,8 +40,7 @@ export default function PrivacyPage() {
       <Section heading="広告・アフィリエイト">
         <p>
           当サイトは、Amazonアソシエイト・楽天アフィリエイトなどのアフィリエイトプログラムを利用して、
-          販売先へのリンクを掲載することがあります（現在の設定: Amazon{' '}
-          {merchants.amazonAssociateTag ? '有効' : '未設定'}）。
+          販売先へのリンクを掲載することがあります。
           リンクをクリックして販売先サイトへ移動した後の情報の取り扱いは、各販売先のプライバシーポリシーに従います。
         </p>
         <p>

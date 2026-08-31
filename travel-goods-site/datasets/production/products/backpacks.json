@@ -1,0 +1,102 @@
+[
+  {
+    "id": "elecom-bm-bptrcsepbk-30l-black",
+    "category": "backpacks",
+    "brand": "エレコム（ELECOM）",
+    "model": "BM-BPTRCSEPBK",
+    "variant": "30L / ブラック",
+    "jan": "4549550420822",
+    "status": "published",
+    "summary": "通常時30L・拡張時40Lのトラベルバックパック。180度フルオープンで、真空圧縮と拡張に対応。本体重量は約1250g。",
+    "weightG": {
+      "value": 1250,
+      "sourceId": "src-elecom-bm-bptrcsepbk",
+      "checkedAt": "2026-08-31"
+    },
+    "outerSizeMm": {
+      "value": [
+        320,
+        510,
+        200
+      ],
+      "sourceId": "src-elecom-bm-bptrcsepbk",
+      "checkedAt": "2026-08-31"
+    },
+    "sizeBasis": "excludes-handle-and-straps",
+    "measurementState": "normal",
+    "capacityL": {
+      "value": 30,
+      "sourceId": "src-elecom-bm-bptrcsepbk",
+      "checkedAt": "2026-08-31"
+    },
+    "alternateMeasurements": [
+      {
+        "label": "拡張時",
+        "state": "expanded",
+        "sizeMm": {
+          "value": [
+            320,
+            510,
+            250
+          ],
+          "sourceId": "src-elecom-bm-bptrcsepbk",
+          "checkedAt": "2026-08-31"
+        },
+        "sizeBasis": "excludes-handle-and-straps",
+        "capacityL": {
+          "value": 40,
+          "sourceId": "src-elecom-bm-bptrcsepbk",
+          "checkedAt": "2026-08-31"
+        }
+      }
+    ],
+    "specs": {
+      "openingType": {
+        "value": "180度フルオープン",
+        "sourceId": "src-elecom-bm-bptrcsepbk",
+        "checkedAt": "2026-08-31"
+      },
+      "luggagePassThrough": {
+        "value": true,
+        "sourceId": "src-elecom-bm-bptrcsepbk",
+        "checkedAt": "2026-08-31"
+      },
+      "laptopCompartment": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様にPC専用収納の記載を確認できていません"
+      },
+      "chestStrap": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に記載を確認できていません"
+      },
+      "waistStrap": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に記載を確認できていません"
+      },
+      "packableIntoSelf": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に記載を確認できていません"
+      },
+      "exteriorBottlePocket": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に記載を確認できていません"
+      }
+    },
+    "caveats": [
+      "寸法はハンドル・ショルダーベルトを除く値です。機内持ち込みの規定はこれらを含む寸法で判断されることがあります。",
+      "真空圧縮機能に電動ポンプは付属しません。",
+      "背負い心地や実際に入る衣類量は、メーカー公表仕様からは判断できないため掲載していません。"
+    ],
+    "image": null
+  }
+]

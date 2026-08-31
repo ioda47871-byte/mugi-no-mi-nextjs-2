@@ -265,6 +265,36 @@ export function inspectCatalog(input: CatalogInput, options: ValidateOptions = {
       continue;
     }
     sourceMap.set(source.id, source);
+
+    // 入手経路と取込記録の整合（提供資料からの取り込みを自力確認と記録させない）
+    if (source.provenance === 'provided-document' && source.importedFrom === null) {
+      issues.push({
+        severity: 'error',
+        code: 'source.missing-import-record',
+        subject: source.id,
+        path: 'importedFrom',
+        message: "provenance: 'provided-document' には提供資料名と取込日(importedFrom)が必要です",
+      });
+    }
+    if (source.provenance === 'direct-fetch' && source.importedFrom !== null) {
+      issues.push({
+        severity: 'error',
+        code: 'source.unexpected-import-record',
+        subject: source.id,
+        path: 'importedFrom',
+        message: "provenance: 'direct-fetch' に importedFrom は付けられません",
+      });
+    }
+    if (source.importedFrom && toDay(source.importedFrom.importedAt) > todayMs) {
+      issues.push({
+        severity: 'error',
+        code: 'source.future-imported-at',
+        subject: source.id,
+        path: 'importedFrom.importedAt',
+        message: `取込日が未来です: ${source.importedFrom.importedAt}`,
+      });
+    }
+
     if (toDay(source.checkedAt) > todayMs) {
       issues.push({
         severity: 'error',
@@ -313,6 +343,53 @@ export function inspectCatalog(input: CatalogInput, options: ValidateOptions = {
     }
     for (const [key, fact] of Object.entries(product.specs)) {
       checkFact(fact, product.id, `specs.${key}`, sourceMap, todayMs, requireVerified, issues);
+    }
+
+    // 別条件の寸法・容量（拡張時など）
+    const seenLabels = new Set<string>();
+    product.alternateMeasurements.forEach((measurement, index) => {
+      const base = `alternateMeasurements[${index}]`;
+      checkFact(measurement.sizeMm, product.id, `${base}.sizeMm`, sourceMap, todayMs, requireVerified, issues);
+      checkFact(measurement.capacityL, product.id, `${base}.capacityL`, sourceMap, todayMs, requireVerified, issues);
+      if (seenLabels.has(measurement.label)) {
+        issues.push({
+          severity: 'error',
+          code: 'product.duplicate-measurement-label',
+          subject: product.id,
+          path: `${base}.label`,
+          message: `条件名が重複しています: ${measurement.label}`,
+        });
+      }
+      seenLabels.add(measurement.label);
+      if (measurement.state === product.measurementState) {
+        issues.push({
+          severity: 'error',
+          code: 'product.redundant-measurement',
+          subject: product.id,
+          path: `${base}.state`,
+          message: `主要値と同じ状態(${measurement.state})です。別条件のときだけ登録してください`,
+        });
+      }
+      if (measurement.sizeMm.value === null && measurement.capacityL.value === null) {
+        issues.push({
+          severity: 'warning',
+          code: 'product.empty-measurement',
+          subject: product.id,
+          path: base,
+          message: '寸法も容量も不明な条件が登録されています',
+        });
+      }
+    });
+
+    // 本体寸法は「本体のみ」の値。外寸の条件が body-only なら重複登録になる。
+    if (product.bodySizeMm?.value != null && product.sizeBasis === 'body-only') {
+      issues.push({
+        severity: 'error',
+        code: 'product.duplicate-body-size',
+        subject: product.id,
+        path: 'bodySizeMm',
+        message: "outerSizeMm が既に 'body-only' 条件です。本体寸法を二重に登録しないでください",
+      });
     }
 
     if (product.image && !sourceMap.has(product.image.sourceId)) {

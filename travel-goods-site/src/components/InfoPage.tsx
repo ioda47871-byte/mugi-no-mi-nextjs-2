@@ -38,10 +38,7 @@ export function Section({ heading, children }: { heading: string; children: Reac
   );
 }
 
-export function Unset({ label }: { label: string }) {
-  return (
-    <span className="rounded bg-warn-soft px-1.5 py-0.5 text-xs font-medium text-warn">
-      未設定（{label}）
-    </span>
-  );
+/** 未提供の情報。架空の値で埋めず、準備中であることだけを示す。 */
+export function Unset() {
+  return <span className="text-ink-faint">準備中</span>;
 }

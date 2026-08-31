@@ -11,6 +11,8 @@
 import { inspectCatalog, formatIssue } from '../src/lib/catalog/validate';
 import { readDatasetInput, resolveDatasetKind } from '../src/lib/catalog/load';
 import { evaluatePublication } from '../src/lib/content/publication';
+import { resolveMerchantLinks, SUPPRESSION_MESSAGES } from '../src/lib/affiliate/resolve';
+import { getMerchantConfig } from '../src/config/merchants';
 import type { DatasetKind } from '../src/lib/catalog/types';
 
 const argv = process.argv.slice(2);
@@ -90,6 +92,25 @@ for (const kind of requestedDatasets()) {
       for (const reason of item.reasons) console.log(`    - ${reason}`);
     }
   }
+  // 購入リンクを出せない理由の内部レポート（読者向け画面には出さない情報）
+  const merchantConfig = getMerchantConfig();
+  const suppressionReport = publishedProducts
+    .map((product) => ({
+      product,
+      resolution: resolveMerchantLinks(product, catalog.merchantLinks, merchantConfig),
+    }))
+    .filter((entry) => entry.resolution.links.length === 0);
+
+  if (suppressionReport.length > 0) {
+    console.log(`  購入リンク未表示の商品 ${suppressionReport.length} 件（理由は画面に出しません）:`);
+    for (const { product, resolution } of suppressionReport) {
+      const reasons = resolution.suppressed
+        .map((item) => `${item.merchant}=${SUPPRESSION_MESSAGES[item.reason]}`)
+        .join(' / ');
+      console.log(`    - ${product.id}: ${reasons}`);
+    }
+  }
+
   if (warnings.length > 0) console.log(`  警告 ${warnings.length} 件（公開は妨げません）`);
   console.log('  → 検証OK');
 }

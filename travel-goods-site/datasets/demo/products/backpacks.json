@@ -66,7 +66,10 @@
     "caveats": [
       "背負い心地は個人差があるため、当サイトでは評価していません。"
     ],
-    "image": null
+    "image": null,
+    "sizeBasis": "excludes-handle-and-straps",
+    "measurementState": "not-applicable",
+    "alternateMeasurements": []
   },
   {
     "id": "d-bp-nagi-32",
@@ -135,7 +138,10 @@
     "caveats": [
       "容量が大きいほど、機内持ち込みの座席下収納には入りにくくなります。"
     ],
-    "image": null
+    "image": null,
+    "sizeBasis": "excludes-handle-and-straps",
+    "measurementState": "not-applicable",
+    "alternateMeasurements": []
   },
   {
     "id": "d-bp-karuta-20",
@@ -204,7 +210,10 @@
     "caveats": [
       "PC専用の緩衝ポケットはありません。"
     ],
-    "image": null
+    "image": null,
+    "sizeBasis": "excludes-handle-and-straps",
+    "measurementState": "not-applicable",
+    "alternateMeasurements": []
   },
   {
     "id": "d-bp-hane-18",
@@ -273,7 +282,10 @@
     "caveats": [
       "薄い生地のため、収納物の保護性能はメーカー公表からは判断できません。"
     ],
-    "image": null
+    "image": null,
+    "sizeBasis": "excludes-handle-and-straps",
+    "measurementState": "not-applicable",
+    "alternateMeasurements": []
   },
   {
     "id": "d-bp-hane-30",
@@ -342,7 +354,10 @@
     "caveats": [
       "前面開きは、床などに置いて開く必要があります。"
     ],
-    "image": null
+    "image": null,
+    "sizeBasis": "excludes-handle-and-straps",
+    "measurementState": "not-applicable",
+    "alternateMeasurements": []
   },
   {
     "id": "d-bp-tobira-28",
@@ -411,7 +426,10 @@
     "caveats": [
       "拡張後の容量・外寸はメーカー公表がなく不明です。"
     ],
-    "image": null
+    "image": null,
+    "sizeBasis": "excludes-handle-and-straps",
+    "measurementState": "not-applicable",
+    "alternateMeasurements": []
   },
   {
     "id": "d-bp-hoshi-22",
@@ -481,7 +499,10 @@
     "caveats": [
       "本体重量が不明なため、重量を条件にした絞り込みの対象外です。"
     ],
-    "image": null
+    "image": null,
+    "sizeBasis": "excludes-handle-and-straps",
+    "measurementState": "not-applicable",
+    "alternateMeasurements": []
   },
   {
     "id": "d-bp-lumen-35",
@@ -550,6 +571,9 @@
     "caveats": [
       "機内持ち込みの手荷物規定は航空会社ごとに異なります。"
     ],
-    "image": null
+    "image": null,
+    "sizeBasis": "excludes-handle-and-straps",
+    "measurementState": "not-applicable",
+    "alternateMeasurements": []
   }
 ]

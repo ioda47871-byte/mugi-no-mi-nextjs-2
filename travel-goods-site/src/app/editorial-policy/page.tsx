@@ -1,8 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import InfoPage, { Section } from '@/components/InfoPage';
-import { absoluteUrl, siteConfig } from '@/config/site';
-import { getMerchantConfig } from '@/config/merchants';
+import { absoluteUrl } from '@/config/site';
 
 export const metadata: Metadata = {
   title: '編集・広告方針',
@@ -14,8 +13,6 @@ export const metadata: Metadata = {
 };
 
 export default function EditorialPolicyPage() {
-  const merchants = getMerchantConfig();
-
   return (
     <InfoPage
       title="編集・広告方針"
@@ -70,9 +67,6 @@ export default function EditorialPolicyPage() {
           <li>広告リンクには rel=&quot;sponsored noopener&quot; を設定し、新しいタブで開きます。</li>
           <li>公式の購入先へ直接リンクします。独自の短縮URLや中継リダイレクトは使いません。</li>
         </ul>
-        <p className="text-xs text-ink-faint">
-          現在の設定: Amazon {merchants.amazonAssociateTag ? '有効' : '未設定'} / 楽天は商品ごとに発行済み紹介URLがある場合のみ表示。
-        </p>
       </Section>
 
       <Section heading="訂正の方法">
@@ -85,13 +79,6 @@ export default function EditorialPolicyPage() {
         </p>
       </Section>
 
-      <Section heading="このページの状態">
-        <p className="text-xs text-ink-faint">
-          {siteConfig.mode === 'production'
-            ? '本番モードで表示しています。'
-            : 'プレビューモードで表示しています。検索エンジンには noindex を返します。'}
-        </p>
-      </Section>
     </InfoPage>
   );
 }

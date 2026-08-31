@@ -27,19 +27,51 @@ npm run check:release -- --out out   # 公開前チェック
 
 `datasets/production/sources.json` に追記します。
 
+**自分で公式ページを開いて確認した場合:**
+
 ```json
 {
   "id": "src-メーカー名-製品名",
   "url": "https://メーカーの仕様ページ",
   "publisher": "メーカー名",
   "checkedAt": "2026-09-01",
+  "provenance": "direct-fetch",
+  "importedFrom": null,
   "locator": "仕様表 / 「サイズ・重量」の欄",
   "editorialUse": "verified",
   "automatedFetch": "unverified",
-  "llmInput": "not-allowed",
+  "llmInput": "unverified",
   "usageNote": "公表仕様の数値を確認のうえ引用。画像・文章の転載はしない。"
 }
 ```
+
+**別環境で調査された資料の提供を受けて取り込む場合:**
+
+```json
+{
+  "id": "src-メーカー名-製品名",
+  "url": "https://メーカーの仕様ページ",
+  "publisher": "メーカー名",
+  "checkedAt": "2026-09-01",
+  "provenance": "provided-document",
+  "importedFrom": {
+    "document": "datasets/production/research-materials/2026-09-01-xxx.md",
+    "importedAt": "2026-09-02"
+  },
+  "locator": "仕様表 / 「サイズ・重量」の欄",
+  "editorialUse": "verified",
+  "automatedFetch": "unverified",
+  "llmInput": "unverified",
+  "usageNote": "提供資料経由。この環境から当該ページへは接続していない。"
+}
+```
+
+- 資料の原文を `datasets/production/research-materials/` に保存し、README の表に追記します。
+  **資料なしで `provided-document` の出典を作らないでください。**
+- `checkedAt` は「公式ページを確認した日」、`importedFrom.importedAt` は「取り込み作業日」です。
+  この2つは別の日付です。
+- **資料の提供は、自動取得の許可でも画像利用の許可でもありません。**
+  `automatedFetch` と `llmInput` は確認できるまで `unverified` のままにします。
 
 - `checkedAt` は**実際にページを見た日**です。未来の日付は検証で拒否されます。
 - `editorialUse: "verified"` は「編集上、事実として採用してよいと確認した」という意味です。
@@ -61,10 +93,14 @@ npm run check:release -- --out out   # 公開前チェック
   "variant": "38L / 機内持ち込みサイズ",
   "status": "draft",
   "summary": "公表仕様の言い換えに留める。使用感は書かない。",
+  "jan": "4901234567890",
   "weightG":     { "value": 2380, "sourceId": "src-...", "checkedAt": "2026-09-01" },
   "outerSizeMm": { "value": [400, 540, 240], "sourceId": "src-...", "checkedAt": "2026-09-01" },
+  "sizeBasis": "with-handle-and-wheels",
+  "measurementState": "not-applicable",
   "bodySizeMm":  { "value": null, "sourceId": null, "checkedAt": null, "note": "公表なし" },
   "capacityL":   { "value": 38, "sourceId": "src-...", "checkedAt": "2026-09-01" },
+  "alternateMeasurements": [],
   "specs": {
     "stopper": { "value": true, "sourceId": "src-...", "checkedAt": "2026-09-01" }
   },
@@ -77,7 +113,24 @@ npm run check:release -- --out out   # 公開前チェック
 
 - 単位は **重量 g / 寸法 mm / 容量 L / 出力 W / 電力量 Wh / 電池容量 mAh**。
 - 確認できない値は `null` にして `note` に理由を書く。**0・推定値・類似商品の値で埋めない。**
+- **寸法は必ず測定条件を付ける。**「ハンドルを除く」と公表されている値を
+  「ハンドル込み外寸」として保存しない。
+  - `sizeBasis`: `with-handle-and-wheels` / `body-only` / `excludes-handle` /
+    `excludes-handle-and-straps` / `unspecified`（条件が公表されていない場合）
+  - `measurementState`: `not-applicable` / `normal` / `expanded` / `compressed`
+  - 拡張時など別条件の値は `alternateMeasurements` に入れる（主要値と同じ状態は登録できません）:
+
+    ```json
+    "alternateMeasurements": [{
+      "label": "拡張時",
+      "state": "expanded",
+      "sizeMm": { "value": [320, 510, 250], "sourceId": "src-...", "checkedAt": "2026-09-01" },
+      "sizeBasis": "excludes-handle-and-straps",
+      "capacityL": { "value": 40, "sourceId": "src-...", "checkedAt": "2026-09-01" }
+    }]
+    ```
 - 外寸（ハンドル・キャスター込み）と本体寸法は別の項目。
+- `jan` は存在し確認できる場合だけ入れる（13桁）。架空値で補わない。
 - 拡張前後・容量違い・旧型と新型・単品とセットは、`variant` を分けて別商品として登録する。
 - `specs` はカテゴリごとに許可キーが決まっています（`src/lib/catalog/schema.ts` の `CATEGORY_SPEC_SCHEMAS`）。未知のキーは検証で拒否されます。
 - 画像は権利を確認できたものだけ。確認できなければ `null` のままで問題ありません（文字・仕様主体のカードで表示されます）。
@@ -159,6 +212,22 @@ npm run create:draft -- \
 生HTMLは解釈されず、ただの文字として扱われます。`javascript:` や `data:text/html` のリンクはリンクになりません。
 
 ---
+
+## 購入ボタンの見た目を確認する
+
+紹介IDや紹介URLが無くても、ボタンの表示だけは確認できます。
+
+```bash
+npm run build:only     # CSS を生成するため先に必要
+npm run preview:cta    # .preview/cta/index.html を生成
+```
+
+生成されるページは「両方 / 楽天のみ / Amazonのみ / どちらもなし」の4状態を並べます。
+使用する ASIN・紹介URL・トラッキングIDはテスト専用の架空値で、**本番データセットには
+書き込みません**。このページは `out/`（本番の静的出力）にも含まれません。
+
+`npm run test:e2e` に含まれる `cta-preview.spec.ts` が、外部通信をすべて遮断した状態で
+ボタン数・rel属性・クリック領域・キーボード操作・スマートフォンでの並びを検証します。
 
 ## 紹介リンクを差し替える
 

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CATEGORIES, PUBLICATION_STATUSES } from './types';
+import { CATEGORIES, MEASUREMENT_STATES, PUBLICATION_STATUSES, SIZE_BASES } from './types';
 
 /**
  * JSON の形をここで固定する。未知キーは通さない（strict）。
@@ -119,18 +119,32 @@ export const SPEC_UNITS: Record<string, string> = {
 
 const specFactSchema = factOf(z.union([z.string().min(1).max(120), z.number().finite(), z.boolean()]));
 
+const alternateMeasurementSchema = z
+  .object({
+    label: z.string().min(1).max(40),
+    state: z.enum(MEASUREMENT_STATES),
+    sizeMm: factOf(sizeMm),
+    sizeBasis: z.enum(SIZE_BASES),
+    capacityL: factOf(positiveNumber),
+  })
+  .strict();
+
 const baseProductSchema = z.object({
   id: identifier,
   category: z.enum(CATEGORIES),
   brand: z.string().min(1).max(80),
   model: z.string().min(1).max(120),
   variant: z.string().min(1).max(120),
+  jan: z.string().regex(/^\d{13}$/, 'JAN は13桁の数字').nullable().optional(),
   status: z.enum(PUBLICATION_STATUSES),
   summary: z.string().min(1).max(300),
   weightG: factOf(positiveNumber),
   outerSizeMm: factOf(sizeMm),
+  sizeBasis: z.enum(SIZE_BASES),
+  measurementState: z.enum(MEASUREMENT_STATES),
   bodySizeMm: factOf(sizeMm).optional(),
   capacityL: factOf(positiveNumber),
+  alternateMeasurements: z.array(alternateMeasurementSchema).max(4),
   specs: z.record(z.string(), specFactSchema),
   caveats: z.array(z.string().min(1).max(300)).max(10),
   image: z
@@ -186,6 +200,14 @@ export const sourceSchema = z
     url: z.string().url(),
     publisher: z.string().min(1).max(120),
     checkedAt: isoDate,
+    provenance: z.enum(['direct-fetch', 'provided-document']),
+    importedFrom: z
+      .object({
+        document: z.string().min(1).max(200),
+        importedAt: isoDate,
+      })
+      .strict()
+      .nullable(),
     locator: z.string().min(1).max(200),
     editorialUse: z.enum(['verified', 'unverified']),
     automatedFetch: z.enum(['allowed', 'not-allowed', 'unverified']),

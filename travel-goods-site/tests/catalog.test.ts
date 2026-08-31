@@ -101,6 +101,47 @@ describe('validateCatalog: 根拠のないデータを通さない', () => {
     );
   });
 
+  it('拡張時の寸法を主要値と同じ状態で登録できない', () => {
+    const product = makeProduct({
+      measurementState: 'normal',
+      alternateMeasurements: [
+        {
+          label: '拡張時',
+          state: 'normal',
+          sizeMm: fact<[number, number, number]>([400, 550, 250]),
+          sizeBasis: 'excludes-handle',
+          capacityL: fact(48),
+        },
+      ],
+    });
+    expect(errorCodes(makeCatalogInput({ products: [product] }))).toContain(
+      'product.redundant-measurement',
+    );
+  });
+
+  it('別条件の寸法にも出典と確認日を要求する', () => {
+    const product = makeProduct({
+      measurementState: 'normal',
+      alternateMeasurements: [
+        {
+          label: '拡張時',
+          state: 'expanded',
+          sizeMm: { value: [400, 550, 250], sourceId: null, checkedAt: null },
+          sizeBasis: 'excludes-handle',
+          capacityL: unknownFact(),
+        },
+      ],
+    });
+    expect(errorCodes(makeCatalogInput({ products: [product] }))).toContain('fact.missing-evidence');
+  });
+
+  it('外寸が本体のみ条件なら本体寸法の二重登録を拒否する', () => {
+    const product = makeProduct({ sizeBasis: 'body-only' });
+    expect(errorCodes(makeCatalogInput({ products: [product] }))).toContain(
+      'product.duplicate-body-size',
+    );
+  });
+
   it('未知の商品IDを参照する記事を拒否する', () => {
     const article = makeArticle({ productIds: ['p-missing'] });
     expect(errorCodes(makeCatalogInput({ articles: [article] }))).toContain('article.unknown-product');
@@ -146,6 +187,38 @@ describe('validateCatalog: 根拠のないデータを通さない', () => {
       const issues = (error as CatalogValidationError).issues;
       expect(issues.some((i) => i.subject === 'p-broken' && i.message.includes('src-nope'))).toBe(true);
     }
+  });
+
+  it('提供資料からの取り込みには資料名と取込日を要求する', () => {
+    const sources = [
+      { ...testSources[0]!, provenance: 'provided-document', importedFrom: null },
+      testSources[1]!,
+    ];
+    expect(errorCodes(makeCatalogInput({ sources }))).toContain('source.missing-import-record');
+  });
+
+  it('自力で接続していない出典を direct-fetch として記録できない', () => {
+    const sources = [
+      {
+        ...testSources[0]!,
+        provenance: 'direct-fetch',
+        importedFrom: { document: 'research.md', importedAt: '2026-08-20' },
+      },
+      testSources[1]!,
+    ];
+    expect(errorCodes(makeCatalogInput({ sources }))).toContain('source.unexpected-import-record');
+  });
+
+  it('取込日が未来なら拒否する', () => {
+    const sources = [
+      {
+        ...testSources[0]!,
+        provenance: 'provided-document',
+        importedFrom: { document: 'research.md', importedAt: '2099-01-01' },
+      },
+      testSources[1]!,
+    ];
+    expect(errorCodes(makeCatalogInput({ sources }))).toContain('source.future-imported-at');
   });
 
   it('出典の checkedAt が未来なら拒否する', () => {

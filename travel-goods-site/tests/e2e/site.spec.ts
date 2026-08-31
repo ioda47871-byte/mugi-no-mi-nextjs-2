@@ -108,11 +108,17 @@ test.describe('記事', () => {
 });
 
 test.describe('購入リンク', () => {
-  test('未設定・未照合の店舗はボタンを出さず理由を示す', async ({ page }) => {
+  test('未設定・未照合の店舗はボタンを出さず、運営側の事情も見せない', async ({ page }) => {
     await page.goto('/categories/suitcases/');
     // デモデータには照合済みリンクが無いため、CTAは1つも出ない
     await expect(page.locator('a[rel*="sponsored"]')).toHaveCount(0);
-    await expect(page.getByTestId('merchant-suppressed').first()).toBeVisible();
+    await expect(page.getByTestId('merchant-actions')).toHaveCount(0);
+
+    // 読者向けの領域に開発者向けの説明を出さない
+    const main = (await page.locator('main').innerText()).replace(/\s+/g, '');
+    for (const jargon of ['紹介ID', '型番照合が未完了', '販売先リンク未登録', 'unverified']) {
+      expect(main).not.toContain(jargon);
+    }
   });
 
   test('ダミーURLやhref="#"のCTAが存在しない', async ({ page }) => {
@@ -141,7 +147,57 @@ test.describe('公開状態', () => {
   });
 });
 
+test.describe('読者向け画面と開発情報の分離', () => {
+  test('内部状態はプレビューの開発情報にだけ置く', async ({ page }) => {
+    for (const path of ['/', '/about/', '/editorial-policy/', '/contact/']) {
+      await page.goto(path);
+      const main = (await page.locator('main').innerText()).replace(/\s+/g, '');
+      for (const jargon of [
+        'SITE_URL',
+        'SITE_NAME',
+        'PUBLIC_OPERATOR_NAME',
+        'PUBLIC_CONTACT_EMAIL',
+        'AMAZON_ASSOCIATE_TAG',
+        'NEXT_PUBLIC_GA_ID',
+        'データセット',
+        '登録済み出典',
+      ]) {
+        expect(main, `${path} に ${jargon} が出ています`).not.toContain(jargon);
+      }
+    }
+  });
+
+  test('開発情報はプレビューでのみ、折りたたまれて出る', async ({ page }) => {
+    await page.goto('/');
+    const dev = page.getByTestId('dev-info');
+    await expect(dev).toBeVisible();
+    // 既定では閉じている（読者の邪魔をしない）
+    expect(await dev.evaluate((el) => (el as HTMLDetailsElement).open)).toBe(false);
+  });
+});
+
 test.describe('レイアウト', () => {
+  test('固定ヘッダーがフィルタ操作を隠さない', async ({ page }) => {
+    await page.goto('/categories/suitcases/');
+    const select = page.getByLabel('本体重量');
+    await select.scrollIntoViewIfNeeded();
+
+    const hidden = await page.evaluate(() => {
+      const header = document.querySelector('header');
+      const target = document.querySelector('select');
+      if (!header || !target) return true;
+      const h = header.getBoundingClientRect();
+      const t = target.getBoundingClientRect();
+      // 操作対象がヘッダー帯に食い込んでいないこと
+      return t.top < h.bottom && t.bottom > h.top;
+    });
+    expect(hidden).toBe(false);
+
+    // 実際に操作できる
+    await select.selectOption({ label: '3.0kg以下' });
+    await expect(page.getByTestId('result-count')).toContainText('該当 3 件');
+  });
+
   test('本文が横にはみ出さず、比較表だけ横スクロールできる', async ({ page }) => {
     await page.goto('/categories/suitcases/');
     await page.getByRole('button', { name: '表で比較' }).click();

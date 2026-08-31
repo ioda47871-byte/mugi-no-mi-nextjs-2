@@ -1,12 +1,15 @@
 'use client';
 
-import { MERCHANT_LABELS } from '@/config/merchants';
-import { SUPPRESSION_MESSAGES, type MerchantLinkResolution } from '@/lib/affiliate/resolve';
+import type { MerchantLinkResolution } from '@/lib/affiliate/resolve';
 import AffiliateLink from './AffiliateLink';
 
 /**
  * 購入導線。
- * 表示できるリンクが1件も無い場合はボタンを出さず、理由だけを静かに示す。
+ *
+ * 表示できるリンクが1件も無い場合は、**何も描画しない**。
+ * 「紹介ID未設定」「型番照合が未完了」といった運営側の事情は読者向け画面に出さず、
+ * 内部資料（`npm run validate:content` の出力と docs/status.md）へ記録する。
+ *
  * ダミーURL・'#'・別人の紹介IDは使わない。
  */
 
@@ -25,25 +28,10 @@ export default function MerchantActions({
   articleSlug = null,
   categoryId = null,
 }: Props) {
-  if (resolution.links.length === 0) {
-    return (
-      <p
-        className="rounded-lg bg-paper px-3 py-2 text-xs leading-relaxed text-ink-faint"
-        data-testid="merchant-suppressed"
-      >
-        購入リンクは未掲載です。
-        <span className="block">
-          理由:{' '}
-          {resolution.suppressed
-            .map((item) => `${MERCHANT_LABELS[item.merchant]}=${SUPPRESSION_MESSAGES[item.reason]}`)
-            .join(' / ')}
-        </span>
-      </p>
-    );
-  }
+  if (resolution.links.length === 0) return null;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5" data-testid="merchant-actions">
       <div className="flex flex-col gap-2 sm:flex-row">
         {resolution.links.map((link) => (
           <AffiliateLink
@@ -57,8 +45,8 @@ export default function MerchantActions({
           />
         ))}
       </div>
-      <p className="text-xs text-ink-faint">
-        価格・在庫・送料・ポイントは販売先ページでご確認ください（当サイトでは表示していません）。
+      <p className="text-[0.7rem] leading-relaxed text-ink-faint">
+        広告リンクです。価格・在庫は販売先ページでご確認ください。
       </p>
     </div>
   );

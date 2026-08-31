@@ -1,1 +1,82 @@
-[]
+[
+  {
+    "id": "src-ace-cresta2-06936",
+    "url": "https://store.ace.jp/shop/g/g06936-01/",
+    "publisher": "エース株式会社（エース公式通販）",
+    "checkedAt": "2026-08-31",
+    "provenance": "provided-document",
+    "importedFrom": {
+      "document": "datasets/production/research-materials/2026-08-31-travel-goods-next-steps.md",
+      "importedAt": "2026-08-31"
+    },
+    "locator": "商品ページ「スペックとサイズ」欄（クレスタ2 06936 / 01 ブラックヘアライン）",
+    "editorialUse": "verified",
+    "automatedFetch": "unverified",
+    "llmInput": "unverified",
+    "usageNote": "提供資料経由で取り込み。この実装環境から当該ページへは接続していない。公表仕様の数値のみを引用し、画像・文章は転載しない。自動取得の可否は未確認。"
+  },
+  {
+    "id": "src-elecom-bma-trcs01mbk",
+    "url": "https://www.elecom.co.jp/products/BMA-TRCS01MBK.html",
+    "publisher": "エレコム株式会社",
+    "checkedAt": "2026-08-31",
+    "provenance": "provided-document",
+    "importedFrom": {
+      "document": "datasets/production/research-materials/2026-08-31-travel-goods-next-steps.md",
+      "importedAt": "2026-08-31"
+    },
+    "locator": "商品ページ「仕様」欄（旅行用パッキングキューブ Mサイズ BMA-TRCS01MBK）",
+    "editorialUse": "verified",
+    "automatedFetch": "unverified",
+    "llmInput": "unverified",
+    "usageNote": "提供資料経由で取り込み。この実装環境から当該ページへは接続していない。寸法・容量は拡張時かつハンドルを除く条件の公表値。"
+  },
+  {
+    "id": "src-elecom-bm-bptrcsepbk",
+    "url": "https://www.elecom.co.jp/products/BM-BPTRCSEPBK.html",
+    "publisher": "エレコム株式会社",
+    "checkedAt": "2026-08-31",
+    "provenance": "provided-document",
+    "importedFrom": {
+      "document": "datasets/production/research-materials/2026-08-31-travel-goods-next-steps.md",
+      "importedAt": "2026-08-31"
+    },
+    "locator": "商品ページ「仕様」「製品の特長」欄（真空圧縮＋拡張トラベルバックパック BM-BPTRCSEPBK）",
+    "editorialUse": "verified",
+    "automatedFetch": "unverified",
+    "llmInput": "unverified",
+    "usageNote": "提供資料経由で取り込み。この実装環境から当該ページへは接続していない。寸法は通常時・拡張時ともハンドル・ショルダーベルトを除く条件の公表値。"
+  },
+  {
+    "id": "src-elecom-de-c63-10000bk",
+    "url": "https://www.elecom.co.jp/products/DE-C63-10000BK.html",
+    "publisher": "エレコム株式会社",
+    "checkedAt": "2026-08-31",
+    "provenance": "provided-document",
+    "importedFrom": {
+      "document": "datasets/production/research-materials/2026-08-31-travel-goods-next-steps.md",
+      "importedAt": "2026-08-31"
+    },
+    "locator": "商品ページ「仕様」欄（USB Type-Cケーブル一体モバイルバッテリー DE-C63-10000BK）",
+    "editorialUse": "verified",
+    "automatedFetch": "unverified",
+    "llmInput": "unverified",
+    "usageNote": "提供資料経由で取り込み。この実装環境から当該ページへは接続していない。寸法の測定条件は公表されていないため unspecified として保存。"
+  },
+  {
+    "id": "src-elecom-recall-list",
+    "url": "https://www.elecom.co.jp/support/recall/",
+    "publisher": "エレコム株式会社",
+    "checkedAt": "2026-08-31",
+    "provenance": "provided-document",
+    "importedFrom": {
+      "document": "datasets/production/research-materials/2026-08-31-travel-goods-next-steps.md",
+      "importedAt": "2026-08-31"
+    },
+    "locator": "リコール・無償修理等のお知らせ一覧",
+    "editorialUse": "unverified",
+    "automatedFetch": "unverified",
+    "llmInput": "unverified",
+    "usageNote": "資料の確認範囲では DE-C63-10000BK への告知は見つからなかったが、一覧のみで最新の全告知を網羅したとはいえない。安全確認は未完了として扱う。"
+  }
+]

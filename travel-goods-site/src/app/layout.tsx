@@ -4,6 +4,7 @@ import './globals.css';
 import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
 import DatasetNotice from '@/components/DatasetNotice';
+import DevInfoBar from '@/components/DevInfoBar';
 import { absoluteUrl, shouldAllowIndexing, siteConfig } from '@/config/site';
 import { getSiteData } from '@/lib/content/load';
 
@@ -29,7 +30,7 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const { catalog } = getSiteData();
+  const { catalog, articles, products, withheldArticles } = getSiteData();
   const gaId = siteConfig.gaMeasurementId;
 
   return (
@@ -55,6 +56,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           本文へスキップ
         </a>
         <DatasetNotice dataset={catalog.dataset} />
+        <DevInfoBar
+          catalog={catalog}
+          publishedProducts={products.length}
+          publishedArticles={articles.length}
+          withheldArticles={withheldArticles.length}
+        />
         <SiteHeader />
         <main id="main" className="flex-1">
           {children}

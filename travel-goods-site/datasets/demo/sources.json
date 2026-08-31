@@ -8,7 +8,9 @@
     "editorialUse": "verified",
     "automatedFetch": "unverified",
     "llmInput": "not-allowed",
-    "usageNote": "デモ用の架空データです。実在しないメーカー・実在しないURLです。本番データには使用しません。"
+    "usageNote": "デモ用の架空データです。実在しないメーカー・実在しないURLです。本番データには使用しません。",
+    "provenance": "direct-fetch",
+    "importedFrom": null
   },
   {
     "id": "src-demo-02",
@@ -19,7 +21,9 @@
     "editorialUse": "verified",
     "automatedFetch": "unverified",
     "llmInput": "not-allowed",
-    "usageNote": "デモ用の架空データです。実在しないメーカー・実在しないURLです。本番データには使用しません。"
+    "usageNote": "デモ用の架空データです。実在しないメーカー・実在しないURLです。本番データには使用しません。",
+    "provenance": "direct-fetch",
+    "importedFrom": null
   },
   {
     "id": "src-demo-03",
@@ -30,7 +34,9 @@
     "editorialUse": "verified",
     "automatedFetch": "unverified",
     "llmInput": "not-allowed",
-    "usageNote": "デモ用の架空データです。実在しないメーカー・実在しないURLです。本番データには使用しません。"
+    "usageNote": "デモ用の架空データです。実在しないメーカー・実在しないURLです。本番データには使用しません。",
+    "provenance": "direct-fetch",
+    "importedFrom": null
   },
   {
     "id": "src-demo-04",
@@ -41,7 +47,9 @@
     "editorialUse": "verified",
     "automatedFetch": "unverified",
     "llmInput": "not-allowed",
-    "usageNote": "デモ用の架空データです。実在しないメーカー・実在しないURLです。本番データには使用しません。"
+    "usageNote": "デモ用の架空データです。実在しないメーカー・実在しないURLです。本番データには使用しません。",
+    "provenance": "direct-fetch",
+    "importedFrom": null
   },
   {
     "id": "src-demo-05",
@@ -52,7 +60,9 @@
     "editorialUse": "verified",
     "automatedFetch": "unverified",
     "llmInput": "not-allowed",
-    "usageNote": "デモ用の架空データです。実在しないメーカー・実在しないURLです。本番データには使用しません。"
+    "usageNote": "デモ用の架空データです。実在しないメーカー・実在しないURLです。本番データには使用しません。",
+    "provenance": "direct-fetch",
+    "importedFrom": null
   },
   {
     "id": "src-demo-06",
@@ -63,6 +73,8 @@
     "editorialUse": "verified",
     "automatedFetch": "unverified",
     "llmInput": "not-allowed",
-    "usageNote": "デモ用の架空データです。実在しないメーカー・実在しないURLです。本番データには使用しません。"
+    "usageNote": "デモ用の架空データです。実在しないメーカー・実在しないURLです。本番データには使用しません。",
+    "provenance": "direct-fetch",
+    "importedFrom": null
   }
 ]

@@ -6,8 +6,8 @@ import {
   CATEGORY_LABELS,
   ARTICLE_CATEGORY_LABELS,
 } from '@/lib/catalog/types';
-import { getPublishedArticles, getPublishedProducts, getSiteData } from '@/lib/content/load';
-import { formatDate } from '@/lib/format';
+import { getPublishedArticles, getPublishedProducts } from '@/lib/content/load';
+import { formatDate, formatWeight, productName } from '@/lib/format';
 
 const PURPOSES = [
   {
@@ -33,7 +33,6 @@ const PURPOSES = [
 ];
 
 export default function HomePage() {
-  const { catalog } = getSiteData();
   const articles = getPublishedArticles();
   const products = getPublishedProducts();
   const featured = articles.slice(0, 4);
@@ -46,19 +45,12 @@ export default function HomePage() {
         </h1>
         <p className="mt-3 prose-body">
           重さ・サイズ・使い方から、旅行に合う持ちものを探せます。
-          2〜3泊の旅行で「荷物を軽く・少なく・整理しやすく」したい人向けに、
-          メーカーが公表している仕様を横並びにして比較できるようにしました。
+          メーカー公表仕様をもとに比較しています（
+          <Link className="link-inline" href="/editorial-policy/">
+            比較の方法
+          </Link>
+          ）。
         </p>
-        <ul className="mt-4 space-y-1.5 text-sm text-ink-soft">
-          <li>・掲載しているのは公表仕様と、その出典・確認日です。</li>
-          <li>・確認できなかった項目は「不明」と表示し、推定値では埋めません。</li>
-          <li>・使っていない商品の使用感・体験談は書きません。</li>
-        </ul>
-        {siteConfig.nameIsProvisional ? (
-          <p className="mt-4 rounded-lg bg-paper px-3 py-2 text-xs text-ink-faint">
-            サイト名「{siteConfig.name}」は仮称です。正式名称・商標・ドメインの確認は未実施です。
-          </p>
-        ) : null}
       </section>
 
       <section className="mt-10" aria-labelledby="categories-heading">
@@ -88,6 +80,41 @@ export default function HomePage() {
           })}
         </div>
       </section>
+
+      {products.length > 0 && products.length <= 8 ? (
+        <section className="mt-10" aria-labelledby="listed-heading">
+          <h2 id="listed-heading" className="text-lg font-bold text-ink">
+            掲載中の商品
+          </h2>
+          <p className="mt-1 text-xs text-ink-faint">
+            名前順に並べています。おすすめ順・人気順ではありません。
+          </p>
+          <ul className="mt-3 divide-y divide-paper-line overflow-hidden rounded-xl border border-paper-line bg-paper-card">
+            {[...products]
+              .sort((a, b) => productName(a).localeCompare(productName(b), 'ja'))
+              .map((product) => (
+                <li key={product.id}>
+                  <Link
+                    href={`/categories/${product.category}/`}
+                    className="flex items-baseline justify-between gap-3 p-3.5 hover:bg-paper"
+                  >
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold leading-snug text-ink">
+                        {productName(product)}
+                      </span>
+                      <span className="mt-0.5 block text-xs text-ink-faint">
+                        {CATEGORY_LABELS[product.category]}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-sm font-bold text-ink">
+                      {formatWeight(product.weightG)}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+          </ul>
+        </section>
+      ) : null}
 
       <section className="mt-10" aria-labelledby="purpose-heading">
         <h2 id="purpose-heading" className="text-lg font-bold text-ink">
@@ -136,31 +163,6 @@ export default function HomePage() {
         )}
       </section>
 
-      <section className="mt-10 card p-4 sm:p-5" aria-labelledby="status-heading">
-        <h2 id="status-heading" className="text-sm font-bold text-ink">
-          現在の掲載状況
-        </h2>
-        <dl className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-          <div>
-            <dt className="text-xs text-ink-faint">公開商品</dt>
-            <dd className="font-bold text-ink">{products.length} 件</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-ink-faint">公開記事</dt>
-            <dd className="font-bold text-ink">{articles.length} 本</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-ink-faint">登録済み出典</dt>
-            <dd className="font-bold text-ink">{catalog.sources.length} 件</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-ink-faint">データセット</dt>
-            <dd className="font-bold text-ink">
-              {catalog.dataset.kind === 'demo' ? 'デモ' : '本番'}
-            </dd>
-          </div>
-        </dl>
-      </section>
     </div>
   );
 }

@@ -1,0 +1,87 @@
+[
+  {
+    "id": "elecom-de-c63-10000bk",
+    "category": "power-banks",
+    "brand": "エレコム（ELECOM）",
+    "model": "DE-C63-10000BK",
+    "variant": "10000mAh / ブラック",
+    "jan": "4549550374675",
+    "status": "review",
+    "summary": "USB Type-Cケーブル一体型のモバイルバッテリー。電池定格容量3.7V/10000mAh（37Wh）、最大出力20W、重量は約200g。",
+    "weightG": {
+      "value": 200,
+      "sourceId": "src-elecom-de-c63-10000bk",
+      "checkedAt": "2026-08-31"
+    },
+    "outerSizeMm": {
+      "value": [
+        64,
+        91,
+        24
+      ],
+      "sourceId": "src-elecom-de-c63-10000bk",
+      "checkedAt": "2026-08-31"
+    },
+    "sizeBasis": "unspecified",
+    "measurementState": "not-applicable",
+    "capacityL": {
+      "value": null,
+      "sourceId": null,
+      "checkedAt": null,
+      "note": "モバイルバッテリーに容量(L)の概念はないため掲載しません"
+    },
+    "alternateMeasurements": [],
+    "specs": {
+      "capacityMah": {
+        "value": 10000,
+        "sourceId": "src-elecom-de-c63-10000bk",
+        "checkedAt": "2026-08-31"
+      },
+      "ratedWh": {
+        "value": 37,
+        "sourceId": "src-elecom-de-c63-10000bk",
+        "checkedAt": "2026-08-31"
+      },
+      "maxOutputW": {
+        "value": 20,
+        "sourceId": "src-elecom-de-c63-10000bk",
+        "checkedAt": "2026-08-31"
+      },
+      "outputPorts": {
+        "value": "USB Type-Cポート×1 / USB Type-Cプラグ（本体ケーブル部）×1",
+        "sourceId": "src-elecom-de-c63-10000bk",
+        "checkedAt": "2026-08-31"
+      },
+      "builtInCable": {
+        "value": true,
+        "sourceId": "src-elecom-de-c63-10000bk",
+        "checkedAt": "2026-08-31"
+      },
+      "inputPorts": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "入力専用端子の記載を公表仕様から確認できていません"
+      },
+      "passThroughCharging": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に記載を確認できていません"
+      },
+      "pseMarkStated": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様のPSE表示に関する記載を確認できていません"
+      }
+    },
+    "caveats": [
+      "最大出力20Wは製品としての上限です。2つの接続先へ同時に20Wずつ出力できるという意味ではありません。",
+      "電池容量(mAh)から実際の充電回数は算出できません。端末や使用状況で変わります。",
+      "機内持ち込みの可否・条件は航空会社・路線・搭乗日によって異なります。利用する航空会社の公式案内をご確認ください。",
+      "メーカーの回収・リコール告知の追加確認が済んでいないため、公開対象にしていません。"
+    ],
+    "image": null
+  }
+]

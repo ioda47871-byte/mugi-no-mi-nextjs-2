@@ -1,0 +1,87 @@
+[
+  {
+    "id": "ace-cresta2-06936-35l-black-hairline",
+    "category": "suitcases",
+    "brand": "エース（ACE）",
+    "model": "クレスタ2 06936",
+    "variant": "35L / 01 ブラックヘアライン",
+    "status": "published",
+    "summary": "本体重量2.9kg・容量35Lのハードキャリー。キャスターストッパーとTSAダイヤルファスナーロックを搭載。素材はABS混合樹脂。",
+    "weightG": {
+      "value": 2900,
+      "sourceId": "src-ace-cresta2-06936",
+      "checkedAt": "2026-08-31"
+    },
+    "outerSizeMm": {
+      "value": [
+        350,
+        550,
+        250
+      ],
+      "sourceId": "src-ace-cresta2-06936",
+      "checkedAt": "2026-08-31"
+    },
+    "sizeBasis": "with-handle-and-wheels",
+    "measurementState": "not-applicable",
+    "bodySizeMm": {
+      "value": [
+        340,
+        480,
+        250
+      ],
+      "sourceId": "src-ace-cresta2-06936",
+      "checkedAt": "2026-08-31"
+    },
+    "capacityL": {
+      "value": 35,
+      "sourceId": "src-ace-cresta2-06936",
+      "checkedAt": "2026-08-31"
+    },
+    "alternateMeasurements": [],
+    "specs": {
+      "stopper": {
+        "value": true,
+        "sourceId": "src-ace-cresta2-06936",
+        "checkedAt": "2026-08-31"
+      },
+      "wheelCount": {
+        "value": 4,
+        "sourceId": "src-ace-cresta2-06936",
+        "checkedAt": "2026-08-31"
+      },
+      "tsaLock": {
+        "value": true,
+        "sourceId": "src-ace-cresta2-06936",
+        "checkedAt": "2026-08-31"
+      },
+      "shellMaterial": {
+        "value": "ABS混合樹脂",
+        "sourceId": "src-ace-cresta2-06936",
+        "checkedAt": "2026-08-31"
+      },
+      "openingType": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に開き方の記載を確認できていません"
+      },
+      "expandable": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に拡張機能の記載を確認できていません"
+      },
+      "frontOpenPocket": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に記載を確認できていません"
+      }
+    },
+    "caveats": [
+      "外寸はハンドル・キャスターを含む値です。機内持ち込みの可否は航空会社・路線・搭乗日によって規定が異なるため、利用する航空会社の公式案内をご確認ください。",
+      "静音性・耐久性・キャスターの滑らかさは、メーカー公表仕様からは判断できないため掲載していません。"
+    ],
+    "image": null
+  }
+]

@@ -1,0 +1,74 @@
+[
+  {
+    "id": "elecom-bma-trcs01mbk-m-black",
+    "category": "pouches",
+    "brand": "エレコム（ELECOM）",
+    "model": "BMA-TRCS01MBK",
+    "variant": "Mサイズ / ブラック",
+    "jan": "4549550317535",
+    "status": "published",
+    "summary": "ファスナーで圧縮できる旅行用パッキングキューブ Mサイズ。2気室、素材はポリエステル。重量は約220g。",
+    "weightG": {
+      "value": 220,
+      "sourceId": "src-elecom-bma-trcs01mbk",
+      "checkedAt": "2026-08-31"
+    },
+    "outerSizeMm": {
+      "value": [
+        240,
+        340,
+        140
+      ],
+      "sourceId": "src-elecom-bma-trcs01mbk",
+      "checkedAt": "2026-08-31"
+    },
+    "sizeBasis": "excludes-handle",
+    "measurementState": "expanded",
+    "capacityL": {
+      "value": 12,
+      "sourceId": "src-elecom-bma-trcs01mbk",
+      "checkedAt": "2026-08-31"
+    },
+    "alternateMeasurements": [],
+    "specs": {
+      "usageType": {
+        "value": "衣類収納",
+        "sourceId": "src-elecom-bma-trcs01mbk",
+        "checkedAt": "2026-08-31"
+      },
+      "compartmentCount": {
+        "value": 2,
+        "sourceId": "src-elecom-bma-trcs01mbk",
+        "checkedAt": "2026-08-31"
+      },
+      "compression": {
+        "value": true,
+        "sourceId": "src-elecom-bma-trcs01mbk",
+        "checkedAt": "2026-08-31"
+      },
+      "hangingHook": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に吊り下げ機能の記載を確認できていません"
+      },
+      "waterResistantMaterial": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に撥水性能の記載を確認できていません"
+      },
+      "packedThicknessMm": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "圧縮後の寸法は公表されていません"
+      }
+    },
+    "caveats": [
+      "掲載している寸法・容量は拡張時の値で、ハンドルを除く条件です。圧縮したときの寸法・容量は公表されていません。",
+      "圧縮で小さくなるのは体積です。荷物の重量は変わりません（ポーチ自身の重量は加わります）。"
+    ],
+    "image": null
+  }
+]

@@ -73,7 +73,10 @@
       "mAh から実際の充電回数は算出できません。端末や使用状況で変わります。",
       "機内持ち込みの可否・条件は航空会社と搭乗日の規定をご確認ください。"
     ],
-    "image": null
+    "image": null,
+    "sizeBasis": "unspecified",
+    "measurementState": "not-applicable",
+    "alternateMeasurements": []
   },
   {
     "id": "d-pb-hane-p10",
@@ -149,7 +152,10 @@
       "PSE表示があることは、安全性を保証するものではありません。",
       "定格電力量(Wh)は公表値です。持ち込み規定はWhで判断されることがあります。"
     ],
-    "image": null
+    "image": null,
+    "sizeBasis": "unspecified",
+    "measurementState": "not-applicable",
+    "alternateMeasurements": []
   },
   {
     "id": "d-pb-nagi-p10",
@@ -224,7 +230,10 @@
     "caveats": [
       "ケーブルは付属状況をご確認ください。当サイトでは付属品を確認していません。"
     ],
-    "image": null
+    "image": null,
+    "sizeBasis": "unspecified",
+    "measurementState": "not-applicable",
+    "alternateMeasurements": []
   },
   {
     "id": "d-pb-lumen-p20",
@@ -299,7 +308,10 @@
     "caveats": [
       "定格電力量が大きい製品は、航空会社によって持ち込み条件が変わることがあります。"
     ],
-    "image": null
+    "image": null,
+    "sizeBasis": "unspecified",
+    "measurementState": "not-applicable",
+    "alternateMeasurements": []
   },
   {
     "id": "d-pb-hoshi-p10",
@@ -375,7 +387,10 @@
     "caveats": [
       "定格電力量(Wh)が不明なため、Whを条件とする持ち込み判断には使えません。"
     ],
-    "image": null
+    "image": null,
+    "sizeBasis": "unspecified",
+    "measurementState": "not-applicable",
+    "alternateMeasurements": []
   },
   {
     "id": "d-pb-karuta-p5",
@@ -450,6 +465,9 @@
     "caveats": [
       "プラグ一体型のため、外寸に突起部が含まれるかは公表からは判断できません。"
     ],
-    "image": null
+    "image": null,
+    "sizeBasis": "unspecified",
+    "measurementState": "not-applicable",
+    "alternateMeasurements": []
   }
 ]

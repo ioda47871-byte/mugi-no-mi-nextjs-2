@@ -1,1 +1,12 @@
-[]
+[
+  {
+    "productId": "elecom-bma-trcs01mbk-m-black",
+    "merchant": "rakuten",
+    "externalProductId": "nanshindo:j197439",
+    "affiliateUrl": null,
+    "matchedVariant": "Mサイズ / ブラック",
+    "verifiedAt": null,
+    "status": "unverified",
+    "note": "資料で型番 BMA-TRCS01MBK と JAN 4549550317535 の一致を確認した楽天市場の商品ページ（https://item.rakuten.co.jp/nanshindo/j197439/）。これは通常の商品URLであり紹介URLではないため affiliateUrl は null のまま。楽天アフィリエイト管理画面で紹介URLを発行し、色・在庫を照合してから verified にする。検索語: 4549550317535 または BMA-TRCS01MBK"
+  }
+]

@@ -30,6 +30,34 @@ export type SizeMm = [number, number, number];
 
 export type SpecValue = string | number | boolean;
 
+/**
+ * 寸法の測定条件。
+ * メーカーが「ハンドルを除く」と書いた値を「ハンドル込み外寸」として保存しないために必要。
+ * 条件が公表されていない場合は 'unspecified'（推測で埋めない）。
+ */
+export const SIZE_BASES = [
+  'with-handle-and-wheels',
+  'body-only',
+  'excludes-handle',
+  'excludes-handle-and-straps',
+  'unspecified',
+] as const;
+export type SizeBasis = (typeof SIZE_BASES)[number];
+
+/** 寸法・容量がどの状態の値か。拡張前後を混ぜないために使う。 */
+export const MEASUREMENT_STATES = ['not-applicable', 'normal', 'expanded', 'compressed'] as const;
+export type MeasurementState = (typeof MEASUREMENT_STATES)[number];
+
+/** 主要値とは別条件の寸法・容量（例: 拡張時）。 */
+export type AlternateMeasurement = {
+  /** 画面に出す条件名。例: '拡張時' */
+  label: string;
+  state: MeasurementState;
+  sizeMm: Fact<SizeMm>;
+  sizeBasis: SizeBasis;
+  capacityL: Fact<number>;
+};
+
 export type Product = {
   id: string;
   category: Category;
@@ -37,15 +65,23 @@ export type Product = {
   model: string;
   /** 容量違い・拡張前後・単品/セットなどを区別する識別子。 */
   variant: string;
+  /** JAN。存在し確認できる場合だけ入れる。架空値で補わない。 */
+  jan?: string | null;
   status: PublicationStatus;
   /** 一覧・カード用の短い説明。仕様の言い換えに留め、使用感を書かない。 */
   summary: string;
   weightG: Fact<number>;
-  /** ハンドル・キャスターを含む外寸。 */
+  /** 外形寸法。どの条件で測った値かは sizeBasis が示す。 */
   outerSizeMm: Fact<SizeMm>;
+  /** outerSizeMm と capacityL の測定条件。 */
+  sizeBasis: SizeBasis;
+  /** outerSizeMm と capacityL がどの状態の値か（通常時／拡張時など）。 */
+  measurementState: MeasurementState;
   /** 本体寸法（外寸と別項目）。スーツケース以外では null のことが多い。 */
   bodySizeMm?: Fact<SizeMm>;
   capacityL: Fact<number>;
+  /** 別条件の寸法・容量。空配列可。 */
+  alternateMeasurements: AlternateMeasurement[];
   specs: Record<string, Fact<SpecValue>>;
   /** 仕様上の制約・注意点。断定的な使用感は書かない。 */
   caveats: string[];
@@ -69,11 +105,31 @@ export type MerchantLink = {
   note?: string;
 };
 
+/**
+ * 事実の入手経路。
+ * - direct-fetch      … この実装環境から当該ページへ接続して確認した
+ * - provided-document … 別環境で調査された資料の提供を受けて取り込んだ
+ *
+ * 提供資料からの取り込みを「自分で接続して確認した」と記録しないために分ける。
+ */
+export type SourceProvenance = 'direct-fetch' | 'provided-document';
+
+export type ImportRecord = {
+  /** 提供資料の識別子（ファイル名など）。 */
+  document: string;
+  /** 取り込み作業を行った日（資料の確認日とは別）。 */
+  importedAt: string;
+};
+
 export type Source = {
   id: string;
   url: string;
   publisher: string;
+  /** 資料に記載された「公式ページを確認した日」。 */
   checkedAt: string;
+  provenance: SourceProvenance;
+  /** provenance が provided-document のときだけ値を持つ。 */
+  importedFrom: ImportRecord | null;
   /** 表・見出しなど参照箇所。 */
   locator: string;
   /** 編集上、事実として採用してよいか確認済みか。 */
@@ -148,6 +204,33 @@ export const ARTICLE_CATEGORY_LABELS: Record<Category | 'packing', string> = {
   ...CATEGORY_LABELS,
   packing: '荷づくり・準備',
 };
+
+export const SIZE_BASIS_LABELS: Record<SizeBasis, string> = {
+  'with-handle-and-wheels': 'ハンドル・キャスター含む',
+  'body-only': '本体のみ',
+  'excludes-handle': 'ハンドルを除く',
+  'excludes-handle-and-straps': 'ハンドル・ショルダーベルトを除く',
+  unspecified: '測定条件の公表なし',
+};
+
+export const MEASUREMENT_STATE_LABELS: Record<MeasurementState, string> = {
+  'not-applicable': '',
+  normal: '通常時',
+  expanded: '拡張時',
+  compressed: '圧縮時',
+};
+
+/** 「外寸（ハンドル・キャスター含む）」のような見出しを条件から組み立てる。 */
+export function sizeLabel(basis: SizeBasis, state: MeasurementState): string {
+  const stateLabel = MEASUREMENT_STATE_LABELS[state];
+  const prefix = stateLabel ? `${stateLabel}の外寸` : '外寸';
+  return `${prefix}（${SIZE_BASIS_LABELS[basis]}）`;
+}
+
+export function capacityLabel(state: MeasurementState): string {
+  const stateLabel = MEASUREMENT_STATE_LABELS[state];
+  return stateLabel ? `${stateLabel}の容量` : '容量';
+}
 
 export function isCategory(value: unknown): value is Category {
   return typeof value === 'string' && (CATEGORIES as readonly string[]).includes(value);

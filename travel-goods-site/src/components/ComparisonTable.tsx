@@ -1,6 +1,6 @@
 import { CATEGORY_SPEC_SCHEMAS, SPEC_LABELS, SPEC_UNITS } from '@/lib/catalog/schema';
 import type { Category, Product } from '@/lib/catalog/types';
-import { formatCapacity, formatSize, formatSpec, formatWeight, productName } from '@/lib/format';
+import { formatSpec, formatWeight, measurementRows, productName } from '@/lib/format';
 
 /**
  * 仕様比較表（計画書 3節・5-2節）。
@@ -18,14 +18,21 @@ type Props = {
 type Row = { label: string; render: (product: Product) => string };
 
 function buildRows(products: Product[], category?: Category): Row[] {
-  const rows: Row[] = [
-    { label: '本体重量', render: (p) => formatWeight(p.weightG) },
-    { label: '容量', render: (p) => formatCapacity(p.capacityL) },
-    { label: '外寸（ハンドル・キャスター含む）', render: (p) => formatSize(p.outerSizeMm) },
-  ];
+  const rows: Row[] = [{ label: '本体重量', render: (p) => formatWeight(p.weightG) }];
 
-  if (products.some((p) => p.bodySizeMm)) {
-    rows.push({ label: '本体寸法', render: (p) => formatSize(p.bodySizeMm) });
+  // 寸法・容量は「条件つきの行」として展開する。
+  // 測定条件（ハンドル込み／除く、通常時／拡張時）が違う値を同じ行に混ぜない。
+  const measurementLabels: string[] = [];
+  for (const product of products) {
+    for (const row of measurementRows(product)) {
+      if (!measurementLabels.includes(row.label)) measurementLabels.push(row.label);
+    }
+  }
+  for (const label of measurementLabels) {
+    rows.push({
+      label,
+      render: (product) => measurementRows(product).find((row) => row.label === label)?.value ?? '不明',
+    });
   }
 
   // 表示する spec 列は、実際に 1 件以上値があるものだけ。
@@ -120,8 +127,10 @@ export default function ComparisonTable({ products, category, caption }: Props) 
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-ink-faint">
+      <p className="text-xs leading-relaxed text-ink-faint">
         「不明」はメーカー公表仕様で確認できなかった項目です。推定値は入れていません。
+        寸法の行は測定条件（ハンドルを含むか、通常時か拡張時か）ごとに分けています。
+        条件の違う商品どうしでは、同じ行に値が並びません。
       </p>
     </div>
   );

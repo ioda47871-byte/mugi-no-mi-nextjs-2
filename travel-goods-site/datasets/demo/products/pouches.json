@@ -61,7 +61,10 @@
     "caveats": [
       "圧縮できるのは体積です。荷物の重量は変わりません。"
     ],
-    "image": null
+    "image": null,
+    "sizeBasis": "excludes-handle",
+    "measurementState": "not-applicable",
+    "alternateMeasurements": []
   },
   {
     "id": "d-pc-karuta-c2",
@@ -125,7 +128,10 @@
     "caveats": [
       "圧縮後の厚みは収納物によって変わります。公表値は目安です。"
     ],
-    "image": null
+    "image": null,
+    "sizeBasis": "excludes-handle",
+    "measurementState": "not-applicable",
+    "alternateMeasurements": []
   },
   {
     "id": "d-pc-hane-t1",
@@ -190,7 +196,10 @@
       "吊り下げるにはフックを掛けられる場所が必要です。",
       "液体物の航空機内持ち込み規定は各国・各社の案内をご確認ください。"
     ],
-    "image": null
+    "image": null,
+    "sizeBasis": "excludes-handle",
+    "measurementState": "not-applicable",
+    "alternateMeasurements": []
   },
   {
     "id": "d-pc-hane-t2",
@@ -254,7 +263,10 @@
     "caveats": [
       "吊り下げ用のフックはありません。"
     ],
-    "image": null
+    "image": null,
+    "sizeBasis": "excludes-handle",
+    "measurementState": "not-applicable",
+    "alternateMeasurements": []
   },
   {
     "id": "d-pc-nagi-s1",
@@ -319,7 +331,10 @@
       "重量・容量はセット合計の公表値で、1点あたりの内訳は不明です。",
       "単品モデルとは別のバリエーションとして扱っています。"
     ],
-    "image": null
+    "image": null,
+    "sizeBasis": "excludes-handle",
+    "measurementState": "not-applicable",
+    "alternateMeasurements": []
   },
   {
     "id": "d-pc-lumen-w1",
@@ -383,7 +398,10 @@
     "caveats": [
       "撥水は防水ではありません。浸水を防ぐ性能は公表されていません。"
     ],
-    "image": null
+    "image": null,
+    "sizeBasis": "excludes-handle",
+    "measurementState": "not-applicable",
+    "alternateMeasurements": []
   },
   {
     "id": "d-pc-tobira-m1",
@@ -447,7 +465,10 @@
     "caveats": [
       "軽量素材のため、収納物の保護性能は公表されていません。"
     ],
-    "image": null
+    "image": null,
+    "sizeBasis": "excludes-handle",
+    "measurementState": "not-applicable",
+    "alternateMeasurements": []
   },
   {
     "id": "d-pc-hoshi-x1",
@@ -512,6 +533,9 @@
     "caveats": [
       "容量が不明なため、容量を条件にした絞り込みの対象外です。"
     ],
-    "image": null
+    "image": null,
+    "sizeBasis": "excludes-handle",
+    "measurementState": "not-applicable",
+    "alternateMeasurements": []
   }
 ]

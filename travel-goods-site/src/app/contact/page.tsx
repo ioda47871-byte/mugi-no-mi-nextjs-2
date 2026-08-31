@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import InfoPage, { Section, Unset } from '@/components/InfoPage';
+import InfoPage, { Section } from '@/components/InfoPage';
 import { absoluteUrl, siteConfig } from '@/config/site';
 
 export const metadata: Metadata = {
@@ -19,15 +19,10 @@ export default function ContactPage() {
             </a>
           </p>
         ) : (
-          <>
-            <p>
-              <Unset label="PUBLIC_CONTACT_EMAIL" />
-            </p>
-            <p className="text-sm">
-              公開用の問い合わせ先メールアドレスが未設定のため、まだ連絡先を掲載できません。
-              本番公開の前に設定します（仮のアドレスは掲載しません）。
-            </p>
-          </>
+          <p>
+            連絡先メールアドレスは準備中です。用意ができ次第このページに掲載します。
+            仮のアドレスは掲載していません。
+          </p>
         )}
       </Section>
 
