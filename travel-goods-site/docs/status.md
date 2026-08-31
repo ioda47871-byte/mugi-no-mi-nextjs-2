@@ -366,7 +366,7 @@ E2E をこの実装環境で動かす場合は、`PW_CHROMIUM_PATH=/opt/pw-brows
 | 項目 | 状態 | 必要な操作 |
 |---|---|---|
 | 楽天の紹介URL | **1件のみ登録済み**（BMA-TRCS01MBK・照合済み）。公開22商品中21商品が未発行 | 管理画面で紹介URLを発行 → `npm run link:set` で登録。検索語の一覧は4節にあります |
-| 楽天APIの自動取得 | 未稼働。現行API・アクセスキー対応済み、楽天本番APIへの認証付き通信は未確認 | `RAKUTEN_APPLICATION_ID` / `RAKUTEN_ACCESS_KEY` / `RAKUTEN_AFFILIATE_ID` をSecretsに設定して dry-run。未設定なら通信・データ変更前に終了コード3で停止。手順は docs/rakuten-automation.md |
+| 楽天APIの自動取得 | **接続確認済み**（2026-08-31、dry-run）。認証成功・紹介URL取得・型番/JAN照合まで確認。書き込みはまだ行っていない | 資格情報3つ（Secrets）と `RAKUTEN_API_REFERER`（Variables）が設定済み。次は `--mode links` の dry-run → 内容確認 → `--apply`。手順は docs/rakuten-automation.md |
 | Amazon アソシエイトID | 未提供 | `AMAZON_ASSOCIATE_TAG` を設定（空の間はAmazonボタンを出力しません） |
 | Amazon 審査 | 未確認 | 登録後180日以内に3件以上の適格販売、10件以上のオリジナル投稿。条件達成は合格の保証ではありません |
 | 計測ID (GA4) | 未提供 | `NEXT_PUBLIC_GA_ID`。未設定でも計測タグは出力されません |
