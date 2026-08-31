@@ -77,6 +77,9 @@ describe('楽天CLI認証（ループバックへの実HTTP通信）', () => {
 
 describe('--exclude の打ち間違いを通さない', () => {
   it('存在しない商品IDを指定したら、通信もデータ変更もせずに終了コード2で止まる', async () => {
+    // 実行ロックはカレントディレクトリに作られる。リポジトリ側に残すと
+    // 次の実行が「同じジョブが実行中」で止まるため、一時ディレクトリで動かす。
+    const temp = await mkdtemp(path.join(tmpdir(), 'rakuten-exclude-'));
     const merchantPath = path.resolve('datasets/production/merchants/rakuten.json');
     const before = await readFile(merchantPath, 'utf8');
     let requests = 0;
@@ -100,15 +103,17 @@ describe('--exclude の打ち間違いを通さない', () => {
           'no-such-product-id',
         ],
         {
-          cwd: path.resolve('.'),
+          cwd: temp,
           env: {
             ...process.env,
+            TSX_TSCONFIG_PATH: path.resolve('tsconfig.json'),
             RAKUTEN_APPLICATION_ID: 'cli-test-app',
             RAKUTEN_AFFILIATE_ID: 'cli-test-affiliate',
             RAKUTEN_ACCESS_KEY: TEST_KEY,
             RAKUTEN_API_ENDPOINT_OVERRIDE: `http://127.0.0.1:${port}/`,
             RAKUTEN_API_REFERER: '',
             CATALOG_DATASET: 'production',
+            CATALOG_DATASET_DIR: path.resolve('datasets/production'),
             AUTOMATION_ENABLED: 'false',
           },
         },
@@ -122,6 +127,7 @@ describe('--exclude の打ち間違いを通さない', () => {
       expect(await readFile(merchantPath, 'utf8')).toBe(before);
     } finally {
       await new Promise<void>((resolve) => server.close(() => resolve()));
+      await rm(temp, { recursive: true, force: true });
     }
   });
 });
