@@ -28,7 +28,8 @@
     "link:set": "tsx scripts/set-merchant-link.ts",
     "preview:linkcheck": "tsx scripts/linkcheck-fixture.ts",
     "test:e2e:linkcheck": "npm run preview:linkcheck && CATALOG_DATASET=production CATALOG_DATASET_DIR=.preview/linkcheck-dataset NEXT_PUBLIC_GA_ID=G-LINKCHECK npm run build:only && npm run preview:cta && E2E_DATASET=linkcheck playwright test",
-    "rakuten:sync": "tsx scripts/rakuten-sync.ts"
+    "rakuten:sync": "tsx scripts/rakuten-sync.ts",
+    "audit": "tsx scripts/audit-content.ts"
   },
   "dependencies": {
     "gray-matter": "4.0.3",

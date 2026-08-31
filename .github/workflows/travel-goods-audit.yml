@@ -1,0 +1,118 @@
+name: travel-goods-site 定期点検
+
+# 放っておくと壊れるものを機械が見張る（計画書 12-1節）。
+# 外部サイトへはアクセスしない。日付とデータだけで判断する。
+#
+# 何も見つからなければ **何もしない**（通知も Issue も作らない）。
+# 見つかったときだけ Issue を作り、直ったら自動で閉じる。
+on:
+  schedule:
+    - cron: '0 22 * * 0'   # UTC 日22:00 = JST 月07:00（週1回）
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: travel-goods-audit
+  cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: travel-goods-site
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: travel-goods-site/package-lock.json
+
+      - run: npm ci
+
+      - name: 点検（結果を保存）
+        id: audit
+        env:
+          CATALOG_DATASET: production
+        run: |
+          set +e
+          npm run --silent audit -- --json > audit.json
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          set -e
+          {
+            echo 'report<<AUDIT_EOF'
+            npm run --silent audit || true
+            echo 'AUDIT_EOF'
+          } >> "$GITHUB_OUTPUT"
+          echo "findings=$(node -e "console.log(JSON.parse(require('fs').readFileSync('audit.json','utf8')).findings.length)")" >> "$GITHUB_OUTPUT"
+
+      - name: 見つかったら Issue を作る／更新する
+        if: ${{ steps.audit.outputs.findings != '0' }}
+        uses: actions/github-script@v7
+        env:
+          REPORT: ${{ steps.audit.outputs.report }}
+        with:
+          script: |
+            const title = '[travel-goods-site] 定期点検で確認事項があります';
+            const body = [
+              '週次の点検で、対応または確認が必要な項目が見つかりました。',
+              '',
+              '```',
+              process.env.REPORT,
+              '```',
+              '',
+              '- この点検は外部サイトへアクセスしていません。',
+              '- 対応が済むと、次回の点検でこの Issue は自動的に閉じられます。',
+              '- 手元で確認するには `CATALOG_DATASET=production npm run audit` を実行してください。',
+            ].join('\n');
+
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: 'open', labels: 'travel-goods-audit',
+            });
+            if (issues.length > 0) {
+              await github.rest.issues.update({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: issues[0].number, body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title, body, labels: ['travel-goods-audit'],
+              });
+            }
+
+      - name: 何も無ければ既存の Issue を閉じる
+        if: ${{ steps.audit.outputs.findings == '0' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: 'open', labels: 'travel-goods-audit',
+            });
+            for (const issue of issues) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: issue.number,
+                body: '点検で確認事項が無くなったため、自動的に閉じます。',
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: issue.number, state: 'closed', state_reason: 'completed',
+              });
+            }
+
+      # 要対応（安全情報の期限切れなど）があればジョブを失敗させ、気づけるようにする
+      - name: 要対応があれば失敗させる
+        if: ${{ steps.audit.outputs.exit_code != '0' }}
+        run: |
+          echo '要対応の項目があります。上の Issue を確認してください。'
+          exit 1

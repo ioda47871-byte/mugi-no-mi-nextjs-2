@@ -60,7 +60,8 @@ APIキー・紹介ID・データベースは不要です。未設定の機能は
 | `npm run test:e2e:linkcheck` | 購入導線の通し確認（表示・遷移先・クリック計測。本番データは変更しない） |
 | `npm run preview:cta` | 購入ボタン4状態の確認ページを `.preview/cta/` に生成 |
 | `npm run link:set -- ...` | 発行済み紹介URL／照合済みASINを登録・有効化（ホスト検証つき） |
-| `npm run rakuten:sync -- ...` | 楽天APIから紹介URLを自動取得／商品候補を自動収集（既定 dry-run） |
+| `npm run rakuten:sync -- ...` | 楽天APIから紹介URLを自動取得／商品候補を自動収集／販売終了を検出（既定 dry-run） |
+| `npm run audit` | 定期点検。期限切れ・リンク切れ・整合性を外部アクセスなしで検査 |
 | `npm run validate:content` | 商品・出典・販売先・記事の検証 |
 | `npm run validate:content:all` | production と demo の両方を検証 |
 | `npm run create:draft -- ...` | 記事の下書きを生成（必ず `status: draft`） |
@@ -145,3 +146,4 @@ docs/             状態・公開手順・運用手順・調査ログ
 | `docs/operations.md` | 商品追加・記事更新・リンク差し替え・切り戻し |
 | `docs/research-log.md` | 実施できた／できなかった調査の記録 |
 | `docs/rakuten-automation.md` | 楽天からの自動取得（何が自動で、どこから人が確認するか） |
+| `docs/unattended-operation.md` | 無人運用はどこまでできるか（維持は可能、成長は不可） |

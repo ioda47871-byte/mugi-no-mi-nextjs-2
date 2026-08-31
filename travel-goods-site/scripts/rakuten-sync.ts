@@ -3,6 +3,7 @@
  *
  *   --mode links     登録済み商品のJAN・型番で検索し、紹介URLを取得して登録する
  *   --mode discover  キーワードで検索し、新しい商品候補を「未確認」で保存する
+ *   --mode audit     表示中のリンクがまだ生きているかを確認する（販売終了の検出）
  *
  * 既定は dry-run（何も書き込まない）。書き込むには --apply が必要。
  * strong 一致を自動で verified にするには、さらに --auto-verify が必要。
@@ -53,7 +54,9 @@ const category = flag('category');
 const maxRequests = Number(flag('max-requests') ?? 30);
 const today = new Date().toISOString().slice(0, 10);
 
-if (mode !== 'links' && mode !== 'discover') fail("--mode は links か discover です。");
+if (mode !== 'links' && mode !== 'discover' && mode !== 'audit') {
+  fail('--mode は links / discover / audit のいずれかです。');
+}
 if (mode === 'discover' && !keyword) fail('--mode discover には --keyword が必要です。');
 if (autoVerify && !apply) fail('--auto-verify は --apply と一緒に指定してください。');
 
@@ -106,6 +109,8 @@ async function main(): Promise<void> {
 
   if (mode === 'links') {
     await syncLinks(catalog.products, catalog.merchantLinks, client);
+  } else if (mode === 'audit') {
+    await auditLinks(catalog.products, catalog.merchantLinks, client);
   } else {
     await discover(catalog.products, client);
   }
@@ -207,6 +212,100 @@ async function syncLinks(
   const file = path.join(datasetDir, 'merchants', 'rakuten.json');
   fs.writeFileSync(file, `${JSON.stringify(rakutenLinks, null, 2)}\n`, 'utf8');
   console.log(`\n更新しました: ${file}（${updates.length} 件）`);
+}
+
+/**
+ * 表示中のリンクがまだ生きているかを確認する。
+ *
+ * 商品が販売終了になってもリンクは残り、誰も気づかない。
+ * JAN・型番で再検索して見つからなければ「販売終了の疑い」として報告する。
+ *
+ * **リンクを勝手に消さない。** --apply を付けたときだけ unverified に落とし、
+ * 画面から外す。データは残すので、復活したときに戻せる。
+ */
+async function auditLinks(
+  products: Product[],
+  existingLinks: MerchantLink[],
+  client: RakutenClient,
+): Promise<void> {
+  const productMap = new Map(products.map((product) => [product.id, product]));
+  const targets = existingLinks.filter(
+    (link) => link.merchant === 'rakuten' && link.status === 'verified',
+  );
+
+  console.log(`点検対象の楽天リンク: ${targets.length} 件`);
+  const suspects: MerchantLink[] = [];
+
+  for (const link of targets) {
+    const product = productMap.get(link.productId);
+    if (!product) continue;
+
+    const keywords = searchKeywordsFor(product);
+    if (keywords.length === 0) {
+      console.log(`  ${link.productId}: JAN・型番が無いため自動点検できません`);
+      continue;
+    }
+
+    let found = false;
+    for (const query of keywords) {
+      const items = await client.search({ keyword: query, hits: 20 });
+      if (pickBestMatch(product, items)) {
+        found = true;
+        break;
+      }
+    }
+
+    if (found) {
+      console.log(`  ${link.productId}: 販売を確認できました`);
+    } else {
+      suspects.push(link);
+      console.log(`  ${link.productId}: 販売ページが見つかりません（販売終了の疑い）`);
+    }
+  }
+
+  if (suspects.length === 0) {
+    console.log('\n表示中のリンクはすべて販売を確認できました。');
+    return;
+  }
+
+  console.log(`\n販売終了の疑いがあるリンク: ${suspects.length} 件`);
+  console.log('検索で見つからないだけの可能性もあります。リンク先を開いて確認してください。');
+
+  if (!apply) {
+    console.log('\ndry-run のため変更していません。--apply で画面から外します（削除はしません）。');
+    return;
+  }
+
+  const updated = existingLinks
+    .filter((link) => link.merchant === 'rakuten')
+    .map((link) =>
+      suspects.some((s) => s.productId === link.productId)
+        ? {
+            ...link,
+            status: 'unverified' as const,
+            verifiedAt: null,
+            verificationMethod: null,
+            note: `${today} の点検で販売ページを確認できず、表示から外しました。復活を確認したら再度 verified にしてください。`,
+          }
+        : link,
+    );
+
+  const merged = [...existingLinks.filter((l) => l.merchant !== 'rakuten'), ...updated];
+  const check = inspectCatalog(
+    { ...readDatasetInput(datasetKind), merchantLinks: merged },
+    { now: new Date() },
+  );
+  if (!check.ok) {
+    console.error('\nこの内容では検証に通らないため、書き込みを中止しました。');
+    process.exit(1);
+  }
+
+  fs.writeFileSync(
+    path.join(datasetDir, 'merchants', 'rakuten.json'),
+    `${JSON.stringify(updated, null, 2)}\n`,
+    'utf8',
+  );
+  console.log(`\n${suspects.length} 件を画面から外しました（データは残しています）。`);
 }
 
 /** 新しい商品候補を集める。採用は人が決める。 */

@@ -46,6 +46,11 @@ jobs:
       - name: データ・記事の検証（本番／デモ両方）
         run: npm run validate:content:all
 
+      - name: 定期点検（要対応があれば失敗）
+        env:
+          CATALOG_DATASET: production
+        run: npm run audit
+
       - name: 静的出力ビルド（デモデータ）
         run: npm run build:only
 
