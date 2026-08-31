@@ -102,7 +102,22 @@ export type MerchantLink = {
   matchedVariant: string;
   verifiedAt: string | null;
   status: 'verified' | 'unverified' | 'unavailable';
+  /**
+   * 何をもって「照合済み」と判断したか。
+   *   visual           … 人がリンク先を開いて商品・サイズ・色を確認した
+   *   identifier-match … 型番・JANの一致で判断した（リンク先は開いていない）
+   * 自動取得したリンクは必ず identifier-match になる。両者を混同しないための記録。
+   */
+  verificationMethod?: VerificationMethod | null;
   note?: string;
+};
+
+export const VERIFICATION_METHODS = ['visual', 'identifier-match'] as const;
+export type VerificationMethod = (typeof VERIFICATION_METHODS)[number];
+
+export const VERIFICATION_METHOD_LABELS: Record<VerificationMethod, string> = {
+  visual: 'リンク先を目視確認',
+  'identifier-match': '型番・JANの一致で判断',
 };
 
 /**

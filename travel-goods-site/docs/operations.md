@@ -234,14 +234,24 @@ npm run preview:cta    # .preview/cta/index.html を生成
 管理画面で発行した紹介URLを受け取ったら、JSON を手で編集せずにコマンドで登録します。
 
 ```bash
-# 楽天（発行済み紹介URL）
+# 楽天（発行済み紹介URL・リンク先を開いて確認した場合）
 CATALOG_DATASET=production npm run link:set -- \
-  --product <商品ID> --merchant rakuten --url "<紹介URL>" --verify
+  --product <商品ID> --merchant rakuten --url "<紹介URL>" --verify --visual-check
 
-# Amazon（照合済みASIN）
+# Amazon（照合済みASIN・型番一致で判断した場合）
 CATALOG_DATASET=production npm run link:set -- \
-  --product <商品ID> --merchant amazon --asin <ASIN10桁> --verify
+  --product <商品ID> --merchant amazon --asin <ASIN10桁> --verify --identifier-match
 ```
+
+**`--verify` には判断根拠の指定が必須です。**
+
+| 指定 | 意味 |
+|---|---|
+| `--visual-check` | リンク先を開いて商品・サイズ・色を確認した |
+| `--identifier-match` | 型番・JANの一致で判断した（リンク先は開いていない） |
+
+リンク先を見ていないものを目視確認として記録しないでください。
+自動取得ジョブが作るリンクは必ず `identifier-match` になります。
 
 - ホストが許可リスト外なら登録を拒否します（通常の商品URLは紹介URLとして扱いません）。
 - `matchedVariant` は商品の `variant` を自動で使います。

@@ -81,7 +81,11 @@ for (const kind of requestedDatasets()) {
   console.log(`  商品          : ${catalog.products.length} 件（公開 ${publishedProducts.length} 件）`);
   console.log(`  出典           : ${catalog.sources.length} 件（編集確認済み ${catalog.sources.filter((s) => s.editorialUse === 'verified').length} 件）`);
   console.log(`  根拠付きの仕様値: ${factsWithValue} 件`);
-  console.log(`  販売先リンク   : ${catalog.merchantLinks.length} 件（照合済み ${verifiedLinks.length} 件）`);
+  const visualCount = verifiedLinks.filter((l) => l.verificationMethod === 'visual').length;
+  console.log(
+    `  販売先リンク   : ${catalog.merchantLinks.length} 件（照合済み ${verifiedLinks.length} 件` +
+      `／うち目視確認 ${visualCount} 件・型番一致のみ ${verifiedLinks.length - visualCount} 件）`,
+  );
   console.log(`    - Amazon 照合済み: ${verifiedLinks.filter((l) => l.merchant === 'amazon').length} 件`);
   console.log(`    - 楽天   照合済み: ${verifiedLinks.filter((l) => l.merchant === 'rakuten').length} 件`);
   console.log(`  記事           : ${catalog.articles.length} 本（公開可 ${publishable.length} 本 / 保留 ${withheld.length} 本）`);

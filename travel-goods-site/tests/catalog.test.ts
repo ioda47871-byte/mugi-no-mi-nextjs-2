@@ -165,6 +165,18 @@ describe('validateCatalog: 根拠のないデータを通さない', () => {
     );
   });
 
+  it('照合済みリンクに判断根拠を要求する', () => {
+    const link = makeMerchantLink({ verificationMethod: undefined });
+    expect(errorCodes(makeCatalogInput({ merchantLinks: [link] }))).toContain(
+      'merchant.missing-verification-method',
+    );
+  });
+
+  it('目視確認と型番一致を区別して記録できる', () => {
+    const visual = makeMerchantLink({ verificationMethod: 'visual' });
+    expect(errorCodes(makeCatalogInput({ merchantLinks: [visual] }))).toHaveLength(0);
+  });
+
   it('楽天の verified リンクに発行済み紹介URLを要求する', () => {
     const link = makeMerchantLink({ merchant: 'rakuten', affiliateUrl: null });
     expect(errorCodes(makeCatalogInput({ merchantLinks: [link] }))).toContain(

@@ -43,6 +43,8 @@ const url = flag('url');
 const asin = flag('asin');
 const externalId = flag('external-id');
 const verify = has('verify');
+const visualCheck = has('visual-check');
+const identifierMatch = has('identifier-match');
 const dryRun = has('dry-run');
 const note = flag('note');
 const today = new Date().toISOString().slice(0, 10);
@@ -53,10 +55,23 @@ if (!productId || (merchantArg !== 'rakuten' && merchantArg !== 'amazon')) {
       '  --product <商品ID> --merchant <rakuten|amazon>\n' +
       '  楽天: --url "<発行済み紹介URL>" [--external-id shop:item]\n' +
       '  Amazon: --asin <ASIN10桁>\n' +
-      '  任意: --verify  --note "..."  --dry-run',
+      '  任意: --note "..."  --dry-run\n' +
+      '  表示するには --verify と、その判断根拠が必要:\n' +
+      '    --visual-check      リンク先を開いて商品・サイズ・色を確認した\n' +
+      '    --identifier-match  型番・JANの一致で判断した（リンク先は開いていない）',
   );
 }
 const merchant = merchantArg as MerchantName;
+
+if (verify && !visualCheck && !identifierMatch) {
+  fail(
+    '--verify には判断根拠が必要です。\n' +
+      '  --visual-check      リンク先を開いて商品・サイズ・色を確認した場合\n' +
+      '  --identifier-match  型番・JANの一致で判断した場合（リンク先は開いていない）\n' +
+      '  リンク先を確認していないものを目視確認として記録しないでください。',
+  );
+}
+if (visualCheck && identifierMatch) fail('--visual-check と --identifier-match は同時に指定できません。');
 
 const datasetKind = resolveDatasetKind();
 if (datasetKind !== 'production') {
@@ -142,7 +157,9 @@ console.log(`商品      : ${product.brand} ${product.model}（${product.variant
 console.log(`店舗      : ${merchant}`);
 console.log(`識別子    : ${entry.externalProductId}`);
 if (affiliateUrl) console.log(`紹介URL   : ${affiliateUrl}`);
-console.log(`状態      : ${entry.status}${verify ? `（照合日 ${today}）` : '（画面には表示されません）'}`);
+console.log(
+  `状態      : ${entry.status}${verify ? `（照合日 ${today} / ${visualCheck ? 'リンク先を目視確認' : '型番・JANの一致で判断'}）` : '（画面には表示されません）'}`,
+);
 
 if (dryRun) {
   console.log('\n[dry-run] ファイルは変更していません。');

@@ -111,6 +111,11 @@ CATALOG_DATASET=production AUTOMATION_ENABLED=true \
 `--auto-verify` は **型番とJANの両方**が販売ページの文言に含まれる場合だけ
 `verified` にします。片方だけの一致は `unverified` のままです。
 
+自動で `verified` にしたリンクは、判断根拠が **`identifier-match`（型番・JANの一致）**
+として記録されます。**目視確認にはなりません。** リンク先を開いて確認したら、
+`npm run link:set -- ... --verify --visual-check` で上書きしてください。
+`validate:content` が「目視確認 N 件／型番一致のみ N 件」の内訳を表示します。
+
 > これは「確認済み商品の低リスクな更新の自動反映」（計画書 12-3節）にあたります。
 > それでも、色違い・セット品を取り違える可能性は残ります。
 > **最初のうちは `--auto-verify` を使わず、目視で確認することをおすすめします。**

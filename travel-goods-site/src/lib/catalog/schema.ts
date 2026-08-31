@@ -1,5 +1,11 @@
 import { z } from 'zod';
-import { CATEGORIES, MEASUREMENT_STATES, PUBLICATION_STATUSES, SIZE_BASES } from './types';
+import {
+  CATEGORIES,
+  MEASUREMENT_STATES,
+  PUBLICATION_STATUSES,
+  SIZE_BASES,
+  VERIFICATION_METHODS,
+} from './types';
 
 /**
  * JSON の形をここで固定する。未知キーは通さない（strict）。
@@ -225,6 +231,7 @@ export const merchantLinkSchema = z
     matchedVariant: z.string().min(1).max(120),
     verifiedAt: isoDate.nullable(),
     status: z.enum(['verified', 'unverified', 'unavailable']),
+    verificationMethod: z.enum(VERIFICATION_METHODS).nullable().optional(),
     note: z.string().min(1).max(300).optional(),
   })
   .strict();

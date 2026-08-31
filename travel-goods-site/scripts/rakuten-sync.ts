@@ -155,6 +155,8 @@ async function syncLinks(
       matchedVariant: product.variant,
       verifiedAt: shouldVerify ? today : null,
       status: shouldVerify ? 'verified' : 'unverified',
+      // 自動取得はリンク先を開いていない。目視確認と混同しない。
+      verificationMethod: shouldVerify ? 'identifier-match' : null,
       note:
         `楽天APIで自動取得（${today}、一致度 ${best.match.confidence}）。` +
         `${best.match.reasons.join(' / ')}` +

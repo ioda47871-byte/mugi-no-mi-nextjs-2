@@ -83,6 +83,7 @@ export function makeMerchantLink(overrides: Partial<MerchantLink> = {}): Merchan
     matchedVariant: '38L / 機内持ち込みサイズ',
     verifiedAt: '2026-08-20',
     status: 'verified',
+    verificationMethod: 'identifier-match',
   };
   return { ...base, ...overrides };
 }

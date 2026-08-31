@@ -447,6 +447,17 @@ export function inspectCatalog(input: CatalogInput, options: ValidateOptions = {
           message: `照合日が未来です: ${link.verifiedAt}`,
         });
       }
+      if (!link.verificationMethod) {
+        issues.push({
+          severity: 'error',
+          code: 'merchant.missing-verification-method',
+          subject,
+          path: 'verificationMethod',
+          message:
+            "status: 'verified' には判断根拠(verificationMethod)が必要です" +
+            "（visual: リンク先を目視確認 / identifier-match: 型番・JANの一致で判断）",
+        });
+      }
       if (link.matchedVariant !== product.variant) {
         issues.push({
           severity: 'error',

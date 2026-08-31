@@ -289,6 +289,8 @@ describe('取得から登録までの通し（外部通信なし）', () => {
       matchedVariant: pouch.variant,
       verifiedAt: '2026-08-31',
       status: 'verified' as const,
+      // 自動取得は目視確認ではない
+      verificationMethod: 'identifier-match' as const,
     };
 
     const result = inspectCatalog(
