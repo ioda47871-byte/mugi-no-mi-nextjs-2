@@ -70,6 +70,26 @@ export function readApiReferer(): string | null {
   return raw;
 }
 
+/**
+ * 送信元のオリジン（scheme://host[:port]）。
+ *
+ * 現行の楽天APIは、サーバーからの呼び出しに対して **Origin ヘッダー** で
+ * 送信元を判定する。Referer だけでは
+ * `REQUEST_CONTEXT_BODY_HTTP_REFERRER_MISSING` で拒否される。
+ * Origin は仕様上パス・末尾スラッシュを含まないため、設定値から組み立てる。
+ */
+export function readApiOrigin(): string | null {
+  const raw = read('RAKUTEN_API_REFERER');
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
+    return url.origin;
+  } catch {
+    return null;
+  }
+}
+
 /** 自動実行の有効化フラグ。既定は false（計画書 12-3節）。 */
 export function isAutomationEnabled(): boolean {
   return read('AUTOMATION_ENABLED') === 'true';

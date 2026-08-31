@@ -1,4 +1,4 @@
-import { readApiReferer, redactSecrets, type RakutenCredentials } from './config';
+import { readApiOrigin, readApiReferer, redactSecrets, type RakutenCredentials } from './config';
 import { normalizeItems, type RakutenItem } from './types';
 
 /**
@@ -187,6 +187,7 @@ export class RakutenClient {
       let response: Response;
       try {
         const referer = readApiReferer();
+        const origin = readApiOrigin();
         response = await this.fetchImpl(url, {
           signal: AbortSignal.timeout(this.timeoutMs),
           // 別ホストへのリダイレクトに資格情報を引き継がない。
@@ -196,6 +197,8 @@ export class RakutenClient {
             accessKey: this.credentials.accessKey,
             // 楽天のアプリ登録「許可されたWebサイト」に合わせて送信元を名乗る。
             // 自分が登録・所有しているドメインだけを設定すること。
+            // 現行APIは Origin で判定する。Referer だけでは拒否される。
+            ...(origin ? { origin } : {}),
             ...(referer ? { referer } : {}),
           },
         });

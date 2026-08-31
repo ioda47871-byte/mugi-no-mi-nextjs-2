@@ -30,6 +30,14 @@ describe('送信元(Referer)の扱い', () => {
     expect(readApiReferer()).toBe('https://example.com/');
   });
 
+  it('Origin はパスや末尾スラッシュを含まない形にする', async () => {
+    const { readApiOrigin } = await import('@/lib/rakuten/config');
+    vi.stubEnv('RAKUTEN_API_REFERER', 'https://example.com/');
+    expect(readApiOrigin()).toBe('https://example.com');
+    vi.stubEnv('RAKUTEN_API_REFERER', 'https://example.com/path/');
+    expect(readApiOrigin()).toBe('https://example.com');
+  });
+
   it('URLとして不正なら送らない', async () => {
     const { readApiReferer } = await import('@/lib/rakuten/config');
     vi.stubEnv('RAKUTEN_API_REFERER', 'example.com');
@@ -205,6 +213,7 @@ describe('照合: 誤った商品にリンクを付けない', () => {
 
 describe('APIクライアント', () => {
   it('現行APIへIDとアクセスキーヘッダーを送り、キーをURLやログに載せない', async () => {
+    vi.stubEnv('RAKUTEN_API_REFERER', 'https://example.com/');
     let requested: URL | null = null;
     let options: RequestInit | undefined;
     const fetchImpl = vi.fn(async (input: unknown, init: RequestInit) => {
@@ -221,6 +230,9 @@ describe('APIクライアント', () => {
     expect(requested!.searchParams.get('applicationId')).toBe(CREDS.applicationId);
     expect(requested!.searchParams.get('affiliateId')).toBe(CREDS.affiliateId);
     expect(new Headers(options?.headers).get('accessKey')).toBe(CREDS.accessKey);
+    // 現行APIは Origin で送信元を判定する（Referer だけでは 403）
+    expect(new Headers(options?.headers).get('origin')).toBe('https://example.com');
+    expect(new Headers(options?.headers).get('referer')).toBe('https://example.com/');
     expect(requested!.searchParams.has('accessKey')).toBe(false);
     expect(options?.redirect).toBe('error');
 
