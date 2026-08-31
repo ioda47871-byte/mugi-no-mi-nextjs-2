@@ -12,9 +12,9 @@ import { normalizeItems, type RakutenItem } from './types';
  * - 資格情報をログ・例外メッセージに出さない。
  */
 
-export const RAKUTEN_API_HOST = 'app.rakuten.co.jp';
+export const RAKUTEN_API_HOST = 'openapi.rakuten.co.jp';
 export const RAKUTEN_SEARCH_ENDPOINT =
-  'https://app.rakuten.co.jp/services/api/IchibaItem/Search/20220601';
+  'https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260701';
 
 export type SearchParams = {
   /** 検索語。JAN・型番・キーワードなど。 */
@@ -97,7 +97,7 @@ export class RakutenClient {
   /**
    * 取得先を決める。
    *
-   * 本番は app.rakuten.co.jp のみ。
+   * 本番は openapi.rakuten.co.jp のみ。
    * 例外として RAKUTEN_API_ENDPOINT_OVERRIDE を認めるが、
    * **ループバック（127.0.0.1 / localhost）に限る**。
    * 資格情報なしでジョブの動作を確認するための口で、
@@ -167,17 +167,21 @@ export class RakutenClient {
         const referer = readApiReferer();
         response = await this.fetchImpl(url, {
           signal: AbortSignal.timeout(this.timeoutMs),
+          // 別ホストへのリダイレクトに資格情報を引き継がない。
+          redirect: 'error',
           headers: {
             accept: 'application/json',
+            accessKey: this.credentials.accessKey,
             // 楽天のアプリ登録「許可されたWebサイト」に合わせて送信元を名乗る。
             // 自分が登録・所有しているドメインだけを設定すること。
             ...(referer ? { referer } : {}),
           },
         });
-      } catch (error) {
+      } catch {
         // ネットワーク障害・タイムアウト
         if (attempt >= this.maxRetries) {
-          throw new RakutenApiError(`取得に失敗しました: ${(error as Error).message}`, null);
+          // 外部例外にはURL・ヘッダーが含まれる可能性があるため原文を出さない。
+          throw new RakutenApiError('取得に失敗しました。通信・タイムアウト・リダイレクト拒否を確認してください。', null);
         }
         attempt += 1;
         await this.sleepImpl(this.backoffMs(attempt));
@@ -185,7 +189,12 @@ export class RakutenClient {
       }
 
       if (response.ok) {
-        const body: unknown = await response.json();
+        let body: unknown;
+        try {
+          body = await response.json();
+        } catch {
+          throw new RakutenApiError('楽天APIの応答をJSONとして解析できませんでした。', response.status);
+        }
         return normalizeItems(body);
       }
 
@@ -195,10 +204,12 @@ export class RakutenClient {
         throw new RakutenApiError(
           `楽天APIがエラーを返しました (HTTP ${response.status})。` +
             (response.status === 400
-              ? ' パラメータかアプリIDを確認してください。'
-              : response.status === 429
-                ? ' レート制限に達しました。時間をおいて再実行してください。'
-                : ''),
+              ? ' パラメータ・アプリID・アクセスキーを確認してください。'
+              : response.status === 401 || response.status === 403
+                ? ' アプリID・アクセスキー・登録したアクセス条件を確認してください。'
+                : response.status === 429
+                  ? ' レート制限に達しました。時間をおいて再実行してください。'
+                  : ''),
           response.status,
         );
       }

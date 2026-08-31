@@ -67,6 +67,7 @@ jobs:
         env:
           # リポジトリの Secrets に設定する。ログには出力されない。
           RAKUTEN_APPLICATION_ID: ${{ secrets.RAKUTEN_APPLICATION_ID }}
+          RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
           RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
           # 「許可されたWebサイト」の制限に合わせて送信元を名乗る場合に設定する。
           # 自分が登録し所有しているドメインのみ。未設定なら送らない。
@@ -74,13 +75,18 @@ jobs:
           # 書き込みを行う実行だけ true にする
           AUTOMATION_ENABLED: ${{ inputs.apply }}
           CATALOG_DATASET: production
+          # 入力値をシェルのコードとして展開しない（資格情報を持つステップ）。
+          SYNC_MODE: ${{ inputs.mode }}
+          SYNC_MAX_REQUESTS: ${{ inputs.max_requests }}
+          SYNC_KEYWORD: ${{ inputs.keyword }}
+          SYNC_APPLY: ${{ inputs.apply }}
+          SYNC_AUTO_VERIFY: ${{ inputs.auto_verify }}
         run: |
-          npm run rakuten:sync -- \
-            --mode "${{ inputs.mode }}" \
-            --max-requests "${{ inputs.max_requests }}" \
-            ${{ inputs.keyword && format('--keyword "{0}"', inputs.keyword) || '' }} \
-            ${{ inputs.apply && '--apply' || '' }} \
-            ${{ inputs.auto_verify && '--auto-verify' || '' }}
+          args=(--mode "$SYNC_MODE" --max-requests "$SYNC_MAX_REQUESTS")
+          if [[ -n "$SYNC_KEYWORD" ]]; then args+=(--keyword "$SYNC_KEYWORD"); fi
+          if [[ "$SYNC_APPLY" == true ]]; then args+=(--apply); fi
+          if [[ "$SYNC_AUTO_VERIFY" == true ]]; then args+=(--auto-verify); fi
+          npm run rakuten:sync -- "${args[@]}"
 
       - name: 取得後の検証
         run: npm run validate:content -- --dataset production

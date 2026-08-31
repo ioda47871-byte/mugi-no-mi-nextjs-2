@@ -10,6 +10,8 @@
 export type RakutenCredentials = {
   /** 楽天ウェブサービスのアプリID。 */
   applicationId: string;
+  /** アプリIDと共に必要。URLではなく accessKey ヘッダーで送信する。 */
+  accessKey: string;
   /** アフィリエイトID。これが無いと affiliateUrl は返らない。 */
   affiliateId: string;
 };
@@ -27,16 +29,18 @@ function read(name: string): string | null {
 
 export function readRakutenCredentials(): CredentialStatus {
   const applicationId = read('RAKUTEN_APPLICATION_ID');
+  const accessKey = read('RAKUTEN_ACCESS_KEY');
   const affiliateId = read('RAKUTEN_AFFILIATE_ID');
 
   const missing: string[] = [];
   if (!applicationId) missing.push('RAKUTEN_APPLICATION_ID');
+  if (!accessKey) missing.push('RAKUTEN_ACCESS_KEY');
   if (!affiliateId) missing.push('RAKUTEN_AFFILIATE_ID');
   if (missing.length > 0) return { ok: false, missing };
 
   return {
     ok: true,
-    credentials: { applicationId: applicationId as string, affiliateId: affiliateId as string },
+    credentials: { applicationId: applicationId as string, accessKey: accessKey as string, affiliateId: affiliateId as string },
   };
 }
 

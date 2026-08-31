@@ -242,6 +242,7 @@ review で保留している エレコム DE-C63-10000BK は、メーカーの�
 | `hb.afl.rakuten.co.jp` | 到達（ルートは 404。紹介URLの形でのみ意味を持つ） |
 | `www.ace-dot.com`（エース） | 到達（200） |
 | `www.elecom.co.jp`（エレコム） | 403（サイト側で拒否。内容は取得できず） |
+| `openapi.rakuten.co.jp`（楽天API・現行版） | 到達（資格情報なしでは 400。applicationId と accessKey が必要） |
 
 この到達性を使い、登録済みの楽天リンクの**リンク先を実際に取得して照合しました**。
 
@@ -365,7 +366,7 @@ E2E をこの実装環境で動かす場合は、`PW_CHROMIUM_PATH=/opt/pw-brows
 | 項目 | 状態 | 必要な操作 |
 |---|---|---|
 | 楽天の紹介URL | **1件のみ登録済み**（BMA-TRCS01MBK・照合済み）。公開22商品中21商品が未発行 | 管理画面で紹介URLを発行 → `npm run link:set` で登録。検索語の一覧は4節にあります |
-| 楽天APIの自動取得 | 未稼働（`RAKUTEN_APPLICATION_ID` / `RAKUTEN_AFFILIATE_ID` が未設定） | Secrets に設定すれば `npm run rakuten:sync` と GitHub Actions が動きます。資格情報が無い間は何もせず終了します |
+| 楽天APIの自動取得 | 未稼働。現行API・アクセスキー対応済み、楽天本番APIへの認証付き通信は未確認 | `RAKUTEN_APPLICATION_ID` / `RAKUTEN_ACCESS_KEY` / `RAKUTEN_AFFILIATE_ID` をSecretsに設定して dry-run。未設定なら通信・データ変更前に終了コード3で停止。手順は docs/rakuten-automation.md |
 | Amazon アソシエイトID | 未提供 | `AMAZON_ASSOCIATE_TAG` を設定（空の間はAmazonボタンを出力しません） |
 | Amazon 審査 | 未確認 | 登録後180日以内に3件以上の適格販売、10件以上のオリジナル投稿。条件達成は合格の保証ではありません |
 | 計測ID (GA4) | 未提供 | `NEXT_PUBLIC_GA_ID`。未設定でも計測タグは出力されません |

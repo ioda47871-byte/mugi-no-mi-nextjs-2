@@ -29,9 +29,8 @@ export type RakutenItem = z.infer<typeof rakutenItemSchema>;
 
 /**
  * formatVersion=1 は要素が入れ子（Item / item）、formatVersion=2 は平ら。
- * 公式ドキュメントの例は小文字（items[0].item.itemName）で書かれている一方、
- * 実際の商品検索APIは大文字（Items / Item）で返します。**どちらが返っても
- * 0件にならないよう、両方を受けます。**
+ * 現行の公式ドキュメントの例は小文字（items[0].item.itemName）。
+ * 互換性のため大文字（Items / Item）も受けます。実APIの応答形式は認証付き通信で未確認です。
  */
 const wrapped = z.union([
   z.object({ Item: rakutenItemSchema }),

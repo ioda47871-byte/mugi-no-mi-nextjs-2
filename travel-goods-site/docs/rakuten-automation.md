@@ -57,10 +57,10 @@ RAKUTEN_API_REFERER=https://あなたのサイト/
 リクエストが拒否される場合に設定してください。
 **他人のサイトを名乗ることはできません。**
 
-### 2-1. 楽天ウェブサービスのアプリIDを取る
+### 2-1. 楽天ウェブサービスのアプリIDとアクセスキーを取る
 
 1. 楽天ウェブサービス（`webservice.rakuten.co.jp`）でアプリを登録し、**アプリID
-   （applicationId）** を取得します。
+   （applicationId）** と **アクセスキー（accessKey）** を取得します。
 2. 楽天アフィリエイトに登録し、**アフィリエイトID（affiliateId）** を確認します。
    **affiliateId を渡さないと、APIは紹介URL（`affiliateUrl`）を返しません。**
 
@@ -73,11 +73,24 @@ RAKUTEN_API_REFERER=https://あなたのサイト/
 
 ```
 RAKUTEN_APPLICATION_ID=...
+RAKUTEN_ACCESS_KEY=...
 RAKUTEN_AFFILIATE_ID=...
 AUTOMATION_ENABLED=false   # 書き込みを行う実行だけ true にする
 ```
 
 `NEXT_PUBLIC_` は付けないでください。付けるとビルド成果物に埋め込まれます。
+
+GitHub Actions では3つとも **Repository secrets** に登録してください。
+ワークフローは取得ステップにだけ渡します。アクセスキーは `accessKey` ヘッダーで送信し、URLには付けません。
+どれかが未設定・空白なら、CLIは通信・データ書き込みの前に終了コード3で停止します。
+本物の資格情報による接続成功はまだ確認していません。設定後に dry-run が必要です。
+
+ローカルの `npm run rakuten:sync` は `.env.local` を自動では読み込みません。
+ファイルに設定した場合は Node.js 20.11以上で次を使ってください（この節以降の引数も同様に指定できます）。
+
+```bash
+CATALOG_DATASET=production node --env-file=.env.local --import tsx scripts/rakuten-sync.ts --mode links
+```
 
 ---
 
@@ -158,7 +171,7 @@ CATALOG_DATASET=production AUTOMATION_ENABLED=true npm run rakuten:sync -- \
 |---|---|
 | 既定は dry-run | `--apply` が無ければ1文字も書き込まない |
 | 自動処理の既定は OFF | `AUTOMATION_ENABLED=true` が無いと `--apply` を拒否 |
-| 取得先の限定 | `app.rakuten.co.jp` のみ。任意のURLを叩けない |
+| 取得先の限定 | `openapi.rakuten.co.jp`。テスト時のみループバックへ差し替え可。リダイレクトは拒否 |
 | レート制限 | 既定 1リクエスト/秒 |
 | リクエスト上限 | 1回の実行で既定30回まで。超えたら停止 |
 | 再試行の上限 | 429・5xx のみ、最大2回まで。400番台は即失敗（設定ミスを繰り返さない） |
@@ -191,14 +204,18 @@ CATALOG_DATASET=production AUTOMATION_ENABLED=true npm run rakuten:sync -- \
 
 ### 7-1. 公式ドキュメントとの突き合わせ
 
-`webservice.rakuten.co.jp` の商品検索API（`IchibaItem/Search/20220601`）の
-ドキュメントを取得して、実装の前提を確認しました。
+[公式ドキュメント](https://webservice.rakuten.co.jp/documentation/ichiba-item-search)を再確認し、
+旧 `20220601` 接続先から現行版へ修正しました（2026-08-31）。
+
+接続先: `https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260701`
+
+`applicationId` と `accessKey` は必須です。紹介URLを取得する本ジョブでは `affiliateId` も必須にしています。
 
 | 確認したこと | 結果 |
 |---|---|
 | `affiliateUrl` が返る条件 | **affiliateId を入力パラメータに含めたときだけ**返ると明記。実装と一致 |
 | `itemUrl` の扱い | affiliateId を含めると `itemUrl` も `affiliateUrl` と同じ値になる（2015/7/1〜）。**`itemUrl` を「紹介URLでないURL」として扱ってはいけません** |
-| レスポンスの形 | ドキュメントの例は小文字（`items[0].item.itemName`）。一方、実際の商品検索APIは大文字（`Items` / `Item`）で返ります |
+| レスポンスの形 | 現行ドキュメントの例は小文字（`items[0].item.itemName`）。互換性のため大文字も受ける。認証付き実APIの応答形式は未確認 |
 
 3点目は**0件しか返らない**という形で表面化します。どちらの表記でも読めるように
 パーサーを直し、単体テストを追加しました（`tests/rakuten.test.ts`）。
@@ -210,10 +227,10 @@ CATALOG_DATASET=production AUTOMATION_ENABLED=true npm run rakuten:sync -- \
 
 ```bash
 npm run rakuten:mock          # 別のターミナルで起動（127.0.0.1:8791）
-# MOCK_FORMAT=lower を付けると小文字形式の応答を返します
+# 既定は小文字形式。MOCK_FORMAT=upper / flat で互換形式を確認できます
 
 mkdir -p .preview/rehearsal && cp -r datasets/production/* .preview/rehearsal/
-RAKUTEN_APPLICATION_ID=dummy RAKUTEN_AFFILIATE_ID=dummy \
+RAKUTEN_APPLICATION_ID=dummy RAKUTEN_ACCESS_KEY=dummy RAKUTEN_AFFILIATE_ID=dummy \
 RAKUTEN_API_ENDPOINT_OVERRIDE=http://127.0.0.1:8791/ \
 CATALOG_DATASET=production CATALOG_DATASET_DIR=.preview/rehearsal \
   npm run rakuten:sync -- --mode links
@@ -221,6 +238,8 @@ CATALOG_DATASET=production CATALOG_DATASET_DIR=.preview/rehearsal \
 
 本番のデータセットを触らずに済むよう、**コピーに対して実行してください**
 （`CATALOG_DATASET_DIR`）。確認できたことは次のとおりです。
+モックでもアプリIDとアクセスキーヘッダーが無ければ401を返します。
+モックには架空の資格情報だけを使用し、ログには資格情報の有無だけを残します。
 
 | 場面 | 結果 |
 |---|---|
@@ -259,8 +278,7 @@ CATALOG_DATASET=production CATALOG_DATASET_DIR=.preview/rehearsal \
 ### 7-5. 実レスポンスで確認が残っていること
 
 - [ ] 返ってきた `affiliateUrl` のホストが `hb.afl.rakuten.co.jp` か `a.r10.to` か。
-      **違うホストなら `src/lib/affiliate/rakuten.ts` の許可リストに追記が必要です**
-      （現状は追記するまでリンクが拒否されます）。
+      違うホストなら保留し、楽天の公式仕様で正当性を確認するまで許可リストを広げません。
 - [ ] JANで検索して該当商品が出るか。出ない場合は型番での検索に切り替わります。
 - [ ] 型番だけの商品（エース各シリーズ）で、意図した商品ページが返るか。
       「クレスタS 09161」のような検索語は、関係のない商品を拾う可能性があります。

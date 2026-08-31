@@ -47,14 +47,22 @@ const CATALOG = [
   },
 ];
 
-const FORMAT = process.env.MOCK_FORMAT ?? 'upper'; // upper | lower | flat
+const FORMAT = process.env.MOCK_FORMAT ?? 'lower'; // upper | lower | flat
 const log = [];
 
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, 'http://127.0.0.1');
   const keyword = url.searchParams.get('keyword') ?? '';
   const hasAffiliateId = Boolean(url.searchParams.get('affiliateId'));
-  log.push({ keyword, hasAffiliateId, applicationId: url.searchParams.get('applicationId') });
+  const hasApplicationId = Boolean(url.searchParams.get('applicationId'));
+  const hasAccessKey = Boolean(req.headers.accesskey);
+  // 値は保持・出力しない。モックにも必ず架空の資格情報を使う。
+  log.push({ hasAffiliateId, hasApplicationId, hasAccessKey });
+  if (!hasApplicationId || !hasAccessKey) {
+    res.writeHead(401, { 'content-type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({ error: 'missing_credentials' }));
+    return;
+  }
 
   const hits = CATALOG.filter((entry) =>
     entry.match.some((m) => m.replace(/\s/g, '').toUpperCase() === keyword.replace(/\s/g, '').toUpperCase()),
@@ -62,6 +70,7 @@ const server = http.createServer((req, res) => {
     const item = { ...entry.item };
     // 実APIと同じく、affiliateId が無ければ affiliateUrl は返さない
     if (!hasAffiliateId) delete item.affiliateUrl;
+    else if (item.affiliateUrl) item.itemUrl = item.affiliateUrl;
     return item;
   });
 
