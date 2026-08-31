@@ -53,8 +53,21 @@
 RAKUTEN_API_REFERER=https://あなたのサイト/
 ```
 
-未設定なら Referer を送りません。まず未設定で試し、
-リクエストが拒否される場合に設定してください。
+**2026-08-31 の dry-run で、未設定では拒否されることが分かりました。**
+GitHub Actions から資格情報つきで実行したところ、次が返りました。
+
+```
+HTTP 403 REQUEST_CONTEXT_BODY_HTTP_REFERRER_MISSING
+```
+
+無効なアクセスキーのときは 403 `Invalid Access Key` という別の文言が返ります
+（架空の値で確認済み）。つまりこれは**キーの誤りではなく、Referer が無いことによる拒否**です。
+
+そのため、サーバー側から実行するこのジョブでは `RAKUTEN_API_REFERER` の設定が必要です。
+値は**楽天のアプリ登録で「許可されたWebサイト」に登録したURLそのまま**にしてください。
+GitHub では Secrets ではなく **Variables**（Settings → Secrets and variables → Actions →
+Variables）に `RAKUTEN_API_REFERER` として登録します。
+
 **他人のサイトを名乗ることはできません。**
 
 ### 2-1. 楽天ウェブサービスのアプリIDとアクセスキーを取る
