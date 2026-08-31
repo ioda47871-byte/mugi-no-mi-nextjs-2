@@ -74,3 +74,54 @@ describe('楽天CLI認証（ループバックへの実HTTP通信）', () => {
     }
   });
 });
+
+describe('--exclude の打ち間違いを通さない', () => {
+  it('存在しない商品IDを指定したら、通信もデータ変更もせずに終了コード2で止まる', async () => {
+    const merchantPath = path.resolve('datasets/production/merchants/rakuten.json');
+    const before = await readFile(merchantPath, 'utf8');
+    let requests = 0;
+    const server = createServer((_req, res) => {
+      requests++;
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ items: [] }));
+    });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const port = (server.address() as { port: number }).port;
+    try {
+      const result = await execute(
+        process.execPath,
+        [
+          '--import',
+          createRequire(import.meta.url).resolve('tsx'),
+          path.resolve('scripts/rakuten-sync.ts'),
+          '--mode',
+          'links',
+          '--exclude',
+          'no-such-product-id',
+        ],
+        {
+          cwd: path.resolve('.'),
+          env: {
+            ...process.env,
+            RAKUTEN_APPLICATION_ID: 'cli-test-app',
+            RAKUTEN_AFFILIATE_ID: 'cli-test-affiliate',
+            RAKUTEN_ACCESS_KEY: TEST_KEY,
+            RAKUTEN_API_ENDPOINT_OVERRIDE: `http://127.0.0.1:${port}/`,
+            RAKUTEN_API_REFERER: '',
+            CATALOG_DATASET: 'production',
+            AUTOMATION_ENABLED: 'false',
+          },
+        },
+      )
+        .then((r) => ({ ...r, code: 0 }))
+        .catch((e) => ({ stdout: String(e.stdout), stderr: String(e.stderr), code: e.code }));
+
+      expect(result.code).toBe(2);
+      expect(result.stdout + result.stderr).toContain('no-such-product-id');
+      expect(requests).toBe(0);
+      expect(await readFile(merchantPath, 'utf8')).toBe(before);
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+});

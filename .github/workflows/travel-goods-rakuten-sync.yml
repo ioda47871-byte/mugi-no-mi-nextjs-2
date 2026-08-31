@@ -28,6 +28,10 @@ on:
         description: 'APIリクエスト数の上限（商品が増えたら上げる。既定30）'
         type: string
         default: '30'
+      exclude:
+        description: '対象から外す商品ID（カンマ区切り）。確認が済んでいない候補を差分に入れないために使う'
+        type: string
+        required: false
   # 定期実行を使う場合はコメントを外す。初期の上限は1日1回（計画書 12-3節）。
   # schedule:
   #   - cron: '0 21 * * *'   # UTC 21:00 = JST 06:00
@@ -81,9 +85,11 @@ jobs:
           SYNC_KEYWORD: ${{ inputs.keyword }}
           SYNC_APPLY: ${{ inputs.apply }}
           SYNC_AUTO_VERIFY: ${{ inputs.auto_verify }}
+          SYNC_EXCLUDE: ${{ inputs.exclude }}
         run: |
           args=(--mode "$SYNC_MODE" --max-requests "$SYNC_MAX_REQUESTS")
           if [[ -n "$SYNC_KEYWORD" ]]; then args+=(--keyword "$SYNC_KEYWORD"); fi
+          if [[ -n "$SYNC_EXCLUDE" ]]; then args+=(--exclude "$SYNC_EXCLUDE"); fi
           if [[ "$SYNC_APPLY" == true ]]; then args+=(--apply); fi
           if [[ "$SYNC_AUTO_VERIFY" == true ]]; then args+=(--auto-verify); fi
           npm run rakuten:sync -- "${args[@]}"

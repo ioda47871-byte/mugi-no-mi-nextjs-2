@@ -2,6 +2,8 @@
  * 楽天からの自動取得ジョブ（Phase 2-1）。
  *
  *   --mode links     登録済み商品のJAN・型番で検索し、紹介URLを取得して登録する
+ *   --exclude a,b    指定した商品IDを対象から外す（links）。確認が済んでいない候補を
+ *                    差分に入れないための口。値は商品ID（カンマ区切り）
  *   --mode discover  キーワードで検索し、新しい商品候補を「未確認」で保存する
  *   --mode audit     表示中のリンクがまだ生きているかを確認する（販売終了の検出）
  *
@@ -62,6 +64,12 @@ const autoVerify = has('auto-verify');
 const keyword = flag('keyword');
 const category = flag('category');
 const maxRequests = Number(flag('max-requests') ?? 30);
+const excluded = new Set(
+  (flag('exclude') ?? '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0),
+);
 const today = new Date().toISOString().slice(0, 10);
 
 if (mode !== 'links' && mode !== 'discover' && mode !== 'audit') {
@@ -141,10 +149,19 @@ async function syncLinks(
   const existingByProduct = new Map(
     existingLinks.filter((link) => link.merchant === 'rakuten').map((link) => [link.productId, link]),
   );
+  // 除外指定のIDが実在するかを先に確かめる。打ち間違いを黙って通すと、
+  // 外したつもりの商品が差分に入る。
+  const known = new Set(products.map((product) => product.id));
+  const unknown = [...excluded].filter((id) => !known.has(id));
+  if (unknown.length > 0) {
+    fail(`--exclude に存在しない商品IDが含まれています: ${unknown.join(', ')}`);
+  }
+
   const candidates = products.filter(
     (product) =>
       (product.status === 'published' || product.status === 'review') &&
-      searchKeywordsFor(product).length > 0,
+      searchKeywordsFor(product).length > 0 &&
+      !excluded.has(product.id),
   );
   // 目視確認済みのリンクは自動取得で置き換えない（根拠の強い方を残す）。
   const protectedProducts = candidates.filter((product) =>
@@ -153,6 +170,10 @@ async function syncLinks(
   const targets = candidates.filter((product) => !isHumanVerifiedLink(existingByProduct.get(product.id)));
 
   console.log(`対象商品: ${targets.length} 件`);
+  if (excluded.size > 0) {
+    console.log(`指定により除外: ${excluded.size} 件`);
+    for (const id of excluded) console.log(`  ${id}: --exclude で対象外`);
+  }
   if (protectedProducts.length > 0) {
     console.log(`目視確認済みのため対象外: ${protectedProducts.length} 件`);
     for (const product of protectedProducts) {
