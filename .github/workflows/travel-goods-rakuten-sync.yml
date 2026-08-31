@@ -121,6 +121,9 @@ jobs:
 
             仕様の出典は自動取得の対象外です。新規商品を採用する場合は、
             メーカー公表仕様を別途確認して `products/` と `sources.json` に登録してください。
+          # ディレクトリ単位で指定する。ファイル名で指定すると、そのモードで
+          # 作られなかったファイル（links 実行時の candidates/ など）で
+          # git add が pathspec エラーになり、コミットごと失敗する。
+          # このジョブが書き込むのは merchants/ と candidates/ だけ。
           add-paths: |
-            travel-goods-site/datasets/production/merchants/rakuten.json
-            travel-goods-site/datasets/production/candidates/rakuten.json
+            travel-goods-site/datasets/production
