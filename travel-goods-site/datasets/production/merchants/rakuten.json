@@ -16,10 +16,10 @@
     "externalProductId": "ils-web:10001396",
     "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00t68oo.53joybb8.g00t68oo.53joz391/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fils-web%2Flac0017901-0010%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fils-web%2Fi%2F10001396%2F&rafcid=wsc_i_is_405c3c6d-b4e4-495c-bff6-588841008bee",
     "matchedVariant": "18/24L / 01 ブラック",
-    "verifiedAt": null,
-    "status": "unverified",
-    "verificationMethod": null,
-    "note": "楽天APIで自動取得（2026-08-31、一致度 weak）。型番 スペースオプト 17901 が販売ページの文言に含まれる 表示するには色・サイズを目視確認して verified にしてください。"
+    "verifiedAt": "2026-09-01",
+    "status": "verified",
+    "verificationMethod": "visual",
+    "note": "2026-09-01、クラウドブラウザで販売ページを表示して確認。型番17901・色番01ブラック・容量18〜24L・商品番号 lac0017901-0010 が一致。色/サイズの選択肢なし、単品ページ、購入ボタンあり、販売終了・在庫切れの表示なし。"
   },
   {
     "productId": "ace-spaceopt-17902-31l-black",
@@ -27,10 +27,10 @@
     "externalProductId": "ils-web:10001397",
     "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00t68oo.53joybb8.g00t68oo.53joz391/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fils-web%2Flac0017902-0010%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fils-web%2Fi%2F10001397%2F&rafcid=wsc_i_is_405c3c6d-b4e4-495c-bff6-588841008bee",
     "matchedVariant": "31/39L / 01 ブラック",
-    "verifiedAt": null,
-    "status": "unverified",
-    "verificationMethod": null,
-    "note": "楽天APIで自動取得（2026-08-31、一致度 weak）。型番 スペースオプト 17902 が販売ページの文言に含まれる 表示するには色・サイズを目視確認して verified にしてください。"
+    "verifiedAt": "2026-09-01",
+    "status": "verified",
+    "verificationMethod": "visual",
+    "note": "2026-09-01、クラウドブラウザで販売ページを表示して確認。型番17902・色番01ブラック・容量31〜39L・商品番号 lac0017902-0010 が一致。色/サイズの選択肢なし、単品ページ、購入ボタンあり、販売終了・在庫切れの表示なし。"
   },
   {
     "productId": "ace-ragrentis-68324-29l-black",
@@ -93,10 +93,10 @@
     "externalProductId": "nafco:10376009",
     "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00swq7o.53joy520.g00swq7o.53joz70e/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fnafco%2Fn24156301%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fnafco%2Fi%2F10376009%2F&rafcid=wsc_i_is_405c3c6d-b4e4-495c-bff6-588841008bee",
     "matchedVariant": "10000mAh / ブラック",
-    "verifiedAt": null,
-    "status": "unverified",
-    "verificationMethod": null,
-    "note": "楽天APIで自動取得（2026-08-31、一致度 weak）。型番 A110DN11 が販売ページの文言に含まれる 表示するには色・サイズを目視確認して verified にしてください。"
+    "verifiedAt": "2026-09-01",
+    "status": "verified",
+    "verificationMethod": "visual",
+    "note": "2026-09-01、クラウドブラウザで販売ページを表示して確認。型番A110DN11・10000mAh・ブラック・商品番号 N24156301 が一致（パッケージ内容にもブラック）。白のA110DN21へ切り替える選択肢なし、単品ページ、購入ボタンあり、販売終了・在庫切れ表示なし。販売店の仕様欄「接続端子」のみ Lightning Cable とありページ本文と矛盾。同一性には影響なし。"
   },
   {
     "productId": "ace-cresta2-06936-35l-black-hairline",

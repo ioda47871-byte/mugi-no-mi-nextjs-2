@@ -33,3 +33,43 @@ export function isRakutenAffiliateUrl(rawUrl: string | null | undefined): boolea
 export function normalizeRakutenUrl(rawUrl: string | null | undefined): string | null {
   return isRakutenAffiliateUrl(rawUrl) ? (rawUrl as string) : null;
 }
+
+/** 商品ページのホスト。確認用URLとして認めるのはここだけ。 */
+export const RAKUTEN_ITEM_HOST = 'item.rakuten.co.jp';
+
+/**
+ * 紹介URLから「確認用の商品ページURL」を取り出す。
+ *
+ * **externalProductId から URL を組み立ててはいけない。**
+ * `shop:10001396` の数字は店舗内の管理番号で、商品ページのURLスラッグ
+ * （例: `lac0017901-0010`）とは別物。数字をURLに入れると別ページか404になる。
+ *
+ * 正しい入手元は、紹介URLの `pc` パラメータに入っている遷移先URL。
+ * デコード後に https と item.rakuten.co.jp だけを許可し、それ以外は null を返す。
+ * 短縮URL（a.r10.to）は遷移先を含まないため null になる。
+ *
+ * 戻り値は通常の商品URLで、アフィリエイトIDを含まない。ログに出してよい。
+ */
+export function itemPageUrlFromAffiliateUrl(rawUrl: string | null | undefined): string | null {
+  if (!isRakutenAffiliateUrl(rawUrl)) return null;
+  let affiliate: URL;
+  try {
+    affiliate = new URL(rawUrl as string);
+  } catch {
+    return null;
+  }
+  const target = affiliate.searchParams.get('pc');
+  if (!target) return null;
+
+  let item: URL;
+  try {
+    // searchParams はデコード済みの値を返す。二重エンコードされていても
+    // URL として解釈できなければここで弾かれる。
+    item = new URL(target);
+  } catch {
+    return null;
+  }
+  if (item.protocol !== 'https:') return null;
+  if (item.hostname !== RAKUTEN_ITEM_HOST) return null;
+  return item.toString();
+}

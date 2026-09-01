@@ -42,6 +42,7 @@ import {
   writeCandidates,
   type Candidate,
 } from '../src/lib/rakuten/candidates';
+import { itemPageUrlFromAffiliateUrl } from '../src/lib/affiliate/rakuten';
 import type { MerchantLink, Product } from '../src/lib/catalog/types';
 
 const argv = process.argv.slice(2);
@@ -221,6 +222,8 @@ async function syncLinks(
       `  ${product.id}（${product.brand} ${product.model} / ${product.variant}）\n` +
         `    一致度   : ${best.match.confidence}\n` +
         `    店舗     : ${best.item.shopName ?? '(店舗名なし)'} / ${best.item.itemCode}\n` +
+        // 商品コードの数字からURLを組み立てない。紹介URLの pc から取り出す。
+        `    確認用URL: ${itemPageUrlFromAffiliateUrl(best.item.affiliateUrl) ?? '取り出せませんでした'}\n` +
         `    販売ページ: ${best.item.itemName.slice(0, 110)}\n` +
         `    状態     : ${link.status}${shouldVerify ? '（自動で表示対象）' : '（未表示）'}`,
     );

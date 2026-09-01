@@ -367,6 +367,33 @@ GitHub Actions から dry-run（`--mode discover --keyword 4549550317535 --max-r
 - 法人向け通販（プロキュアエース）が候補になる場合があります。読者が購入できる導線か
   どうかは別途判断が必要です。
 
+### 7-7. 確認用URLの作り方（重要な間違い）
+
+**`externalProductId` の数字部分をURLに入れてはいけません。**
+`ils-web:10001396` の `10001396` は店舗内の管理番号で、商品ページのURLスラッグ
+（`lac0017901-0010`）とは別物です。数字を入れたURLは別ページか404になります。
+
+正しい入手元は**紹介URLの `pc` パラメータ**です。`itemPageUrlFromAffiliateUrl()`
+（`src/lib/affiliate/rakuten.ts`）が取り出します。デコード後に **https かつ
+`item.rakuten.co.jp`** のものだけを通し、それ以外は null を返します。
+戻り値は通常の商品URLでアフィリエイトIDを含まないため、ログに出せます。
+
+**紹介URL本体はログに出しません。** アフィリエイトIDが含まれます。
+
+確認待ちの一覧は次で出せます。
+
+```bash
+CATALOG_DATASET=production npm run link:pending
+```
+
+確認できたものから1件ずつ承認します。**`--url` は省略できます**
+（保存済みの紹介URLを使うので、コマンド履歴に紹介URLが残りません）。
+
+```bash
+CATALOG_DATASET=production npm run link:set -- \
+  --product <商品ID> --merchant rakuten --verify --visual-check --note "確認内容"
+```
+
 ---
 
 ## 8. 費用

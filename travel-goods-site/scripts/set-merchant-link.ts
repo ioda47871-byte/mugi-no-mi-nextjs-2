@@ -19,7 +19,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { readDatasetInput, resolveDatasetDir, resolveDatasetKind } from '../src/lib/catalog/load';
 import { inspectCatalog } from '../src/lib/catalog/validate';
-import { isRakutenAffiliateUrl, RAKUTEN_AFFILIATE_HOSTS } from '../src/lib/affiliate/rakuten';
+import {
+  isRakutenAffiliateUrl,
+  itemPageUrlFromAffiliateUrl,
+  RAKUTEN_AFFILIATE_HOSTS,
+} from '../src/lib/affiliate/rakuten';
 import { isValidAsin } from '../src/lib/affiliate/amazon';
 import type { MerchantLink, MerchantName } from '../src/lib/catalog/types';
 
@@ -85,13 +89,26 @@ const catalog = inspection.catalog;
 const product = catalog.products.find((entry) => entry.id === productId);
 if (!product) fail(`商品IDが見つかりません: ${productId}`);
 
+const filePath = path.join(resolveDatasetDir(datasetKind), 'merchants', `${merchant}.json`);
+const existing: MerchantLink[] = fs.existsSync(filePath)
+  ? (JSON.parse(fs.readFileSync(filePath, 'utf8')) as MerchantLink[])
+  : [];
+const current = existing.find((item) => item.productId === productId && item.merchant === merchant);
+
 // --- 店舗ごとの形式チェック -------------------------------------------
 let affiliateUrl: string | null = null;
 let external: string | null = externalId;
 
 if (merchant === 'rakuten') {
-  if (!url) fail('楽天には --url（管理画面で発行した紹介URL）が必要です。');
-  const rakutenUrl: string = url;
+  // 登録済みのリンクを確認して verified にするだけなら、紹介URLを
+  // もう一度コマンドラインに載せる必要はない（履歴・ログに残さない）。
+  const rakutenUrl: string | null = url ?? current?.affiliateUrl ?? null;
+  if (!rakutenUrl) {
+    fail(
+      '楽天には --url（管理画面で発行した紹介URL）が必要です。\n' +
+        '  登録済みのリンクを確認済みにするだけなら --url は省略できます（保存済みの値を使います）。',
+    );
+  }
   if (!isRakutenAffiliateUrl(rakutenUrl)) {
     fail(
       `紹介URLとして認められない形式です: ${rakutenUrl}\n` +
@@ -103,7 +120,9 @@ if (merchant === 'rakuten') {
   }
   affiliateUrl = rakutenUrl;
   external =
-    external ?? (new URL(rakutenUrl).pathname.replace(/^\/+|\/+$/g, '') || 'rakuten-affiliate-link');
+    external ??
+    current?.externalProductId ??
+    (new URL(rakutenUrl).pathname.replace(/^\/+|\/+$/g, '') || 'rakuten-affiliate-link');
   // 到達時点で必ず値がある
 } else {
   if (!asin) fail('Amazon には --asin（10桁）が必要です。');
@@ -112,10 +131,6 @@ if (merchant === 'rakuten') {
   external = amazonAsin;
 }
 
-const filePath = path.join(resolveDatasetDir(datasetKind), 'merchants', `${merchant}.json`);
-const existing: MerchantLink[] = fs.existsSync(filePath)
-  ? (JSON.parse(fs.readFileSync(filePath, 'utf8')) as MerchantLink[])
-  : [];
 
 const entry: MerchantLink = {
   productId: product.id,
@@ -126,6 +141,8 @@ const entry: MerchantLink = {
   matchedVariant: product.variant,
   verifiedAt: verify ? today : null,
   status: verify ? 'verified' : 'unverified',
+  // 判断根拠。verified なのに根拠が無いデータは検証で弾かれる。
+  verificationMethod: verify ? (visualCheck ? 'visual' : 'identifier-match') : null,
   ...(note ? { note } : {}),
 };
 
@@ -156,7 +173,12 @@ if (!rewritten.ok) {
 console.log(`商品      : ${product.brand} ${product.model}（${product.variant}）`);
 console.log(`店舗      : ${merchant}`);
 console.log(`識別子    : ${entry.externalProductId}`);
-if (affiliateUrl) console.log(`紹介URL   : ${affiliateUrl}`);
+if (affiliateUrl) {
+  // **紹介URL本体は出さない。** アフィリエイトIDが含まれる。
+  console.log(`紹介URL   : ${new URL(affiliateUrl).hostname} のリンクを登録（URLは表示しません）`);
+  const itemPage = itemPageUrlFromAffiliateUrl(affiliateUrl);
+  console.log(`確認用URL : ${itemPage ?? '取り出せませんでした（短縮URLの可能性）'}`);
+}
 console.log(
   `状態      : ${entry.status}${verify ? `（照合日 ${today} / ${visualCheck ? 'リンク先を目視確認' : '型番・JANの一致で判断'}）` : '（画面には表示されません）'}`,
 );
