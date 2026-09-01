@@ -1,137 +1,38 @@
-# Vercel プロジェクトの分離手順
+# Vercel Preview 確認手順
 
-1つのリポジトリに2サイトが入っているため、**Vercel プロジェクトも2つに分けます。**
+> この文書は移行期間中のPreview確認用です。本番はCloudflare Pagesを使用します。
+> 新しい公開手順は `docs/cloudflare-pages-setup.md` を参照してください。
 
-| サイト | ディレクトリ | Vercel プロジェクト |
-|---|---|---|
-| パン屋（既存） | `mugi-no-mi-nextjs` | 既存のプロジェクト（変更不要） |
-| 旅行用品比較（新規） | `travel-goods-site` | **これから作る** |
+Cloudflare の独自ドメインで本番確認が成功するまで、既存の Vercel プロジェクトは
+Preview確認用として残す。Vercelでの新規本番公開や独自ドメインの設定は行わない。
 
-Vercel の操作は運営者が行ってください。Claude は Vercel にアクセスできません。
+## 1. 既存Previewの設定を確認する
 
----
+Vercel の旅行用品サイトプロジェクトで、Root Directory が `travel-goods-site` であることを
+確認する。Preview環境では次だけを設定する。
 
-## 0. 本番ブランチ：`main` のままで進められます
-
-`travel-goods-site/` は **`main` にマージ済み**です（確認日: 2026-08-31）。
-Vercel の Production Branch は既定の `main` のままで構いません。
-特別な設定は要りません。
-
-パン屋側にも影響しません。`mugi-no-mi-nextjs/vercel.json` の判定は
-「本番（main）は必ずビルド」なので、これまでどおり動きます。
-
----
-
-## 1. プロジェクトを作る
-
-Vercel で **New Project** → このリポジトリ `ioda47871-byte/mugi-no-mi-nextjs-2` を選ぶ。
-
-**同じリポジトリから2つ目のプロジェクトを作る形になります。** 既存のパン屋プロジェクトは
-そのまま残してください。
-
-### 設定する値
-
-| 項目 | 値 |
-|---|---|
-| Project Name | 任意（例: `travel-goods-site`） |
-| **Root Directory** | **`travel-goods-site`** ← 最重要 |
-| Framework Preset | Next.js（自動検出されるはず） |
-| Build Command | 既定のまま（`npm run build` が使われます） |
-| Output Directory | **既定のまま。触らないでください** |
-| Install Command | 既定のまま |
-| Node.js Version | 20 以上（22 を推奨） |
-
-`npm run build` は `validate:content` を実行してから `next build` します。
-**データに不整合があるとビルドが止まります。** これは意図した動作です。
-
----
-
-## 2. 環境変数を設定する
-
-最初のデプロイは **プレビュー扱い**（全ページ noindex）にします。
-
-| 変数 | 最初に入れる値 | 意味 |
+| 変数 | 値 | 意味 |
 |---|---|---|
 | `SITE_MODE` | `preview` | 全ページ noindex。robots.txt も全面 Disallow |
-| `CATALOG_DATASET` | `production` | **これを入れないとデモデータ（架空商品）が表示されます** |
+| `CATALOG_DATASET` | `production` | 実商品データを表示する |
+| `SITE_NAME` | `旅モノ比較` | 正式名称を表示する |
 
-`CATALOG_DATASET` を忘れると、実商品ではなくデモデータのサイトが出ます。
-画面上部に「デモデータ表示中」と出るのですぐ分かります。
+`SITE_URL`、公開用運営者情報、GA4、Amazon、楽天API資格情報は設定しない。
+既存のPreviewへ実際のキーを追加せず、取得ジョブの資格情報はGitHub Actions側で管理する。
 
-### 公開の準備が整ってから追加する
-
-| 変数 | 例 | 備考 |
-|---|---|---|
-| `SITE_NAME` | 正式名称 | 未設定なら仮称「旅じたくガイド」 |
-| `SITE_URL` | `https://例.com` | 末尾スラッシュなし。canonical と sitemap の基準 |
-| `PUBLIC_OPERATOR_NAME` | 運営者名 | 未設定なら「準備中」と表示 |
-| `PUBLIC_CONTACT_EMAIL` | 連絡先 | 同上 |
-| `AMAZON_ASSOCIATE_TAG` | `yourname-22` | 空ならAmazonボタンは出力されません |
-| `NEXT_PUBLIC_GA_ID` | `G-XXXXXXXXXX` | 空なら計測タグを出力しません |
-| `SITE_MODE` | `production` | **最後に切り替える。`check:release` を通してから** |
-
-**`RAKUTEN_APPLICATION_ID` などのAPIキーは Vercel に入れないでください。**
-サイトの表示には使いません。取得ジョブ（GitHub Actions）側の Secrets に入れます。
-
----
-
-## 3. デプロイして確認する
+## 2. Previewを確認する
 
 - [ ] ビルドが成功する
-- [ ] トップページが表示される
-- [ ] 上部に「未公開プレビューです」と出る（「デモデータ表示中」なら `CATALOG_DATASET` 未設定）
-- [ ] `/categories/pouches/` に楽天ボタンが1つ出る
+- [ ] トップページが表示され、上部に「未公開プレビューです」と出る
 - [ ] `/robots.txt` が `Disallow: /` になっている
-- [ ] `/sitemap.xml` が空（プレビューでは正しい）
+- [ ] `/sitemap.xml` のURL数が0である
+- [ ] `SITE_URL`、公開用運営者情報、デモ文言、資格情報が配信されていない
 
-404 が出る場合は、Root Directory が `travel-goods-site` になっているか確認してください。
-それでも直らない場合のみ、Output Directory に `out` を指定してみてください
-（`next.config.mjs` で `output: 'export'` を使っています）。
+404が出る場合は、Root Directory が `travel-goods-site` か確認する。
+静的出力を確認する必要がある場合は、ビルド出力が `out` であることを確認する。
 
----
+## 3. Cloudflare切替後に停止する
 
-## 4. 相互に巻き込まないための仕組み
-
-両方のディレクトリに `vercel.json` を置いてあります。
-
-```
-{ 本番なら必ずビルド } ;
-{ 直近のコミットがこのディレクトリを変更していなければスキップ } ;
-{ 判定できなければビルド（安全側） }
-```
-
-これにより:
-
-| プッシュ内容 | パン屋 | 旅行サイト |
-|---|---|---|
-| 旅行サイトだけ変更 | スキップ | ビルド |
-| パン屋だけ変更 | ビルド | スキップ |
-| 本番ブランチ | ビルド | ビルド |
-
-**注意**: プレビュー用ブランチに複数コミットをまとめてプッシュしたとき、
-最後のコミットが対象ディレクトリを変更していないとスキップされます。
-その場合は Vercel の画面から Redeploy してください。本番ブランチは常にビルドされます。
-
----
-
-## 5. 料金について
-
-**Vercel Hobby は個人・非商用向けと案内されています。**
-アフィリエイトサイトの本番運用の前提にしないでください。
-
-- プレビュー段階（`SITE_MODE=preview`・noindex・収益化なし）でどう扱われるかは、
-  公開前に Vercel の現行の規約で確認してください。
-- 商用利用が必要な場合は有料プランになります。**金額を確認してから加入してください。**
-- **未承認の課金は行わないでください。** Claude が代わりに契約することはありません。
-
-静的出力（`out/`）だけのサイトなので、Vercel 固有の機能に依存していません。
-Cloudflare Pages、Netlify、GitHub Pages、レンタルサーバーへも移せます。
-料金が見合わない場合は移行を検討してください。
-
----
-
-## 6. 分離した後にやること
-
-- [ ] パン屋プロジェクトのデプロイ一覧を見て、旅行サイトのコミットで増えていないことを確認
-- [ ] 旅行サイトプロジェクトのデプロイ一覧を見て、パン屋のコミットで増えていないことを確認
-- [ ] `docs/launch-checklist.md` に戻り、公開の準備を進める
+Cloudflareの独自ドメインで、canonical、robots、sitemap、照合済み楽天CTA、公開用運営者情報を
+確認してから、Vercel旅行用品サイトプロジェクトの自動デプロイを停止する。
+問題が起きてもDNSをVercelへ戻さず、Cloudflare Pagesの直前の成功デプロイへRollbackする。

@@ -9,9 +9,9 @@
 
 | 項目 | 現状 | 決めること |
 |---|---|---|
-| 正式名称 | 仮称「旅じたくガイド」 | 名称。商標・既存サイトとの重複を確認 |
-| ドメイン | 未取得 | ドメイン名と取得先。年額費用が発生します |
-| ホスティング | 未決定 | 下記「ホスティング」を参照 |
+| 正式名称 | 旅モノ比較 | 正式名称として使用する |
+| ドメイン | `tabimono-hikaku.jp` | 取得時に利用可能か再確認する。年額費用が発生します |
+| ホスティング | Cloudflare Pages Free | `docs/cloudflare-pages-setup.md` に従いGitHub連携を設定する |
 | 公開用の運営者名 | 未提供 | 画面に出す名義（個人名／屋号など） |
 | 公開用の連絡先 | 未提供 | 公開して差し支えないメールアドレス |
 
@@ -30,8 +30,7 @@
 |---|---|---|
 | `SITE_MODE` | `production` | `preview` のあいだは全ページ noindex |
 | `CATALOG_DATASET` | `production` | `demo` は本番モードで読み込めません |
-| `SITE_NAME` | 正式名称 | 未設定なら仮称が表示されます |
-| `SITE_URL` | `https://example.com` | canonical・サイトマップの基準。末尾スラッシュなし |
+| `SITE_URL` | `https://tabimono-hikaku.jp` | canonical・サイトマップの基準。末尾スラッシュなし |
 | `PUBLIC_OPERATOR_NAME` | 運営者名 | 運営者情報ページに表示 |
 | `PUBLIC_CONTACT_EMAIL` | 連絡先 | お問い合わせページに表示 |
 
@@ -104,20 +103,18 @@
 
 ## 5. ホスティング
 
-- [ ] 商用利用が認められるプランを選ぶ。
-      **Vercel Hobby は個人・非商用向けと案内されているため、アフィリエイトサイトの本番運用の前提にしないでください。**
-      有料プランに入る必要がある場合は、金額を確認してから加入してください（未承認の課金は行いません）。
-- [ ] 静的ファイル（`out/`）を配信できること。特定サービス固有の機能に依存していないため、
-      Cloudflare Pages、Netlify、GitHub Pages、レンタルサーバー等へも移せます。
+- [ ] Cloudflare Pages Free をGitHub連携で設定し、`main` をProduction branch、
+      `travel-goods-site` をRoot directory、`out` をBuild output directoryにする。
+- [ ] `docs/cloudflare-pages-setup.md` の初回Preview、独自ドメイン、本番切替、ロールバックの手順を完了する。
 - [ ] HTTPS が有効であること。
-- [ ] 独自ドメインを設定した場合、`SITE_URL` と一致していること。
+- [ ] 独自ドメイン `tabimono-hikaku.jp` が `SITE_URL` と一致していること。
 
 ### 費用の目安（いずれも未承認・未契約）
 
 | 項目 | 目安 |
 |---|---|
-| ドメイン | 年 1,000〜3,000円程度（`.com` などの一般的なもの） |
-| 静的ホスティング | 無料枠で始められる選択肢はありますが、商用利用の可否と上限を必ず確認してください |
+| ドメイン | `tabimono-hikaku.jp` の取得・更新費用 |
+| 静的ホスティング | Cloudflare Pages Free（公開時点の利用条件と上限を確認） |
 | LLM/API | Phase 1 は **0円**（実行時にAPIを呼びません） |
 
 無料枠が恒久的に十分であることは保証できません。

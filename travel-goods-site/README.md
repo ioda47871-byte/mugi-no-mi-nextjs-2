@@ -1,4 +1,4 @@
-# travel-goods-site（仮称: 旅じたくガイド）
+# travel-goods-site（旅モノ比較）
 
 旅行用品（スーツケース／旅行用リュック／収納・洗面ポーチ／モバイルバッテリー）を、
 **メーカーの公表仕様**から重量・サイズ・容量で比較できる静的サイトです。
@@ -159,4 +159,5 @@ docs/             状態・公開手順・運用手順・調査ログ
 | `docs/research-log.md` | 実施できた／できなかった調査の記録 |
 | `docs/rakuten-automation.md` | 楽天からの自動取得（何が自動で、どこから人が確認するか） |
 | `docs/unattended-operation.md` | 無人運用はどこまでできるか（維持は可能、成長は不可） |
-| `docs/vercel-setup.md` | Vercel プロジェクトの分離手順と設定値 |
+| `docs/cloudflare-pages-setup.md` | Cloudflare Pages のGitHub連携、Preview、本番切替、ロールバックの公開手順 |
+| `docs/vercel-setup.md` | 移行期間中のPreview確認用のVercel手順 |

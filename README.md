@@ -6,7 +6,7 @@
 | ディレクトリ | サイト | 状態 |
 |---|---|---|
 | [`mugi-no-mi-nextjs/`](mugi-no-mi-nextjs/) | パン屋のサイト（既存） | 稼働中 |
-| [`travel-goods-site/`](travel-goods-site/) | 旅行用品の比較サイト「旅じたくガイド」（仮称） | 公開準備中。いまの主軸 |
+| [`travel-goods-site/`](travel-goods-site/) | 旅行用品の比較サイト「旅モノ比較」 | 公開準備中。いまの主軸 |
 
 ## どちらを触るか
 
@@ -20,13 +20,13 @@ cd mugi-no-mi-nextjs && npm install && npm run dev    # パン屋サイト
 
 各ディレクトリの README に、そのサイトの構成・コマンド・設計方針があります。
 
-## デプロイは別々のプロジェクトに分けています
+## デプロイ先
 
-Vercel のプロジェクトも2つに分けています。どちらの `vercel.json` にも同じ判定を入れてあり、
-**自分のディレクトリに変更が無いコミットではビルドをスキップします**（本番ブランチは必ずビルド）。
-片方のサイトのコミットで、もう片方が巻き込まれてデプロイされることはありません。
+パン屋サイトと旅行用品サイトのデプロイ先は分離しています。旅行用品サイト「旅モノ比較」の
+公開手順は、[Cloudflare Pages 手順](travel-goods-site/docs/cloudflare-pages-setup.md)を参照してください。
 
-設定手順は [`travel-goods-site/docs/vercel-setup.md`](travel-goods-site/docs/vercel-setup.md) にあります。
+既存Vercelプロジェクトは、Cloudflareへの切替が成功するまでPreview確認用として残します。
+移行期間中の確認手順は[travel-goods-site/docs/vercel-setup.md](travel-goods-site/docs/vercel-setup.md)にあります。
 
 ## 共通の CI
 
