@@ -10,7 +10,7 @@
 | 項目 | 現状 | 決めること |
 |---|---|---|
 | 正式名称 | 旅モノ比較 | 正式名称として使用する |
-| ドメイン | `tabimono-hikaku.jp` | 取得時に利用可能か再確認する。年額費用が発生します |
+| ドメイン | `tabimono-hikaku.com` | 2026-09-01取得済み（自動更新有効、有効期限 2027-09-02）。年額の更新費用が発生します |
 | ホスティング | Cloudflare Pages Free | `docs/cloudflare-pages-setup.md` に従いGitHub連携を設定する |
 | 公開用の運営者名 | 未提供 | 画面に出す名義（個人名／屋号など） |
 | 公開用の連絡先 | 未提供 | 公開して差し支えないメールアドレス |
@@ -30,7 +30,7 @@
 |---|---|---|
 | `SITE_MODE` | `production` | `preview` のあいだは全ページ noindex |
 | `CATALOG_DATASET` | `production` | `demo` は本番モードで読み込めません |
-| `SITE_URL` | `https://tabimono-hikaku.jp` | canonical・サイトマップの基準。末尾スラッシュなし |
+| `SITE_URL` | `https://tabimono-hikaku.com` | canonical・サイトマップの基準。末尾スラッシュなし |
 | `PUBLIC_OPERATOR_NAME` | 運営者名 | 運営者情報ページに表示 |
 | `PUBLIC_CONTACT_EMAIL` | 連絡先 | お問い合わせページに表示 |
 
@@ -113,13 +113,14 @@ Cloudflare Pages のProduction・Previewいずれの環境変数にも設定し�
       `travel-goods-site` をRoot directory、`out` をBuild output directoryにする。
 - [ ] `docs/cloudflare-pages-setup.md` の初回Preview、独自ドメイン、本番切替、ロールバックの手順を完了する。
 - [ ] HTTPS が有効であること。
-- [ ] 独自ドメイン `tabimono-hikaku.jp` が `SITE_URL` と一致していること。
+- [ ] 独自ドメイン `tabimono-hikaku.com` が `SITE_URL` と一致していること。
+- [ ] レジストラ（XServer）のネームサーバーをCloudflare指定値へ変更していること（2026-09-01時点では未変更）。
 
 ### 費用の目安（いずれも未承認・未契約）
 
 | 項目 | 目安 |
 |---|---|
-| ドメイン | `tabimono-hikaku.jp` の取得・更新費用 |
+| ドメイン | `tabimono-hikaku.com` の更新費用（取得済み・自動更新有効） |
 | 静的ホスティング | Cloudflare Pages Free（公開時点の利用条件と上限を確認） |
 | LLM/API | Phase 1 は **0円**（実行時にAPIを呼びません） |
 

@@ -1,6 +1,6 @@
 # 実装・内容・収益化・公開の状態
 
-最終更新: 2026-09-01（Cloudflare Pages公開手順と正式名称を決定）
+最終更新: 2026-09-01（正式ドメインを `tabimono-hikaku.com` に確定・取得）
 
 現時点の正確な表現は **「サイト基盤完成、実データの投入が進行中」** です。
 計画書の Task 5（約30商品・10記事）は目標に近づきましたが未達、Task 8 の実リンク・
@@ -11,7 +11,7 @@
 | 実装完了 | **完了** |
 | 内容準備完了 | **一部完了**（実商品 23 件／目標30件、公開記事 7 本／目標10本） |
 | 収益化設定完了 | **一部完了**（楽天の目視照合済み・表示可能リンク 14 件、未照合で非表示 1 件。公開商品 7 件は販売先リンク未登録。Amazonは未設定） |
-| 本番公開完了 | **未完了**（Cloudflare Pages と `tabimono-hikaku.jp` は選定済みだが、ドメイン取得・Cloudflare設定・デプロイ・公開用運営者情報が未完了） |
+| 本番公開完了 | **未完了**（正式ドメイン `tabimono-hikaku.com` は取得済み。Cloudflare設定・DNS切替・デプロイ・公開用運営者情報が未完了） |
 
 ---
 
@@ -379,6 +379,28 @@ Node.js 22 と Chromium が無いためブラウザE2Eを0件実行していま�
 E2E をこの実装環境で動かす場合は、`PW_CHROMIUM_PATH=/opt/pw-browsers/chromium` のように
 インストール済み Chromium のパスを渡してください（Playwright の自動ダウンロードは行えません）。
 
+### 正式ドメイン変更（2026-09-01、`.jp` → `.com`）の検証
+
+| コマンド | 結果 |
+|---|---|
+| `npm run typecheck` | 成功 |
+| `npm run lint` | 成功 |
+| `npm test` | **147 件成功**（旧ドメイン混入の回帰テスト 6 件を追加） |
+| `npm run validate:content:all` | production・demo とも検証OK |
+| `SITE_MODE=preview npm run build` ＋ 公開ゲート | ビルド成功。ゲートは想定どおり非ゼロ終了（Preview は noindex、`sitemap.xml` の URL 数 0） |
+| Productionリハーサル `npm run build:only` ＋ 公開ゲート | どちらも終了コード 0（`SITE_URL=https://tabimono-hikaku.com`、リハーサル用の運営者名・連絡先を使用） |
+
+Productionリハーサルの成果物で、次を直接確認しました。
+
+- `tabimono-hikaku.jp` を含むファイルが **0 件**
+- `robots.txt` に `Host: https://tabimono-hikaku.com` と `Sitemap: https://tabimono-hikaku.com/sitemap.xml`
+- `sitemap.xml` の 17 URL がすべて `https://tabimono-hikaku.com` 始まり
+- トップページの canonical が `https://tabimono-hikaku.com/`
+- 商品・記事・出典・販売先リンクのデータは差分 0 件（`datasets/` に変更なし）
+
+リハーサルで使った運営者名・連絡先は動作確認用の例示値で、公開用として承認された値では
+ありません。ブラウザE2Eはこの変更の検証範囲に含めていません（未実行）。
+
 ---
 
 ## 7. 収益化設定：未達成
@@ -399,9 +421,10 @@ E2E をこの実装環境で動かす場合は、`PW_CHROMIUM_PATH=/opt/pw-brows
 | 項目 | 状態 |
 |---|---|
 | 正式名称 | 決定: 旅モノ比較 |
-| 公開候補ドメイン | tabimono-hikaku.jp（2026-09-01 JPRS WHOISで登録情報なし。購入時に再確認） |
+| 正式ドメイン | **tabimono-hikaku.com（2026-09-01取得済み／自動更新: 有効／有効期限: 2027-09-02）**。当初候補の `tabimono-hikaku.jp` は取得せず、`.com` に変更した |
+| ドメインのDNS | レジストラは XServer。ネームサーバーは**現時点では変更していない**。Cloudflare接続時にCloudflare指定値へ変更する |
 | 本番ホスティング | 決定: Cloudflare Pages Free / GitHub連携（未設定・未デプロイ） |
-| 本番公開 | 未完了（`tabimono-hikaku.jp` は未取得、Cloudflare設定・公開用運営者名・連絡先が必要） |
+| 本番公開 | 未完了（Cloudflare設定・ネームサーバー切替・公開用運営者名・連絡先が必要。ドメインは取得済み） |
 | 公開用の運営者名・連絡先 | 未提供（架空の値は入れず、画面には「準備中」と表示） |
 | 本番URL / HTTPS / canonical / robots / sitemap の実サイト確認 | 未実施 |
 

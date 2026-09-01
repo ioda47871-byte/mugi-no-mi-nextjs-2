@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 旅行用品比較サイトを正式名称「旅モノ比較」に変更し、Cloudflare Pages の GitHub 連携と独自ドメイン `tabimono-hikaku.jp` で安全に公開できる状態へ整える。
+**Goal:** 旅行用品比較サイトを正式名称「旅モノ比較」に変更し、Cloudflare Pages の GitHub 連携と独自ドメイン `tabimono-hikaku.com` で安全に公開できる状態へ整える。
 
 **Architecture:** Next.js 15 の `output: 'export'` と既存の `out/` をそのまま使用し、Cloudflare Functions やデプロイ用 API トークンは追加しない。`main` を Cloudflare Pages の Production branch とし、独自ドメインと TLS の確認までは Production 環境も `SITE_MODE=preview` に固定する。正式名称はコード既定値とし、URL・運営者名・連絡先だけを本番公開の必須入力として残す。
 
@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- 正式名称は `旅モノ比較`、正規 URL は `https://tabimono-hikaku.jp` とする。
+- 正式名称は `旅モノ比較`、正規 URL は `https://tabimono-hikaku.com` とする。
 - Cloudflare Pages の Root directory は `travel-goods-site`、Build command は `npm run build`、Build output directory は `out` とする。
 - Cloudflare Functions、Wrangler デプロイ、Cloudflare API トークンは追加しない。
 - Production branch は `main` だけとし、ブランチ Preview は常に `SITE_MODE=preview`、`CATALOG_DATASET=production` とする。
@@ -287,11 +287,11 @@ Production と Preview の両環境へ、最初は次だけを設定する。
 
 ## 3. 独自ドメイン
 
-1. `tabimono-hikaku.jp` を取得する。
+1. `tabimono-hikaku.com` を取得する。（2026-09-01 取得済み）
 2. Cloudflareへzoneを追加する。
-3. レジストラのネームサーバーをCloudflare指定値へ変更する。
-4. Pages > Custom domains で `tabimono-hikaku.jp` を追加する。
-5. `www.tabimono-hikaku.jp` をapexへ恒久転送する。
+3. レジストラ（XServer）のネームサーバーをCloudflare指定値へ変更する。※現時点では未変更。Cloudflare接続時に変更する。
+4. Pages > Custom domains で `tabimono-hikaku.com` を追加する。
+5. `www.tabimono-hikaku.com` をapexへ恒久転送する。
 6. TLSが有効であることを確認する。
 
 ## 4. 本番切替
@@ -303,7 +303,7 @@ Production 環境だけに次を設定し、再デプロイする。
 | `SITE_MODE` | `production` |
 | `CATALOG_DATASET` | `production` |
 | `SITE_NAME` | `旅モノ比較` |
-| `SITE_URL` | `https://tabimono-hikaku.jp` |
+| `SITE_URL` | `https://tabimono-hikaku.com` |
 | `PUBLIC_OPERATOR_NAME` | 公開を承認した運営者名 |
 | `PUBLIC_CONTACT_EMAIL` | 公開を承認した連絡先 |
 
@@ -313,7 +313,7 @@ Preview 環境の `SITE_MODE=preview` は変更しない。`*.pages.dev` の Pro
 ## 5. 本番確認
 
 - 旧名称「旅じたくガイド」が出ない
-- canonicalが `https://tabimono-hikaku.jp` を指す
+- canonicalが `https://tabimono-hikaku.com` を指す
 - robotsがクロールを許可する
 - sitemapが本番URLだけを含む
 - 照合済み楽天CTAが14件、未照合CTAが0件
@@ -332,7 +332,7 @@ DNSをVercelへ戻さない。問題のある楽天リンクだけならリン�
 In `travel-goods-site/.env.example`:
 
 - Change the `SITE_NAME` comment to `正式名称の既定値は「旅モノ比較」。Previewなどで表示名を変える場合だけ設定する。`
-- Change the URL example to `https://tabimono-hikaku.jp`.
+- Change the URL example to `https://tabimono-hikaku.com`.
 - Change the `RAKUTEN_API_REFERER` comment from Referer-only wording to `Origin / Referer の基準` so it matches the current API implementation.
 - Keep every value empty; do not add real emails, IDs, access keys, or tokens.
 
@@ -343,7 +343,7 @@ Make these exact content changes:
 - `travel-goods-site/README.md` title becomes `# travel-goods-site（旅モノ比較）`.
 - Add `docs/cloudflare-pages-setup.md` as the primary deployment document.
 - Describe `docs/vercel-setup.md` as migration-period Preview reference only.
-- In `travel-goods-site/docs/launch-checklist.md`, set the formal name to `旅モノ比較`, domain to `tabimono-hikaku.jp`, hosting to `Cloudflare Pages Free`, and remove `SITE_NAME` from the list of values whose absence blocks release.
+- In `travel-goods-site/docs/launch-checklist.md`, set the formal name to `旅モノ比較`, domain to `tabimono-hikaku.com`, hosting to `Cloudflare Pages Free`, and remove `SITE_NAME` from the list of values whose absence blocks release.
 - In the repository-root `README.md`, call the site `旅モノ比較` and point deployment readers to `travel-goods-site/docs/cloudflare-pages-setup.md`.
 
 - [ ] **Step 4: Vercel文書を移行期間限定へ変更する**
@@ -363,9 +363,9 @@ In `travel-goods-site/docs/status.md`, record:
 
 ```markdown
 | 正式名称 | 決定: 旅モノ比較 |
-| 公開候補ドメイン | tabimono-hikaku.jp（2026-09-01 JPRS WHOISで登録情報なし。購入時に再確認） |
+| 公開ドメイン | tabimono-hikaku.com（2026-09-01取得済み。自動更新有効、有効期限 2027-09-02） |
 | 本番ホスティング | 決定: Cloudflare Pages Free / GitHub連携 |
-| 本番公開 | 未完了（ドメイン取得、公開用運営者名・連絡先、Cloudflare外部設定が必要） |
+| 本番公開 | 未完了（公開用運営者名・連絡先、Cloudflare外部設定が必要。ドメインは取得済み） |
 ```
 
 Do not change product, article, source, or merchant-link counts in this task.
@@ -434,17 +434,17 @@ Use non-secret local rehearsal values that are not committed:
 SITE_MODE=production \
 CATALOG_DATASET=production \
 SITE_NAME='旅モノ比較' \
-SITE_URL='https://tabimono-hikaku.jp' \
+SITE_URL='https://tabimono-hikaku.com' \
 PUBLIC_OPERATOR_NAME='旅モノ比較 編集部' \
-PUBLIC_CONTACT_EMAIL='contact@tabimono-hikaku.jp' \
+PUBLIC_CONTACT_EMAIL='contact@tabimono-hikaku.com' \
 npm run build:only
 
 SITE_MODE=production \
 CATALOG_DATASET=production \
 SITE_NAME='旅モノ比較' \
-SITE_URL='https://tabimono-hikaku.jp' \
+SITE_URL='https://tabimono-hikaku.com' \
 PUBLIC_OPERATOR_NAME='旅モノ比較 編集部' \
-PUBLIC_CONTACT_EMAIL='contact@tabimono-hikaku.jp' \
+PUBLIC_CONTACT_EMAIL='contact@tabimono-hikaku.com' \
 npm run check:release -- --out out
 ```
 
@@ -485,7 +485,7 @@ Expected: `git status --short` prints nothing. The log contains separate commits
 
 Report exactly these remaining user actions without performing them:
 
-1. Recheck and purchase `tabimono-hikaku.jp`.
+1. ~~Recheck and purchase `tabimono-hikaku.com`.~~ Done on 2026-09-01 (auto-renew on, expires 2027-09-02).
 2. Create/connect the Cloudflare Pages project using `docs/cloudflare-pages-setup.md`.
 3. Decide the real public `PUBLIC_OPERATOR_NAME` and `PUBLIC_CONTACT_EMAIL`.
 4. Merge the release branch to `main` only after the Cloudflare Preview build succeeds.
