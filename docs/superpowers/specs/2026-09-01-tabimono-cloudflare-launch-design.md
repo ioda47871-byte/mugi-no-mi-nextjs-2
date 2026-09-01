@@ -10,9 +10,10 @@
 Cloudflare Pages の無料枠と独自ドメインで公開する。Vercel Hobby を商用サイトの
 本番配信には使用せず、サイトの継続費用は原則としてドメイン更新料だけに抑える。
 
-公開候補ドメインは `tabimono-hikaku.jp` とする。2026-09-01 の JPRS WHOIS 確認では
-登録情報が無かったが、取得可能性は購入時に改めて確認する。ドメイン購入はこの実装の
-対象外であり、運営者の最終確認後に行う。
+公開ドメインは `tabimono-hikaku.com` とする。当初は `tabimono-hikaku.jp` を候補と
+していたが、2026-09-01 に `.com` を取得したため、以後は `.com` を正式ドメインとして
+扱う。自動更新は有効、有効期限は 2027-09-02。DNS の移管（レジストラである XServer の
+ネームサーバー変更）はまだ行っていない。
 
 ## 2. 採用方式
 
@@ -63,7 +64,7 @@ Cloudflare の初回設定だけで本番公開済みと扱わない。初回は
 | `SITE_MODE` | `production` |
 | `CATALOG_DATASET` | `production` |
 | `SITE_NAME` | `旅モノ比較` |
-| `SITE_URL` | `https://tabimono-hikaku.jp` |
+| `SITE_URL` | `https://tabimono-hikaku.com` |
 | `PUBLIC_OPERATOR_NAME` | 運営者が公開を承認した名称。空のままではリリースしない |
 | `PUBLIC_CONTACT_EMAIL` | 運営者が公開を承認した連絡先。空のままではリリースしない |
 | `NEXT_PUBLIC_GA_ID` | 任意。空なら計測タグを出さない |
@@ -102,9 +103,10 @@ Cloudflare の初回設定だけで本番公開済みと扱わない。初回は
 
 ## 6. 独自ドメインと DNS
 
-`tabimono-hikaku.jp` を取得後、Cloudflare に zone として追加し、レジストラ側の
-ネームサーバーを Cloudflare 指定値へ変更する。その後、Pages の Custom domains から
-apex ドメインを関連付ける。`www.tabimono-hikaku.jp` は apex へ恒久転送する。
+取得済みの `tabimono-hikaku.com` を Cloudflare に zone として追加し、レジストラ
+（XServer）側のネームサーバーを Cloudflare 指定値へ変更する。この変更は Cloudflare 接続時に
+行うものであり、現時点では未実施である。その後、Pages の Custom domains から
+apex ドメインを関連付ける。`www.tabimono-hikaku.com` は apex へ恒久転送する。
 
 DNS 切替前に `*.pages.dev` の Production URL で本番相当ビルドを確認する。その段階の
 Production 環境は `SITE_MODE=preview` とし、indexable なページを出さない。独自ドメインの
@@ -117,7 +119,7 @@ TLS とページ表示を確認した後に `SITE_MODE=production` を有効に�
 Cloudflare の独自ドメインで次を確認するまでは、既存 Vercel プレビューを残す。
 
 - 全ページが 200 または意図した 404 を返す
-- canonical が `https://tabimono-hikaku.jp` を指す
+- canonical が `https://tabimono-hikaku.com` を指す
 - sitemap に本番 URL が入り、robots がクロールを許可する
 - 14件の確認済み楽天 CTA だけが表示される
 - CTA の `href`、`rel`、`target` が既存検証結果と一致する
@@ -168,7 +170,7 @@ npm run check:release -- --out out
 
 公開前に必須の入力は次の3点である。
 
-1. `tabimono-hikaku.jp` の取得完了
+1. `tabimono-hikaku.com` の取得完了（2026-09-01 取得済み）
 2. 公開用 `PUBLIC_OPERATOR_NAME`
 3. 公開用 `PUBLIC_CONTACT_EMAIL`
 

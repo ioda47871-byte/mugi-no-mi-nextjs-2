@@ -51,10 +51,11 @@ browser-enabled 環境で別途実行して記録する。
 
 ## 4. 独自ドメインとリダイレクト
 
-1. `tabimono-hikaku.jp` を取得する。
+1. `tabimono-hikaku.com` を取得する。**（2026-09-01 に取得済み。自動更新有効、有効期限 2027-09-02）**
 2. Cloudflareへzoneを追加する。
-3. レジストラのネームサーバーをCloudflare指定値へ変更する。
-4. Pages > Custom domains で `tabimono-hikaku.jp` を追加する。
+3. レジストラ（XServer）のネームサーバーをCloudflare指定値へ変更する。
+   **現時点では XServer のネームサーバーは変更していない。この変更は Cloudflare 接続時に行う。**
+4. Pages > Custom domains で `tabimono-hikaku.com` を追加する。
 5. TLSが有効であることを確認する。
 
 ### `pages.dev` からのリダイレクト
@@ -63,11 +64,11 @@ Cloudflare account-level の **Bulk Redirects** でリストを作成し、次�
 
 | Source URL | Target URL | Status | Parameters |
 |---|---|---:|---|
-| `tabimono-hikaku.pages.dev` | `https://tabimono-hikaku.jp` | 301 | Preserve query string、Subpath matching、Preserve path suffix を有効化。Include subdomains は有効化しない |
+| `tabimono-hikaku.pages.dev` | `https://tabimono-hikaku.com` | 301 | Preserve query string、Subpath matching、Preserve path suffix を有効化。Include subdomains は有効化しない |
 
 続けてそのリストを使う Bulk Redirect rule を作成する。これにより、
 `https://tabimono-hikaku.pages.dev/guide/?x=1` は
-`https://tabimono-hikaku.jp/guide/?x=1` へ301で転送される。
+`https://tabimono-hikaku.com/guide/?x=1` へ301で転送される。
 `<hash>.tabimono-hikaku.pages.dev` のbranch Preview URLはこのruleの対象外とし、直接アクセス可能かつ
 `noindex` のまま残す。
 
@@ -77,7 +78,7 @@ Cloudflare account-level の **Bulk Redirects** でリストを作成し、次�
 
 | Source URL | Target URL | Status | Parameters |
 |---|---|---:|---|
-| `www.tabimono-hikaku.jp` | `https://tabimono-hikaku.jp` | 301 | Preserve query string、Subpath matching、Preserve path suffix、Include subdomains をすべて有効化 |
+| `www.tabimono-hikaku.com` | `https://tabimono-hikaku.com` | 301 | Preserve query string、Subpath matching、Preserve path suffix、Include subdomains をすべて有効化 |
 
 Cloudflare zone の DNS > Records で、redirect rule が受けられるよう次のDNSレコードも作成する。
 
@@ -98,7 +99,7 @@ Production 環境だけに次を設定し、再デプロイする。
 | `SITE_MODE` | `production` |
 | `CATALOG_DATASET` | `production` |
 | `SITE_NAME` | `旅モノ比較` |
-| `SITE_URL` | `https://tabimono-hikaku.jp` |
+| `SITE_URL` | `https://tabimono-hikaku.com` |
 | `PUBLIC_OPERATOR_NAME` | 公開を承認した運営者名 |
 | `PUBLIC_CONTACT_EMAIL` | 公開を承認した連絡先 |
 
@@ -107,13 +108,13 @@ Preview 環境の `SITE_MODE=preview` は変更しない。
 ## 6. 本番確認
 
 - 旧名称「旅じたくガイド」が出ない
-- canonicalが `https://tabimono-hikaku.jp` を指す
+- canonicalが `https://tabimono-hikaku.com` を指す
 - robotsがクロールを許可する
 - sitemapが本番URLだけを含む
 - 照合済み楽天CTAが14件、未照合CTAが0件
 - CTAの `rel` が正確に `nofollow sponsored noopener` で、`noreferrer` が無い
 - デモ・Preview文言・資格情報が出ない
-- `https://tabimono-hikaku.pages.dev/` は `https://tabimono-hikaku.jp/` へ301で転送され、
+- `https://tabimono-hikaku.pages.dev/` は `https://tabimono-hikaku.com/` へ301で転送され、
   path と query string が保持される
 - `<hash>.tabimono-hikaku.pages.dev` のbranch Preview URLは直接表示でき、`noindex` のままである
 
