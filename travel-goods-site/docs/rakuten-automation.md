@@ -272,9 +272,9 @@ npm run rakuten:mock          # 別のターミナルで起動（127.0.0.1:8791�
 # 既定は小文字形式。MOCK_FORMAT=upper / flat で互換形式を確認できます
 
 mkdir -p .preview/rehearsal && cp -r datasets/production/* .preview/rehearsal/
-env RAKUTEN_APPLICATION_ID dummy RAKUTEN_ACCESS_KEY dummy RAKUTEN_AFFILIATE_ID dummy \
-  RAKUTEN_API_ENDPOINT_OVERRIDE http://127.0.0.1:8791/ \
-  CATALOG_DATASET production CATALOG_DATASET_DIR .preview/rehearsal \
+env RAKUTEN_APPLICATION_ID\=dummy RAKUTEN_ACCESS_KEY\=dummy RAKUTEN_AFFILIATE_ID\=dummy \
+  RAKUTEN_API_ENDPOINT_OVERRIDE\=http://127.0.0.1:8791/ \
+  CATALOG_DATASET\=production CATALOG_DATASET_DIR\=.preview/rehearsal \
   npm run rakuten:sync -- --mode links
 ```
 
