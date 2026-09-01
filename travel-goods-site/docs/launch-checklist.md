@@ -125,10 +125,18 @@
 
 ```bash
 npm run verify                      # 型・lint・テスト・データ検証・ビルド
-npm run test:e2e                    # E2E
+npm run test:e2e                    # E2E（default/demo + CTA）
+npm run test:e2e:production         # E2E（production + CTA）
+npm run test:e2e:linkcheck          # E2E（購入導線の通し確認）
 npm run check:release -- --out out  # 公開前チェック（未達があれば非ゼロ終了）
 ```
 
+- [ ] リリースブランチを `main` へマージする**前に**、上記3系統のE2Eがすべて終了コード0である。
+      実行環境は Node.js 22 と Chromium が利用可能であること。Chromium の配置が既定と異なる場合は
+      `PW_CHROMIUM_PATH` に実行可能ファイルのパスを指定する。
+- [ ] この sandbox では3系統を実行していない。Cloudflare Pages のビルドが自動でE2Eを実行する
+      わけではないため、Cloudflare Preview確認用CIまたは別の browser-enabled 環境で再実行し、
+      成功を記録する。マージ前にできない場合も、本番公開は3系統が成功するまでブロックする。
 - [ ] `check:release` がすべて OK になっている。
 - [ ] 下書きが一覧・サイトマップ・直接URLのいずれからも公開されていない。
 - [ ] 配信ファイルに架空の商品、サンプルID、仮の連絡先、秘密情報が含まれていない
