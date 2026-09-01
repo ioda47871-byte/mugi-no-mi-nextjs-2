@@ -151,14 +151,32 @@ test('販売先の価格・在庫・画像を取り込まない', async ({ page 
   }
 });
 
-test('リンク未発行の商品にはCTAもダミーリンクも出さない', async ({ page }) => {
+test('リンク未発行・未照合の商品にはCTAもダミーリンクも出さない', async ({ page }) => {
   for (const [path, productId] of [
-    ['/categories/suitcases/', 'ace-cresta2-06936-35l-black-hairline'],
+    // 紹介URLが登録されていない商品
     ['/categories/backpacks/', 'elecom-bm-bptrcsepbk-30l-black'],
+    ['/categories/suitcases/', 'proteca-360g4-02420-24l-black'],
+    // 紹介URLは登録済みだが unverified の商品。登録があっても出してはいけない。
+    ['/categories/suitcases/', 'ace-crestas-09162-60l-gunmetallic'],
   ] as const) {
     await page.goto(path);
     const card = page.locator(`article[data-product-id="${productId}"]`);
+    await expect(card).toHaveCount(1);
     await expect(card.locator('a[rel*="sponsored"]')).toHaveCount(0);
     await expect(page.locator('a[href="#"]')).toHaveCount(0);
   }
+});
+
+test('未照合の商品の紹介URLは配信物に現れない', async ({ page }) => {
+  // クレスタS 09162 は登録済み・unverified。遷移先の商品ページURLごと出力に無いこと。
+  await page.goto('/categories/suitcases/');
+  const html = await page.content();
+  expect(html).not.toContain('galleria-annex/ace00093');
+});
+
+test('選択式の販売ページに備えた案内を購入導線に出す', async ({ page }) => {
+  await page.goto('/categories/backpacks/');
+  await expect(page.getByTestId('merchant-actions').first()).toContainText(
+    '色・サイズが選択式の場合は、販売ページで対象の仕様を選択してください。',
+  );
 });
