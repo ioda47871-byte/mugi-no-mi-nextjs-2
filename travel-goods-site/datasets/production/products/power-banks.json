@@ -83,5 +83,336 @@
       "メーカーの回収・リコール告知の追加確認が済んでいないため、公開対象にしていません。"
     ],
     "image": null
+  },
+  {
+    "id": "anker-a110d-10000-black",
+    "category": "power-banks",
+    "brand": "アンカー・ジャパン（Anker）",
+    "model": "A110DN11",
+    "variant": "10000mAh / ブラック",
+    "status": "published",
+    "summary": "USB-Cケーブル一体型のモバイルバッテリー。容量10000mAh、単ポート最大22.5W出力。一体型ケーブルのほかUSB-Cポート・USB-Aポートを備える。",
+    "weightG": {
+      "value": 229,
+      "sourceId": "src-anker-a110d",
+      "checkedAt": "2026-08-31"
+    },
+    "outerSizeMm": {
+      "value": [
+        140.7,
+        71.7,
+        15.4
+      ],
+      "sourceId": "src-anker-a110d",
+      "checkedAt": "2026-08-31"
+    },
+    "sizeBasis": "unspecified",
+    "measurementState": "not-applicable",
+    "capacityL": {
+      "value": null,
+      "sourceId": null,
+      "checkedAt": null,
+      "note": "モバイルバッテリーには容量(L)の概念がないため掲載しません"
+    },
+    "alternateMeasurements": [],
+    "specs": {
+      "capacityMah": {
+        "value": 10000,
+        "sourceId": "src-anker-a110d",
+        "checkedAt": "2026-08-31"
+      },
+      "ratedWh": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "定格電力量(Wh)は商品ページの製品仕様に記載がありません"
+      },
+      "maxOutputW": {
+        "value": 22.5,
+        "sourceId": "src-anker-a110d",
+        "checkedAt": "2026-08-31"
+      },
+      "outputPorts": {
+        "value": "USB-C一体型ケーブル / USB-Cポート（最大22.5W）・USB-Aポート（最大22.5W）。複数ポート使用時は合計最大15W",
+        "sourceId": "src-anker-a110d",
+        "checkedAt": "2026-08-31"
+      },
+      "inputPorts": {
+        "value": "USB-C一体型ケーブル / USB-Cポート（最大20W）",
+        "sourceId": "src-anker-a110d",
+        "checkedAt": "2026-08-31"
+      },
+      "builtInCable": {
+        "value": true,
+        "sourceId": "src-anker-a110d",
+        "checkedAt": "2026-08-31"
+      },
+      "passThroughCharging": {
+        "value": true,
+        "sourceId": "src-anker-a110d",
+        "checkedAt": "2026-08-31"
+      },
+      "pseMarkStated": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "PSEに関する記載を商品ページで確認できませんでした"
+      }
+    },
+    "caveats": [
+      "mAh から実際の充電回数は算出できません。端末や使用状況で変わります。",
+      "機内持ち込みの可否・条件は航空会社と搭乗日の規定をご確認ください。定格電力量(Wh)は公表されていません。",
+      "寸法はメーカーが「約140.7 x 71.7 x 15.4mm」と公表した値です。どの辺が幅・高さ・奥行かは公表されていません。",
+      "22.5W出力はHuawei機器のみ対応と公表されています。それ以外の機器ではUSB-Aポート最大18W・USB-Cポート最大20Wです。"
+    ],
+    "image": null
+  },
+  {
+    "id": "anker-a110e-20000-black",
+    "category": "power-banks",
+    "brand": "アンカー・ジャパン（Anker）",
+    "model": "A110EN11",
+    "variant": "20000mAh / ブラック",
+    "status": "published",
+    "summary": "USB-Cケーブル一体型のモバイルバッテリー。容量20000mAh、単ポート最大22.5W出力。合計3ポートで同時充電に対応。",
+    "weightG": {
+      "value": 391,
+      "sourceId": "src-anker-a110e",
+      "checkedAt": "2026-08-31"
+    },
+    "outerSizeMm": {
+      "value": [
+        141,
+        72,
+        28
+      ],
+      "sourceId": "src-anker-a110e",
+      "checkedAt": "2026-08-31"
+    },
+    "sizeBasis": "unspecified",
+    "measurementState": "not-applicable",
+    "capacityL": {
+      "value": null,
+      "sourceId": null,
+      "checkedAt": null,
+      "note": "モバイルバッテリーには容量(L)の概念がないため掲載しません"
+    },
+    "alternateMeasurements": [],
+    "specs": {
+      "capacityMah": {
+        "value": 20000,
+        "sourceId": "src-anker-a110e",
+        "checkedAt": "2026-08-31"
+      },
+      "ratedWh": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "定格電力量(Wh)は商品ページの製品仕様に記載がありません"
+      },
+      "maxOutputW": {
+        "value": 22.5,
+        "sourceId": "src-anker-a110e",
+        "checkedAt": "2026-08-31"
+      },
+      "outputPorts": {
+        "value": "USB-C一体型ケーブル / USB-Cポート（最大22.5W）・USB-Aポート（最大22.5W）。合計最大出力15W",
+        "sourceId": "src-anker-a110e",
+        "checkedAt": "2026-08-31"
+      },
+      "inputPorts": {
+        "value": "USB-C一体型ケーブル / USB-Cポート（最大20W）",
+        "sourceId": "src-anker-a110e",
+        "checkedAt": "2026-08-31"
+      },
+      "builtInCable": {
+        "value": true,
+        "sourceId": "src-anker-a110e",
+        "checkedAt": "2026-08-31"
+      },
+      "passThroughCharging": {
+        "value": true,
+        "sourceId": "src-anker-a110e",
+        "checkedAt": "2026-08-31"
+      },
+      "pseMarkStated": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "PSEに関する記載を商品ページで確認できませんでした"
+      }
+    },
+    "caveats": [
+      "mAh から実際の充電回数は算出できません。端末や使用状況で変わります。",
+      "機内持ち込みの可否・条件は航空会社と搭乗日の規定をご確認ください。定格電力量(Wh)は公表されていません。",
+      "寸法はメーカーが「約141 x 72 x 28mm」と公表した値です。どの辺が幅・高さ・奥行かは公表されていません。",
+      "22.5W出力はHuawei機器のみ対応と公表されています。それ以外の機器ではUSB-Aポート最大18W・USB-Cポート最大20Wです。"
+    ],
+    "image": null
+  },
+  {
+    "id": "anker-a110m-20000-black",
+    "category": "power-banks",
+    "brand": "アンカー・ジャパン（Anker）",
+    "model": "A110MN12",
+    "variant": "20000mAh / ブラック",
+    "status": "published",
+    "summary": "USB-Cケーブルを2本内蔵したモバイルバッテリー。容量20000mAh、USB-Cは単ポート最大45W出力。一体型ケーブルからの入力にも対応。",
+    "weightG": {
+      "value": 362,
+      "sourceId": "src-anker-a110m",
+      "checkedAt": "2026-08-31"
+    },
+    "outerSizeMm": {
+      "value": [
+        120,
+        73,
+        31
+      ],
+      "sourceId": "src-anker-a110m",
+      "checkedAt": "2026-08-31"
+    },
+    "sizeBasis": "unspecified",
+    "measurementState": "not-applicable",
+    "capacityL": {
+      "value": null,
+      "sourceId": null,
+      "checkedAt": null,
+      "note": "モバイルバッテリーには容量(L)の概念がないため掲載しません"
+    },
+    "alternateMeasurements": [],
+    "specs": {
+      "capacityMah": {
+        "value": 20000,
+        "sourceId": "src-anker-a110m",
+        "checkedAt": "2026-08-31"
+      },
+      "ratedWh": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "定格電力量(Wh)は商品ページの製品仕様に記載がありません"
+      },
+      "maxOutputW": {
+        "value": 45,
+        "sourceId": "src-anker-a110m",
+        "checkedAt": "2026-08-31"
+      },
+      "outputPorts": {
+        "value": "USB-C一体型ケーブル2本 / USB-Cポート（最大45W）・USB-Aポート（最大22.5W）。合計最大出力15W",
+        "sourceId": "src-anker-a110m",
+        "checkedAt": "2026-08-31"
+      },
+      "inputPorts": {
+        "value": "USB-C一体型ケーブル / USB-Cポート（最大30W）",
+        "sourceId": "src-anker-a110m",
+        "checkedAt": "2026-08-31"
+      },
+      "builtInCable": {
+        "value": true,
+        "sourceId": "src-anker-a110m",
+        "checkedAt": "2026-08-31"
+      },
+      "passThroughCharging": {
+        "value": true,
+        "sourceId": "src-anker-a110m",
+        "checkedAt": "2026-08-31"
+      },
+      "pseMarkStated": {
+        "value": true,
+        "sourceId": "src-anker-a110m",
+        "checkedAt": "2026-08-31"
+      }
+    },
+    "caveats": [
+      "mAh から実際の充電回数は算出できません。端末や使用状況で変わります。",
+      "機内持ち込みの可否・条件は航空会社と搭乗日の規定をご確認ください。定格電力量(Wh)は公表されていません。",
+      "寸法はメーカーが「約120 x 73 x 31mm」と公表した値です。どの辺が幅・高さ・奥行かは公表されていません。",
+      "「PSE技術基準に適合」と商品ページに記載があります。PSEマークの表示位置までは確認していません。"
+    ],
+    "image": null
+  },
+  {
+    "id": "anker-a1335-12000-black",
+    "category": "power-banks",
+    "brand": "アンカー・ジャパン（Anker）",
+    "model": "A1335011",
+    "variant": "12000mAh / ブラック",
+    "status": "published",
+    "summary": "ノートPC充電に対応する高出力モバイルバッテリー。容量12000mAh、単ポート最大65W・合計最大130W出力。ケーブルは内蔵していない。",
+    "weightG": {
+      "value": 360,
+      "sourceId": "src-anker-a1335",
+      "checkedAt": "2026-08-31"
+    },
+    "outerSizeMm": {
+      "value": [
+        135,
+        55,
+        33
+      ],
+      "sourceId": "src-anker-a1335",
+      "checkedAt": "2026-08-31"
+    },
+    "sizeBasis": "unspecified",
+    "measurementState": "not-applicable",
+    "capacityL": {
+      "value": null,
+      "sourceId": null,
+      "checkedAt": null,
+      "note": "モバイルバッテリーには容量(L)の概念がないため掲載しません"
+    },
+    "alternateMeasurements": [],
+    "specs": {
+      "capacityMah": {
+        "value": 12000,
+        "sourceId": "src-anker-a1335",
+        "checkedAt": "2026-08-31"
+      },
+      "ratedWh": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "定格電力量(Wh)は商品ページの製品仕様に記載がありません"
+      },
+      "maxOutputW": {
+        "value": 65,
+        "sourceId": "src-anker-a1335",
+        "checkedAt": "2026-08-31"
+      },
+      "outputPorts": {
+        "value": "USB-C（各ポート最大65W・合計最大130W）。ポート数は公表されていません",
+        "sourceId": "src-anker-a1335",
+        "checkedAt": "2026-08-31"
+      },
+      "inputPorts": {
+        "value": "USB-C（最大65W）",
+        "sourceId": "src-anker-a1335",
+        "checkedAt": "2026-08-31"
+      },
+      "builtInCable": {
+        "value": false,
+        "sourceId": "src-anker-a1335",
+        "checkedAt": "2026-08-31"
+      },
+      "passThroughCharging": {
+        "value": false,
+        "sourceId": "src-anker-a1335",
+        "checkedAt": "2026-08-31"
+      },
+      "pseMarkStated": {
+        "value": true,
+        "sourceId": "src-anker-a1335",
+        "checkedAt": "2026-08-31"
+      }
+    },
+    "caveats": [
+      "mAh から実際の充電回数は算出できません。端末や使用状況で変わります。",
+      "機内持ち込みの可否・条件は航空会社と搭乗日の規定をご確認ください。定格電力量(Wh)は公表されていません。",
+      "寸法はメーカーが「約135 × 55 × 33mm」と公表した値です。どの辺が幅・高さ・奥行かは公表されていません。",
+      "パススルー充電（本体を充電しながらの給電）には対応していないと公表されています。",
+      "「PSE技術基準に適合」と商品ページに記載があります。PSEマークの表示位置までは確認していません。"
+    ],
+    "image": null
   }
 ]

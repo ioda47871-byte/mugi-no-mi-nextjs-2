@@ -24,6 +24,14 @@ on:
         description: 'strong 一致を自動で表示対象にする（apply が必要）'
         type: boolean
         default: false
+      max_requests:
+        description: 'APIリクエスト数の上限（商品が増えたら上げる。既定30）'
+        type: string
+        default: '30'
+      exclude:
+        description: '対象から外す商品ID（カンマ区切り）。確認が済んでいない候補を差分に入れないために使う'
+        type: string
+        required: false
   # 定期実行を使う場合はコメントを外す。初期の上限は1日1回（計画書 12-3節）。
   # schedule:
   #   - cron: '0 21 * * *'   # UTC 21:00 = JST 06:00
@@ -63,6 +71,7 @@ jobs:
         env:
           # リポジトリの Secrets に設定する。ログには出力されない。
           RAKUTEN_APPLICATION_ID: ${{ secrets.RAKUTEN_APPLICATION_ID }}
+          RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
           RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
           # 「許可されたWebサイト」の制限に合わせて送信元を名乗る場合に設定する。
           # 自分が登録し所有しているドメインのみ。未設定なら送らない。
@@ -70,12 +79,20 @@ jobs:
           # 書き込みを行う実行だけ true にする
           AUTOMATION_ENABLED: ${{ inputs.apply }}
           CATALOG_DATASET: production
+          # 入力値をシェルのコードとして展開しない（資格情報を持つステップ）。
+          SYNC_MODE: ${{ inputs.mode }}
+          SYNC_MAX_REQUESTS: ${{ inputs.max_requests }}
+          SYNC_KEYWORD: ${{ inputs.keyword }}
+          SYNC_APPLY: ${{ inputs.apply }}
+          SYNC_AUTO_VERIFY: ${{ inputs.auto_verify }}
+          SYNC_EXCLUDE: ${{ inputs.exclude }}
         run: |
-          npm run rakuten:sync -- \
-            --mode "${{ inputs.mode }}" \
-            ${{ inputs.keyword && format('--keyword "{0}"', inputs.keyword) || '' }} \
-            ${{ inputs.apply && '--apply' || '' }} \
-            ${{ inputs.auto_verify && '--auto-verify' || '' }}
+          args=(--mode "$SYNC_MODE" --max-requests "$SYNC_MAX_REQUESTS")
+          if [[ -n "$SYNC_KEYWORD" ]]; then args+=(--keyword "$SYNC_KEYWORD"); fi
+          if [[ -n "$SYNC_EXCLUDE" ]]; then args+=(--exclude "$SYNC_EXCLUDE"); fi
+          if [[ "$SYNC_APPLY" == true ]]; then args+=(--apply); fi
+          if [[ "$SYNC_AUTO_VERIFY" == true ]]; then args+=(--auto-verify); fi
+          npm run rakuten:sync -- "${args[@]}"
 
       - name: 取得後の検証
         run: npm run validate:content -- --dataset production
@@ -104,6 +121,9 @@ jobs:
 
             仕様の出典は自動取得の対象外です。新規商品を採用する場合は、
             メーカー公表仕様を別途確認して `products/` と `sources.json` に登録してください。
+          # ディレクトリ単位で指定する。ファイル名で指定すると、そのモードで
+          # 作られなかったファイル（links 実行時の candidates/ など）で
+          # git add が pathspec エラーになり、コミットごと失敗する。
+          # このジョブが書き込むのは merchants/ と candidates/ だけ。
           add-paths: |
-            travel-goods-site/datasets/production/merchants/rakuten.json
-            travel-goods-site/datasets/production/candidates/rakuten.json
+            travel-goods-site/datasets/production

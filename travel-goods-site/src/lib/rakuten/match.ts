@@ -1,5 +1,5 @@
 import { isRakutenAffiliateUrl } from '@/lib/affiliate/rakuten';
-import type { Product } from '@/lib/catalog/types';
+import type { MerchantLink, Product } from '@/lib/catalog/types';
 import type { RakutenItem } from './types';
 
 /**
@@ -96,4 +96,16 @@ export function searchKeywordsFor(product: Product): string[] {
   if (product.jan) keywords.push(product.jan);
   if (normalizeForMatch(product.model).length >= 6) keywords.push(product.model);
   return keywords;
+}
+
+/**
+ * 人が目視で確認したリンクを、自動取得の結果で上書きしないための判定。
+ *
+ * 自動取得の根拠は identifier-match（型番・JANの一致）であって、
+ * リンク先を開いた確認ではありません。上書きを許すと、運営者が確認済みの
+ * 販売ページが、機械が選んだ別の店舗のページに黙って差し替わります。
+ * 根拠の強い方を残します。
+ */
+export function isHumanVerifiedLink(link: MerchantLink | undefined | null): boolean {
+  return Boolean(link && link.status === 'verified' && link.verificationMethod === 'visual');
 }

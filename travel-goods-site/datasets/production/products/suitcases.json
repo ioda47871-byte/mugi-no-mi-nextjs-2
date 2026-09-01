@@ -83,5 +83,751 @@
       "静音性・耐久性・キャスターの滑らかさは、メーカー公表仕様からは判断できないため掲載していません。"
     ],
     "image": null
+  },
+  {
+    "id": "ace-crestas-09161-35l-gunmetallic",
+    "category": "suitcases",
+    "brand": "エース（ACE）",
+    "model": "クレスタS 09161",
+    "variant": "35/42L / 02 ガンメタリック",
+    "status": "published",
+    "summary": "本体重量3.5kg・容量35L（拡張時42L）のハードキャリー。キャスターストッパー、TSダイヤルファスナーロック、拡張機能を搭載。素材はポリカーボネート。",
+    "weightG": {
+      "value": 3500,
+      "sourceId": "src-ace-crestas-09161",
+      "checkedAt": "2026-08-31"
+    },
+    "outerSizeMm": {
+      "value": [
+        350,
+        550,
+        250
+      ],
+      "sourceId": "src-ace-crestas-09161",
+      "checkedAt": "2026-08-31"
+    },
+    "sizeBasis": "with-handle-and-wheels",
+    "measurementState": "normal",
+    "bodySizeMm": {
+      "value": [
+        340,
+        500,
+        250
+      ],
+      "sourceId": "src-ace-crestas-09161",
+      "checkedAt": "2026-08-31"
+    },
+    "capacityL": {
+      "value": 35,
+      "sourceId": "src-ace-crestas-09161",
+      "checkedAt": "2026-08-31"
+    },
+    "alternateMeasurements": [
+      {
+        "label": "拡張時",
+        "state": "expanded",
+        "sizeMm": {
+          "value": [
+            350,
+            550,
+            290
+          ],
+          "sourceId": "src-ace-crestas-09161",
+          "checkedAt": "2026-08-31"
+        },
+        "sizeBasis": "with-handle-and-wheels",
+        "capacityL": {
+          "value": 42,
+          "sourceId": "src-ace-crestas-09161",
+          "checkedAt": "2026-08-31"
+        }
+      }
+    ],
+    "specs": {
+      "stopper": {
+        "value": true,
+        "sourceId": "src-ace-crestas-09161",
+        "checkedAt": "2026-08-31"
+      },
+      "expandable": {
+        "value": true,
+        "sourceId": "src-ace-crestas-09161",
+        "checkedAt": "2026-08-31"
+      },
+      "openingType": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に開き方（ファスナー／フレーム）の記載を確認できていません"
+      },
+      "wheelCount": {
+        "value": 4,
+        "sourceId": "src-ace-crestas-09161",
+        "checkedAt": "2026-08-31"
+      },
+      "tsaLock": {
+        "value": true,
+        "sourceId": "src-ace-crestas-09161",
+        "checkedAt": "2026-08-31"
+      },
+      "shellMaterial": {
+        "value": "ポリカーボネート",
+        "sourceId": "src-ace-crestas-09161",
+        "checkedAt": "2026-08-31"
+      },
+      "frontOpenPocket": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様にフロントポケットの記載を確認できていません"
+      }
+    },
+    "caveats": [
+      "外寸はキャスター・ハンドルを含む値、本体サイズはケース本体のみの値です。拡張時は奥行が25cmから29cmに変わります。",
+      "メーカー公表の総外寸（3辺合計）は通常時115cm・拡張時119cmです。",
+      "メーカーは「拡張時に各交通機関の規定サイズを超過する場合がある」と注記しています。機内持ち込みの可否は利用する運行会社の規定をご確認ください。"
+    ],
+    "image": null
+  },
+  {
+    "id": "ace-crestas-09162-60l-gunmetallic",
+    "category": "suitcases",
+    "brand": "エース（ACE）",
+    "model": "クレスタS 09162",
+    "variant": "60/73L / 02 ガンメタリック",
+    "status": "published",
+    "summary": "本体重量4.6kg・容量60L（拡張時73L）のハードキャリー。キャスターストッパー、TSダイヤルファスナーロック、拡張機能を搭載。素材はポリカーボネート。",
+    "weightG": {
+      "value": 4600,
+      "sourceId": "src-ace-crestas-09162",
+      "checkedAt": "2026-08-31"
+    },
+    "outerSizeMm": {
+      "value": [
+        480,
+        670,
+        270
+      ],
+      "sourceId": "src-ace-crestas-09162",
+      "checkedAt": "2026-08-31"
+    },
+    "sizeBasis": "with-handle-and-wheels",
+    "measurementState": "normal",
+    "bodySizeMm": {
+      "value": [
+        450,
+        620,
+        270
+      ],
+      "sourceId": "src-ace-crestas-09162",
+      "checkedAt": "2026-08-31"
+    },
+    "capacityL": {
+      "value": 60,
+      "sourceId": "src-ace-crestas-09162",
+      "checkedAt": "2026-08-31"
+    },
+    "alternateMeasurements": [
+      {
+        "label": "拡張時",
+        "state": "expanded",
+        "sizeMm": {
+          "value": [
+            480,
+            670,
+            310
+          ],
+          "sourceId": "src-ace-crestas-09162",
+          "checkedAt": "2026-08-31"
+        },
+        "sizeBasis": "with-handle-and-wheels",
+        "capacityL": {
+          "value": 73,
+          "sourceId": "src-ace-crestas-09162",
+          "checkedAt": "2026-08-31"
+        }
+      }
+    ],
+    "specs": {
+      "stopper": {
+        "value": true,
+        "sourceId": "src-ace-crestas-09162",
+        "checkedAt": "2026-08-31"
+      },
+      "expandable": {
+        "value": true,
+        "sourceId": "src-ace-crestas-09162",
+        "checkedAt": "2026-08-31"
+      },
+      "openingType": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に開き方（ファスナー／フレーム）の記載を確認できていません"
+      },
+      "wheelCount": {
+        "value": 4,
+        "sourceId": "src-ace-crestas-09162",
+        "checkedAt": "2026-08-31"
+      },
+      "tsaLock": {
+        "value": true,
+        "sourceId": "src-ace-crestas-09162",
+        "checkedAt": "2026-08-31"
+      },
+      "shellMaterial": {
+        "value": "ポリカーボネート",
+        "sourceId": "src-ace-crestas-09162",
+        "checkedAt": "2026-08-31"
+      },
+      "frontOpenPocket": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様にフロントポケットの記載を確認できていません"
+      }
+    },
+    "caveats": [
+      "外寸はキャスター・ハンドルを含む値、本体サイズはケース本体のみの値です。拡張時は奥行が27cmから31cmに変わります。",
+      "メーカー公表の総外寸（3辺合計）は通常時142cm・拡張時146cmです。",
+      "メーカーの機能一覧では「機内預け入れ」向けとされています。機内持ち込みには対応しません。"
+    ],
+    "image": null
+  },
+  {
+    "id": "ace-radial-06971-32l-blue-green",
+    "category": "suitcases",
+    "brand": "エース（ACE）",
+    "model": "ラディアル 06971",
+    "variant": "32L / 03 ブルーグリーン",
+    "status": "published",
+    "summary": "本体重量3.0kg・容量32Lのハードキャリー。双輪4キャスターとTSダイヤルファスナーロックを搭載。素材はABS混合樹脂。",
+    "weightG": {
+      "value": 3000,
+      "sourceId": "src-ace-radial-06971",
+      "checkedAt": "2026-08-31"
+    },
+    "outerSizeMm": {
+      "value": [
+        380,
+        540,
+        230
+      ],
+      "sourceId": "src-ace-radial-06971",
+      "checkedAt": "2026-08-31"
+    },
+    "sizeBasis": "with-handle-and-wheels",
+    "measurementState": "not-applicable",
+    "bodySizeMm": {
+      "value": [
+        340,
+        470,
+        230
+      ],
+      "sourceId": "src-ace-radial-06971",
+      "checkedAt": "2026-08-31"
+    },
+    "capacityL": {
+      "value": 32,
+      "sourceId": "src-ace-radial-06971",
+      "checkedAt": "2026-08-31"
+    },
+    "alternateMeasurements": [],
+    "specs": {
+      "stopper": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "機能一覧にキャスターストッパーの記載がありません（非搭載かどうかは公表されていません）"
+      },
+      "expandable": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "機能一覧に拡張機能の記載がありません（非搭載かどうかは公表されていません）"
+      },
+      "openingType": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に開き方（ファスナー／フレーム）の記載を確認できていません"
+      },
+      "wheelCount": {
+        "value": 4,
+        "sourceId": "src-ace-radial-06971",
+        "checkedAt": "2026-08-31"
+      },
+      "tsaLock": {
+        "value": true,
+        "sourceId": "src-ace-radial-06971",
+        "checkedAt": "2026-08-31"
+      },
+      "shellMaterial": {
+        "value": "ABS混合樹脂",
+        "sourceId": "src-ace-radial-06971",
+        "checkedAt": "2026-08-31"
+      },
+      "frontOpenPocket": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様にフロントポケットの記載を確認できていません"
+      }
+    },
+    "caveats": [
+      "外寸はキャスター・ハンドルを含む値、本体サイズはケース本体のみの値です。",
+      "メーカー公表の総外寸（3辺合計）は115cmです。",
+      "メーカーの機能一覧では「国内100席以上・国際機内持込み」に対応するとされています。搭乗便の規定は各社でご確認ください。"
+    ],
+    "image": null
+  },
+  {
+    "id": "ace-radial-06972-57l-blue-green",
+    "category": "suitcases",
+    "brand": "エース（ACE）",
+    "model": "ラディアル 06972",
+    "variant": "57L / 03 ブルーグリーン",
+    "status": "published",
+    "summary": "本体重量4.1kg・容量57Lのハードキャリー。双輪4キャスターとTSダイヤルファスナーロックを搭載。素材はABS混合樹脂。",
+    "weightG": {
+      "value": 4100,
+      "sourceId": "src-ace-radial-06972",
+      "checkedAt": "2026-08-31"
+    },
+    "outerSizeMm": {
+      "value": [
+        470,
+        670,
+        260
+      ],
+      "sourceId": "src-ace-radial-06972",
+      "checkedAt": "2026-08-31"
+    },
+    "sizeBasis": "with-handle-and-wheels",
+    "measurementState": "not-applicable",
+    "bodySizeMm": {
+      "value": [
+        430,
+        600,
+        260
+      ],
+      "sourceId": "src-ace-radial-06972",
+      "checkedAt": "2026-08-31"
+    },
+    "capacityL": {
+      "value": 57,
+      "sourceId": "src-ace-radial-06972",
+      "checkedAt": "2026-08-31"
+    },
+    "alternateMeasurements": [],
+    "specs": {
+      "stopper": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "機能一覧にキャスターストッパーの記載がありません（非搭載かどうかは公表されていません）"
+      },
+      "expandable": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "機能一覧に拡張機能の記載がありません（非搭載かどうかは公表されていません）"
+      },
+      "openingType": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に開き方（ファスナー／フレーム）の記載を確認できていません"
+      },
+      "wheelCount": {
+        "value": 4,
+        "sourceId": "src-ace-radial-06972",
+        "checkedAt": "2026-08-31"
+      },
+      "tsaLock": {
+        "value": true,
+        "sourceId": "src-ace-radial-06972",
+        "checkedAt": "2026-08-31"
+      },
+      "shellMaterial": {
+        "value": "ABS混合樹脂",
+        "sourceId": "src-ace-radial-06972",
+        "checkedAt": "2026-08-31"
+      },
+      "frontOpenPocket": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様にフロントポケットの記載を確認できていません"
+      }
+    },
+    "caveats": [
+      "外寸はキャスター・ハンドルを含む値、本体サイズはケース本体のみの値です。",
+      "メーカー公表の総外寸（3辺合計）は140cmです。",
+      "機能一覧に機内持ち込み対応の記載はありません。"
+    ],
+    "image": null
+  },
+  {
+    "id": "proteca-solie3-12871-24l-black",
+    "category": "suitcases",
+    "brand": "プロテカ（PROTECA）",
+    "model": "ソリエ3 12871",
+    "variant": "24L / 01 ブラック",
+    "status": "published",
+    "summary": "日本製のソフトキャリー。本体重量2.4kg・容量24L。キャスターストッパーとTSAダイヤルファスナーロックを搭載。",
+    "weightG": {
+      "value": 2400,
+      "sourceId": "src-proteca-solie3-12871",
+      "checkedAt": "2026-08-31"
+    },
+    "outerSizeMm": {
+      "value": [
+        320,
+        490,
+        220
+      ],
+      "sourceId": "src-proteca-solie3-12871",
+      "checkedAt": "2026-08-31"
+    },
+    "sizeBasis": "with-handle-and-wheels",
+    "measurementState": "not-applicable",
+    "bodySizeMm": {
+      "value": [
+        320,
+        400,
+        210
+      ],
+      "sourceId": "src-proteca-solie3-12871",
+      "checkedAt": "2026-08-31"
+    },
+    "capacityL": {
+      "value": 24,
+      "sourceId": "src-proteca-solie3-12871",
+      "checkedAt": "2026-08-31"
+    },
+    "alternateMeasurements": [],
+    "specs": {
+      "stopper": {
+        "value": true,
+        "sourceId": "src-proteca-solie3-12871",
+        "checkedAt": "2026-08-31"
+      },
+      "expandable": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "機能一覧に拡張機能の記載がありません（非搭載かどうかは公表されていません）"
+      },
+      "openingType": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に開き方（ファスナー／フレーム）の記載を確認できていません"
+      },
+      "wheelCount": {
+        "value": 4,
+        "sourceId": "src-proteca-solie3-12871",
+        "checkedAt": "2026-08-31"
+      },
+      "tsaLock": {
+        "value": true,
+        "sourceId": "src-proteca-solie3-12871",
+        "checkedAt": "2026-08-31"
+      },
+      "shellMaterial": {
+        "value": "ポリエステル450dnドビーPE加工／牛革スムース／PVC",
+        "sourceId": "src-proteca-solie3-12871",
+        "checkedAt": "2026-08-31"
+      },
+      "frontOpenPocket": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様にフロントポケットの記載を確認できていません"
+      }
+    },
+    "caveats": [
+      "外寸はキャスター・ハンドルを含む値、本体サイズはケース本体のみの値です。",
+      "メーカー公表の総外寸（3辺合計）は103cmです。",
+      "メーカーの機能一覧では「国内100席以上・国際機内持込み」に対応するとされています。搭乗便の規定は各社でご確認ください。"
+    ],
+    "image": null
+  },
+  {
+    "id": "proteca-360g4-02420-24l-black",
+    "category": "suitcases",
+    "brand": "プロテカ（PROTECA）",
+    "model": "360G4 02420",
+    "variant": "24L / 01 ブラック",
+    "status": "published",
+    "summary": "日本製のハードキャリー。本体重量2.5kg・容量24L。360°オープンシステム、キャスターストッパー、TSダイヤルファスナーロックを搭載。",
+    "weightG": {
+      "value": 2500,
+      "sourceId": "src-proteca-360g4-02420",
+      "checkedAt": "2026-08-31"
+    },
+    "outerSizeMm": {
+      "value": [
+        340,
+        450,
+        200
+      ],
+      "sourceId": "src-proteca-360g4-02420",
+      "checkedAt": "2026-08-31"
+    },
+    "sizeBasis": "with-handle-and-wheels",
+    "measurementState": "not-applicable",
+    "bodySizeMm": {
+      "value": [
+        330,
+        400,
+        200
+      ],
+      "sourceId": "src-proteca-360g4-02420",
+      "checkedAt": "2026-08-31"
+    },
+    "capacityL": {
+      "value": 24,
+      "sourceId": "src-proteca-360g4-02420",
+      "checkedAt": "2026-08-31"
+    },
+    "alternateMeasurements": [],
+    "specs": {
+      "stopper": {
+        "value": true,
+        "sourceId": "src-proteca-360g4-02420",
+        "checkedAt": "2026-08-31"
+      },
+      "expandable": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "機能一覧に拡張機能の記載がありません（非搭載かどうかは公表されていません）"
+      },
+      "openingType": {
+        "value": "360°オープンシステム",
+        "sourceId": "src-proteca-360g4-02420",
+        "checkedAt": "2026-08-31"
+      },
+      "wheelCount": {
+        "value": 4,
+        "sourceId": "src-proteca-360g4-02420",
+        "checkedAt": "2026-08-31"
+      },
+      "tsaLock": {
+        "value": true,
+        "sourceId": "src-proteca-360g4-02420",
+        "checkedAt": "2026-08-31"
+      },
+      "shellMaterial": {
+        "value": "ポリカーボネート・ABS混合樹脂",
+        "sourceId": "src-proteca-360g4-02420",
+        "checkedAt": "2026-08-31"
+      },
+      "frontOpenPocket": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様にフロントポケットの記載を確認できていません"
+      }
+    },
+    "caveats": [
+      "外寸はキャスター・ハンドルを含む値、本体サイズはケース本体のみの値です。",
+      "メーカー公表の総外寸（3辺合計）は99cmです。",
+      "メーカーの機能一覧では「国内100席未満機内持込み」と表記されています。LCCの機内持ち込み基準は航空会社ごとに異なります。",
+      "メーカーは「300円コインロッカーサイズ」と表記していますが、設置場所によりロッカーの寸法・料金は異なります。"
+    ],
+    "image": null
+  },
+  {
+    "id": "worldtraveler-plymouth-06703-46l-gunmetallic",
+    "category": "suitcases",
+    "brand": "ワールドトラベラー（World Traveler）",
+    "model": "プリマス 06703",
+    "variant": "46/56L / 02 ガンメタリック",
+    "status": "published",
+    "summary": "拡張機能とフロントポケットを備えたハードキャリー。本体重量4.3kg・容量46L（拡張時56L）。キャスターストッパーとTSダイヤルファスナーロックを搭載。",
+    "weightG": {
+      "value": 4300,
+      "sourceId": "src-worldtraveler-plymouth-06703",
+      "checkedAt": "2026-08-31"
+    },
+    "outerSizeMm": {
+      "value": [
+        430,
+        610,
+        240
+      ],
+      "sourceId": "src-worldtraveler-plymouth-06703",
+      "checkedAt": "2026-08-31"
+    },
+    "sizeBasis": "with-handle-and-wheels",
+    "measurementState": "normal",
+    "bodySizeMm": {
+      "value": [
+        400,
+        560,
+        240
+      ],
+      "sourceId": "src-worldtraveler-plymouth-06703",
+      "checkedAt": "2026-08-31"
+    },
+    "capacityL": {
+      "value": 46,
+      "sourceId": "src-worldtraveler-plymouth-06703",
+      "checkedAt": "2026-08-31"
+    },
+    "alternateMeasurements": [
+      {
+        "label": "拡張時",
+        "state": "expanded",
+        "sizeMm": {
+          "value": [
+            430,
+            610,
+            300
+          ],
+          "sourceId": "src-worldtraveler-plymouth-06703",
+          "checkedAt": "2026-08-31"
+        },
+        "sizeBasis": "with-handle-and-wheels",
+        "capacityL": {
+          "value": 56,
+          "sourceId": "src-worldtraveler-plymouth-06703",
+          "checkedAt": "2026-08-31"
+        }
+      }
+    ],
+    "specs": {
+      "stopper": {
+        "value": true,
+        "sourceId": "src-worldtraveler-plymouth-06703",
+        "checkedAt": "2026-08-31"
+      },
+      "expandable": {
+        "value": true,
+        "sourceId": "src-worldtraveler-plymouth-06703",
+        "checkedAt": "2026-08-31"
+      },
+      "openingType": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に開き方（ファスナー／フレーム）の記載を確認できていません"
+      },
+      "wheelCount": {
+        "value": 4,
+        "sourceId": "src-worldtraveler-plymouth-06703",
+        "checkedAt": "2026-08-31"
+      },
+      "tsaLock": {
+        "value": true,
+        "sourceId": "src-worldtraveler-plymouth-06703",
+        "checkedAt": "2026-08-31"
+      },
+      "shellMaterial": {
+        "value": "ポリカーボネート",
+        "sourceId": "src-worldtraveler-plymouth-06703",
+        "checkedAt": "2026-08-31"
+      },
+      "frontOpenPocket": {
+        "value": true,
+        "sourceId": "src-worldtraveler-plymouth-06703",
+        "checkedAt": "2026-08-31"
+      }
+    },
+    "caveats": [
+      "外寸はキャスター・ハンドルを含む値、本体サイズはケース本体のみの値です。拡張時は奥行が24cmから30cmに変わります。",
+      "メーカー公表の総外寸（3辺合計）は通常時128cm・拡張時134cmです。",
+      "メーカーは「拡張時に一部航空会社のサイズ規定を超過する場合がある」と注記しています。"
+    ],
+    "image": null
+  },
+  {
+    "id": "worldtraveler-bottombay-06951-34l-turquoise",
+    "category": "suitcases",
+    "brand": "ワールドトラベラー（World Traveler）",
+    "model": "ボトムベイ 06951",
+    "variant": "34L / 12 ターコイズカーボン",
+    "status": "published",
+    "summary": "機内持ち込みサイズのハードキャリー。本体重量3.0kg・容量34L。キャスターストッパーとTSダイヤルファスナーロックを搭載。素材はポリカーボネート。",
+    "weightG": {
+      "value": 3000,
+      "sourceId": "src-worldtraveler-bottombay-06951",
+      "checkedAt": "2026-08-31"
+    },
+    "outerSizeMm": {
+      "value": [
+        370,
+        540,
+        230
+      ],
+      "sourceId": "src-worldtraveler-bottombay-06951",
+      "checkedAt": "2026-08-31"
+    },
+    "sizeBasis": "with-handle-and-wheels",
+    "measurementState": "not-applicable",
+    "bodySizeMm": {
+      "value": [
+        360,
+        480,
+        230
+      ],
+      "sourceId": "src-worldtraveler-bottombay-06951",
+      "checkedAt": "2026-08-31"
+    },
+    "capacityL": {
+      "value": 34,
+      "sourceId": "src-worldtraveler-bottombay-06951",
+      "checkedAt": "2026-08-31"
+    },
+    "alternateMeasurements": [],
+    "specs": {
+      "stopper": {
+        "value": true,
+        "sourceId": "src-worldtraveler-bottombay-06951",
+        "checkedAt": "2026-08-31"
+      },
+      "expandable": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "機能一覧に拡張機能の記載がありません（非搭載かどうかは公表されていません）"
+      },
+      "openingType": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様に開き方（ファスナー／フレーム）の記載を確認できていません"
+      },
+      "wheelCount": {
+        "value": 4,
+        "sourceId": "src-worldtraveler-bottombay-06951",
+        "checkedAt": "2026-08-31"
+      },
+      "tsaLock": {
+        "value": true,
+        "sourceId": "src-worldtraveler-bottombay-06951",
+        "checkedAt": "2026-08-31"
+      },
+      "shellMaterial": {
+        "value": "ポリカーボネート",
+        "sourceId": "src-worldtraveler-bottombay-06951",
+        "checkedAt": "2026-08-31"
+      },
+      "frontOpenPocket": {
+        "value": null,
+        "sourceId": null,
+        "checkedAt": null,
+        "note": "公表仕様にフロントポケットの記載を確認できていません"
+      }
+    },
+    "caveats": [
+      "外寸はキャスター・ハンドルを含む値、本体サイズはケース本体のみの値です。",
+      "メーカー公表の総外寸（3辺合計）は114cmです。",
+      "メーカーの機能一覧では「国際線・国内線100席以上機内持ち込み」に対応するとされています。搭乗便の規定は各社でご確認ください。"
+    ],
+    "image": null
   }
 ]

@@ -15,6 +15,7 @@ import { inspectCatalog } from '../src/lib/catalog/validate';
 import { evaluatePublication } from '../src/lib/content/publication';
 import { siteConfig, missingLaunchSettings, shouldAllowIndexing } from '../src/config/site';
 import { getMerchantConfig } from '../src/config/merchants';
+import { findForbiddenOutput } from '../src/lib/release/forbidden-output';
 
 type Check = { name: string; ok: boolean; detail: string; blocking: boolean };
 
@@ -138,14 +139,7 @@ if (outDir) {
     };
     walk(root);
 
-    // 4-1. 架空データ・サンプルID・テスト値の混入
-    const forbidden: { pattern: RegExp; label: string }[] = [
-      { pattern: /example\.invalid/i, label: 'テスト用ドメイン example.invalid' },
-      { pattern: /デモデータ|デモ用の架空|架空メーカー/, label: 'デモデータの文言' },
-      { pattern: /B0TEST\d{4}/, label: 'テスト用ASIN' },
-      { pattern: /example-22/, label: 'テスト用アソシエイトタグ' },
-      { pattern: /【未記入】|TODO:/, label: '下書きの未記入マーカー' },
-    ];
+    // 4-1. 架空データ・サンプルID・テスト値・旧ドメインの混入
     const hits: string[] = [];
     // 4-2. 秘密情報の流出
     const secretEnvNames = [
@@ -162,9 +156,7 @@ if (outDir) {
     for (const file of files) {
       const content = fs.readFileSync(file, 'utf8');
       const rel = path.relative(root, file);
-      for (const { pattern, label } of forbidden) {
-        if (pattern.test(content)) hits.push(`${rel}: ${label}`);
-      }
+      for (const label of findForbiddenOutput(content)) hits.push(`${rel}: ${label}`);
       for (const secret of secretValues) {
         if (content.includes(secret.value)) secretHits.push(`${rel}: ${secret.name} の値`);
       }

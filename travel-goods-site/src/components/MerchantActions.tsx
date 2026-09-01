@@ -47,6 +47,10 @@ export default function MerchantActions({
       </div>
       <p className="text-[0.7rem] leading-relaxed text-ink-faint">
         広告リンクです。価格・在庫は販売先ページでご確認ください。
+        {/* 掲載しているのは1つの色・サイズだが、販売ページ側が選択式のことがある。
+            読者が対象の仕様を自分で選ぶ必要があることを、遷移前に伝える。 */}
+        <br />
+        色・サイズが選択式の場合は、販売ページで対象の仕様を選択してください。
       </p>
     </div>
   );

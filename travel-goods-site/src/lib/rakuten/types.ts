@@ -27,23 +27,40 @@ export const rakutenItemSchema = z
 
 export type RakutenItem = z.infer<typeof rakutenItemSchema>;
 
-const wrapped = z.object({ Item: rakutenItemSchema });
+/**
+ * formatVersion=1 は要素が入れ子（Item / item）、formatVersion=2 は平ら。
+ * 現行の公式ドキュメントの例は小文字（items[0].item.itemName）。
+ * 互換性のため大文字（Items / Item）も受けます。実APIの応答形式は認証付き通信で未確認です。
+ */
+const wrapped = z.union([
+  z.object({ Item: rakutenItemSchema }),
+  z.object({ item: rakutenItemSchema }),
+]);
+
+const itemsArraySchema = z.array(z.union([wrapped, rakutenItemSchema]));
 
 export const rakutenSearchResponseSchema = z
   .object({
-    Items: z.array(z.union([wrapped, rakutenItemSchema])),
+    Items: itemsArraySchema.optional(),
+    items: itemsArraySchema.optional(),
     count: z.number().optional(),
     page: z.number().optional(),
     pageCount: z.number().optional(),
     hits: z.number().optional(),
   })
-  .passthrough();
+  .passthrough()
+  .refine((value) => value.Items !== undefined || value.items !== undefined, {
+    message: 'Items（または items）がありません',
+  });
 
-/** どちらの形でも同じ配列に均す。 */
+/** どの形でも同じ配列に均す。 */
 export function normalizeItems(response: unknown): RakutenItem[] {
   const parsed = rakutenSearchResponseSchema.safeParse(response);
   if (!parsed.success) return [];
-  return parsed.data.Items.map((entry) =>
-    'Item' in entry && entry.Item ? (entry.Item as RakutenItem) : (entry as RakutenItem),
-  );
+  const entries = parsed.data.Items ?? parsed.data.items ?? [];
+  return entries.map((entry) => {
+    if ('Item' in entry && entry.Item) return entry.Item as RakutenItem;
+    if ('item' in entry && entry.item) return entry.item as RakutenItem;
+    return entry as RakutenItem;
+  });
 }

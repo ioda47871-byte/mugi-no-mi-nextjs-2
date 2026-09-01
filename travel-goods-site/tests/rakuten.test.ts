@@ -1,9 +1,15 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RakutenClient, RakutenApiError, RequestBudgetExceededError } from '@/lib/rakuten/client';
-import { matchProduct, pickBestMatch, normalizeForMatch, searchKeywordsFor } from '@/lib/rakuten/match';
+import {
+  isHumanVerifiedLink,
+  matchProduct,
+  pickBestMatch,
+  normalizeForMatch,
+  searchKeywordsFor,
+} from '@/lib/rakuten/match';
 import { normalizeItems } from '@/lib/rakuten/types';
 import { mergeCandidates, pruneCandidates, type Candidate } from '@/lib/rakuten/candidates';
-import { redactSecrets } from '@/lib/rakuten/config';
+import { readRakutenCredentials, redactSecrets } from '@/lib/rakuten/config';
 import { inspectCatalog } from '@/lib/catalog/validate';
 import { resolveMerchantLinks } from '@/lib/affiliate/resolve';
 import { fact, makeCatalogInput, makeProduct, TEST_TODAY } from './fixtures/catalog';
@@ -12,7 +18,50 @@ import { fact, makeCatalogInput, makeProduct, TEST_TODAY } from './fixtures/cata
  * ここで使う応答・URL・IDはすべてテスト専用の架空値。実在しません。
  */
 
-const CREDS = { applicationId: 'test-app-id-000', affiliateId: 'test-affiliate-id-000' };
+const CREDS = { applicationId: 'test-app-id-000', affiliateId: 'test-affiliate-id-000', accessKey: 'test-access-key-000' };
+afterEach(() => vi.unstubAllEnvs());
+
+describe('送信元(Referer)の扱い', () => {
+  it('設定された文字列をそのまま送る（末尾スラッシュを補わない）', async () => {
+    const { readApiReferer } = await import('@/lib/rakuten/config');
+    vi.stubEnv('RAKUTEN_API_REFERER', 'https://example.com');
+    expect(readApiReferer()).toBe('https://example.com');
+    vi.stubEnv('RAKUTEN_API_REFERER', 'https://example.com/');
+    expect(readApiReferer()).toBe('https://example.com/');
+  });
+
+  it('Origin はパスや末尾スラッシュを含まない形にする', async () => {
+    const { readApiOrigin } = await import('@/lib/rakuten/config');
+    vi.stubEnv('RAKUTEN_API_REFERER', 'https://example.com/');
+    expect(readApiOrigin()).toBe('https://example.com');
+    vi.stubEnv('RAKUTEN_API_REFERER', 'https://example.com/path/');
+    expect(readApiOrigin()).toBe('https://example.com');
+  });
+
+  it('URLとして不正なら送らない', async () => {
+    const { readApiReferer } = await import('@/lib/rakuten/config');
+    vi.stubEnv('RAKUTEN_API_REFERER', 'example.com');
+    expect(readApiReferer()).toBeNull();
+    vi.stubEnv('RAKUTEN_API_REFERER', 'javascript:alert(1)');
+    expect(readApiReferer()).toBeNull();
+  });
+});
+
+describe('楽天APIの認証設定', () => {
+  it('アプリIDと紹介IDだけでは実行できず、空白のアクセスキーも未設定とする', () => {
+    vi.stubEnv('RAKUTEN_APPLICATION_ID', CREDS.applicationId);
+    vi.stubEnv('RAKUTEN_AFFILIATE_ID', CREDS.affiliateId);
+    vi.stubEnv('RAKUTEN_ACCESS_KEY', '   ');
+    expect(readRakutenCredentials()).toEqual({ ok: false, missing: ['RAKUTEN_ACCESS_KEY'] });
+  });
+
+  it('3つの資格情報を前後の空白を除いて取得する', () => {
+    vi.stubEnv('RAKUTEN_APPLICATION_ID', ` ${CREDS.applicationId} `);
+    vi.stubEnv('RAKUTEN_AFFILIATE_ID', ` ${CREDS.affiliateId} `);
+    vi.stubEnv('RAKUTEN_ACCESS_KEY', ` ${CREDS.accessKey} `);
+    expect(readRakutenCredentials()).toEqual({ ok: true, credentials: CREDS });
+  });
+});
 const AFFILIATE_URL = 'https://hb.afl.rakuten.co.jp/hgc/test-item-0001/';
 
 function item(overrides: Record<string, unknown> = {}) {
@@ -53,6 +102,14 @@ describe('レスポンスの正規化', () => {
 
   it('Items:[{…}] 形式も読める', () => {
     expect(normalizeItems({ Items: [item()] })).toHaveLength(1);
+  });
+
+  it('小文字の items:[{item:{…}}] 形式も読める（公式ドキュメントの表記）', () => {
+    expect(normalizeItems({ items: [{ item: item() }] })).toHaveLength(1);
+  });
+
+  it('小文字の items:[{…}] 形式も読める', () => {
+    expect(normalizeItems({ items: [item()] })).toHaveLength(1);
   });
 
   it('想定外の形なら空配列を返す（例外で止めない）', () => {
@@ -155,23 +212,78 @@ describe('照合: 誤った商品にリンクを付けない', () => {
 });
 
 describe('APIクライアント', () => {
-  it('資格情報をURLに載せ、ログ用の表現には出さない', async () => {
+  it('現行APIへIDとアクセスキーヘッダーを送り、キーをURLやログに載せない', async () => {
+    vi.stubEnv('RAKUTEN_API_REFERER', 'https://example.com/');
     let requested: URL | null = null;
-    const fetchImpl = vi.fn(async (input: unknown) => {
+    let options: RequestInit | undefined;
+    const fetchImpl = vi.fn(async (input: unknown, init: RequestInit) => {
       requested = input as URL;
-      return jsonResponse({ Items: [{ Item: item() }] });
+      options = init;
+      return jsonResponse({ items: [{ item: item() }] });
     }) as unknown as typeof fetch;
 
     const client = new RakutenClient(CREDS, { fetchImpl, minIntervalMs: 0 });
-    await client.search({ keyword: '4549550317535' });
+    const result = await client.search({ keyword: '4549550317535' });
 
-    expect(requested!.hostname).toBe('app.rakuten.co.jp');
+    expect(result[0]?.itemCode).toBe('testshop:item-0001');
+    expect(requested!.origin + requested!.pathname).toBe('https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260701');
     expect(requested!.searchParams.get('applicationId')).toBe(CREDS.applicationId);
     expect(requested!.searchParams.get('affiliateId')).toBe(CREDS.affiliateId);
+    expect(new Headers(options?.headers).get('accessKey')).toBe(CREDS.accessKey);
+    // 現行APIは Origin で送信元を判定する（Referer だけでは 403）
+    expect(new Headers(options?.headers).get('origin')).toBe('https://example.com');
+    expect(new Headers(options?.headers).get('referer')).toBe('https://example.com/');
+    expect(requested!.searchParams.has('accessKey')).toBe(false);
+    expect(options?.redirect).toBe('error');
 
     const described = RakutenClient.describeQuery({ keyword: '4549550317535' });
     expect(described).not.toContain(CREDS.applicationId);
     expect(described).not.toContain(CREDS.affiliateId);
+    expect(described).not.toContain(CREDS.accessKey);
+  });
+
+  it('403 の原因を切り分けるため、楽天が返した説明だけを例外に載せる', async () => {
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse({ errors: { errorCode: 403, errorMessage: 'Invalid Access Key' } }, 403),
+    ) as unknown as typeof fetch;
+    const client = new RakutenClient(CREDS, { fetchImpl, minIntervalMs: 0 });
+    const error = await client.search({ keyword: 'pouch' }).catch((error: Error) => error);
+    expect((error as Error).message).toContain('Invalid Access Key');
+    expect((error as Error).message).not.toContain(CREDS.accessKey);
+  });
+
+  it('説明が無い応答でも例外を投げられる', async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse('not json object', 403)) as unknown as typeof fetch;
+    const client = new RakutenClient(CREDS, { fetchImpl, minIntervalMs: 0 });
+    await expect(client.search({ keyword: 'pouch' })).rejects.toThrow('HTTP 403');
+  });
+
+  it.each([401, 403])('認証・アクセス拒否 HTTP %i は再試行しない', async (status) => {
+    const fetchImpl = vi.fn(async () => jsonResponse({}, status)) as unknown as typeof fetch;
+    const client = new RakutenClient(CREDS, { fetchImpl, minIntervalMs: 0 });
+    await expect(client.search({ keyword: 'pouch' })).rejects.toThrow(`HTTP ${status}`);
+    expect(client.requestsUsed).toBe(1);
+  });
+
+  it('通信エラーの本文にキーが含まれても例外に出さない', async () => {
+    const client = new RakutenClient(CREDS, {
+      fetchImpl: (async () => { throw new Error(`failed ${CREDS.accessKey}`); }) as typeof fetch,
+      maxRetries: 0,
+    });
+    const error = await client.search({ keyword: 'pouch' }).catch((error: Error) => error);
+    expect(error).toBeInstanceOf(RakutenApiError);
+    expect((error as Error).message).not.toContain(CREDS.accessKey);
+  });
+
+  it('JSON解析エラーの本文にキーが含まれても例外に出さない', async () => {
+    const client = new RakutenClient(CREDS, {
+      fetchImpl: (async () => ({ ok: true, status: 200, json: async () => {
+        throw new Error(`invalid JSON ${CREDS.accessKey}`);
+      } })) as unknown as typeof fetch,
+    });
+    const error = await client.search({ keyword: 'pouch' }).catch((error: Error) => error);
+    expect(error).toBeInstanceOf(RakutenApiError);
+    expect((error as Error).message).not.toContain(CREDS.accessKey);
   });
 
   it('リクエスト間隔を空ける', async () => {
@@ -418,5 +530,34 @@ describe('送信元サイトの申告（Referer）', () => {
     } finally {
       delete process.env.RAKUTEN_API_REFERER;
     }
+  });
+});
+
+describe('目視確認済みリンクの保護', () => {
+  const base = {
+    productId: 'p-1',
+    merchant: 'rakuten' as const,
+    externalProductId: 'shop:item-1',
+    affiliateUrl: AFFILIATE_URL,
+    matchedVariant: 'Mサイズ / ブラック',
+    verifiedAt: '2026-08-31',
+  };
+
+  it('verified かつ visual なら自動取得の対象外にする', () => {
+    expect(
+      isHumanVerifiedLink({ ...base, status: 'verified', verificationMethod: 'visual' }),
+    ).toBe(true);
+  });
+
+  it('型番一致だけで verified になったリンクは上書きしてよい', () => {
+    expect(
+      isHumanVerifiedLink({ ...base, status: 'verified', verificationMethod: 'identifier-match' }),
+    ).toBe(false);
+  });
+
+  it('unverified や未登録は対象外にしない', () => {
+    expect(isHumanVerifiedLink({ ...base, status: 'unverified', verificationMethod: null })).toBe(false);
+    expect(isHumanVerifiedLink(undefined)).toBe(false);
+    expect(isHumanVerifiedLink(null)).toBe(false);
   });
 });

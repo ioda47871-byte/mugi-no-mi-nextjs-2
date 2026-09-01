@@ -9,9 +9,9 @@
 
 | 項目 | 現状 | 決めること |
 |---|---|---|
-| 正式名称 | 仮称「旅じたくガイド」 | 名称。商標・既存サイトとの重複を確認 |
-| ドメイン | 未取得 | ドメイン名と取得先。年額費用が発生します |
-| ホスティング | 未決定 | 下記「ホスティング」を参照 |
+| 正式名称 | 旅モノ比較 | 正式名称として使用する |
+| ドメイン | `tabimono-hikaku.com` | 2026-09-01取得済み（自動更新有効、有効期限 2027-09-02）。年額の更新費用が発生します |
+| ホスティング | Cloudflare Pages Free | `docs/cloudflare-pages-setup.md` に従いGitHub連携を設定する |
 | 公開用の運営者名 | 未提供 | 画面に出す名義（個人名／屋号など） |
 | 公開用の連絡先 | 未提供 | 公開して差し支えないメールアドレス |
 
@@ -30,8 +30,7 @@
 |---|---|---|
 | `SITE_MODE` | `production` | `preview` のあいだは全ページ noindex |
 | `CATALOG_DATASET` | `production` | `demo` は本番モードで読み込めません |
-| `SITE_NAME` | 正式名称 | 未設定なら仮称が表示されます |
-| `SITE_URL` | `https://example.com` | canonical・サイトマップの基準。末尾スラッシュなし |
+| `SITE_URL` | `https://tabimono-hikaku.com` | canonical・サイトマップの基準。末尾スラッシュなし |
 | `PUBLIC_OPERATOR_NAME` | 運営者名 | 運営者情報ページに表示 |
 | `PUBLIC_CONTACT_EMAIL` | 連絡先 | お問い合わせページに表示 |
 
@@ -50,6 +49,11 @@
 
 `RAKUTEN_*` と `ANTHROPIC_API_KEY` は Phase 2 用です。Phase 1 では空のままで動きます。
 **API認証キーに `NEXT_PUBLIC_` を付けないでください。** ビルド成果物に埋め込まれます。
+
+楽天APIを使う更新ジョブでは、`RAKUTEN_APPLICATION_ID`、`RAKUTEN_ACCESS_KEY`、
+`RAKUTEN_AFFILIATE_ID` は **GitHub Actions Repository Secrets のみに**設定する。
+`RAKUTEN_API_REFERER` は **GitHub Actions Variables のみに**設定する。これら4つは
+Cloudflare Pages のProduction・Previewいずれの環境変数にも設定しない。
 
 ---
 
@@ -74,7 +78,8 @@
 
 - [ ] 紹介IDが未設定の店舗のボタンが**表示されていない**こと。
 - [ ] 型番・容量・バリエーションが一致しない販売先が掲載されていないこと。
-- [ ] 広告リンクに `rel="sponsored noopener noreferrer"` が付いていること。
+- [ ] 広告リンクの `rel` が正確に `nofollow sponsored noopener` であり、`noreferrer` が付いていないこと。
+      リファラを落とすと楽天の成果判定に影響する可能性があるため。
 - [ ] 少数のリンクを実際に押し、正しい商品ページへ遷移することを目視で確認する（自動購入や大量クリックはしない）。
 
 ---
@@ -104,20 +109,19 @@
 
 ## 5. ホスティング
 
-- [ ] 商用利用が認められるプランを選ぶ。
-      **Vercel Hobby は個人・非商用向けと案内されているため、アフィリエイトサイトの本番運用の前提にしないでください。**
-      有料プランに入る必要がある場合は、金額を確認してから加入してください（未承認の課金は行いません）。
-- [ ] 静的ファイル（`out/`）を配信できること。特定サービス固有の機能に依存していないため、
-      Cloudflare Pages、Netlify、GitHub Pages、レンタルサーバー等へも移せます。
+- [ ] Cloudflare Pages Free をGitHub連携で設定し、`main` をProduction branch、
+      `travel-goods-site` をRoot directory、`out` をBuild output directoryにする。
+- [ ] `docs/cloudflare-pages-setup.md` の初回Preview、独自ドメイン、本番切替、ロールバックの手順を完了する。
 - [ ] HTTPS が有効であること。
-- [ ] 独自ドメインを設定した場合、`SITE_URL` と一致していること。
+- [ ] 独自ドメイン `tabimono-hikaku.com` が `SITE_URL` と一致していること。
+- [ ] レジストラ（XServer）のネームサーバーをCloudflare指定値へ変更していること（2026-09-01時点では未変更）。
 
 ### 費用の目安（いずれも未承認・未契約）
 
 | 項目 | 目安 |
 |---|---|
-| ドメイン | 年 1,000〜3,000円程度（`.com` などの一般的なもの） |
-| 静的ホスティング | 無料枠で始められる選択肢はありますが、商用利用の可否と上限を必ず確認してください |
+| ドメイン | `tabimono-hikaku.com` の更新費用（取得済み・自動更新有効） |
+| 静的ホスティング | Cloudflare Pages Free（公開時点の利用条件と上限を確認） |
 | LLM/API | Phase 1 は **0円**（実行時にAPIを呼びません） |
 
 無料枠が恒久的に十分であることは保証できません。
@@ -128,10 +132,18 @@
 
 ```bash
 npm run verify                      # 型・lint・テスト・データ検証・ビルド
-npm run test:e2e                    # E2E
+npm run test:e2e                    # E2E（default/demo + CTA）
+npm run test:e2e:production         # E2E（production + CTA）
+npm run test:e2e:linkcheck          # E2E（購入導線の通し確認）
 npm run check:release -- --out out  # 公開前チェック（未達があれば非ゼロ終了）
 ```
 
+- [ ] リリースブランチを `main` へマージする**前に**、上記3系統のE2Eがすべて終了コード0である。
+      実行環境は Node.js 22 と Chromium が利用可能であること。Chromium の配置が既定と異なる場合は
+      `PW_CHROMIUM_PATH` に実行可能ファイルのパスを指定する。
+- [ ] この sandbox では3系統を実行していない。Cloudflare Pages のビルドが自動でE2Eを実行する
+      わけではないため、Cloudflare Preview確認用CIまたは別の browser-enabled 環境で再実行し、
+      成功を記録する。マージ前にできない場合も、本番公開は3系統が成功するまでブロックする。
 - [ ] `check:release` がすべて OK になっている。
 - [ ] 下書きが一覧・サイトマップ・直接URLのいずれからも公開されていない。
 - [ ] 配信ファイルに架空の商品、サンプルID、仮の連絡先、秘密情報が含まれていない

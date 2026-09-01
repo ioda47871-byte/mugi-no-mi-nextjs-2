@@ -9,17 +9,17 @@ import { expect, test } from '@playwright/test';
 
 test('取り込んだ実商品が正しい件数だけ公開されている', async ({ page }) => {
   await page.goto('/categories/suitcases/');
-  await expect(page.getByTestId('result-count')).toContainText('全 1 件');
+  await expect(page.getByTestId('result-count')).toContainText('全 9 件');
 
   await page.goto('/categories/backpacks/');
-  await expect(page.getByTestId('result-count')).toContainText('全 1 件');
+  await expect(page.getByTestId('result-count')).toContainText('全 5 件');
 
   await page.goto('/categories/pouches/');
-  await expect(page.getByTestId('result-count')).toContainText('全 1 件');
+  await expect(page.getByTestId('result-count')).toContainText('全 4 件');
 
-  // モバイルバッテリーは安全確認が未完了のため review 状態＝非公開
+  // モバイルバッテリーは公開4件。安全確認が未完了の1件は review 状態＝非公開のまま
   await page.goto('/categories/power-banks/');
-  await expect(page.getByTestId('empty-state')).toBeVisible();
+  await expect(page.getByTestId('result-count')).toContainText('全 4 件');
   await expect(page.locator('article[data-product-id="elecom-de-c63-10000bk"]')).toHaveCount(0);
 });
 
@@ -94,6 +94,14 @@ test('実データのプレビューでは「架空」ではなく「未公開�
   expect(await page.locator('body').innerText()).not.toContain('架空');
 });
 
+test('正式名称を表示し、旧仮称を配信しない', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('banner')).toContainText('旅モノ比較');
+  await expect(page.locator('footer')).toContainText('旅モノ比較');
+  await expect(page).toHaveTitle(/旅モノ比較/);
+  expect(await page.locator('body').innerText()).not.toContain('旅じたくガイド');
+});
+
 test('実データの記事が公開され、出典が実在のメーカーを指す', async ({ page }) => {
   await page.goto('/articles/');
   await expect(page.getByRole('link', { name: /旅行ポーチを選ぶときに見る/ })).toBeVisible();
@@ -151,14 +159,32 @@ test('販売先の価格・在庫・画像を取り込まない', async ({ page 
   }
 });
 
-test('リンク未発行の商品にはCTAもダミーリンクも出さない', async ({ page }) => {
+test('リンク未発行・未照合の商品にはCTAもダミーリンクも出さない', async ({ page }) => {
   for (const [path, productId] of [
-    ['/categories/suitcases/', 'ace-cresta2-06936-35l-black-hairline'],
+    // 紹介URLが登録されていない商品
     ['/categories/backpacks/', 'elecom-bm-bptrcsepbk-30l-black'],
+    ['/categories/suitcases/', 'proteca-360g4-02420-24l-black'],
+    // 紹介URLは登録済みだが unverified の商品。登録があっても出してはいけない。
+    ['/categories/suitcases/', 'ace-crestas-09162-60l-gunmetallic'],
   ] as const) {
     await page.goto(path);
     const card = page.locator(`article[data-product-id="${productId}"]`);
+    await expect(card).toHaveCount(1);
     await expect(card.locator('a[rel*="sponsored"]')).toHaveCount(0);
     await expect(page.locator('a[href="#"]')).toHaveCount(0);
   }
+});
+
+test('未照合の商品の紹介URLは配信物に現れない', async ({ page }) => {
+  // クレスタS 09162 は登録済み・unverified。遷移先の商品ページURLごと出力に無いこと。
+  await page.goto('/categories/suitcases/');
+  const html = await page.content();
+  expect(html).not.toContain('galleria-annex/ace00093');
+});
+
+test('選択式の販売ページに備えた案内を購入導線に出す', async ({ page }) => {
+  await page.goto('/categories/backpacks/');
+  await expect(page.getByTestId('merchant-actions').first()).toContainText(
+    '色・サイズが選択式の場合は、販売ページで対象の仕様を選択してください。',
+  );
 });

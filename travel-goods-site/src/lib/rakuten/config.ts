@@ -10,6 +10,8 @@
 export type RakutenCredentials = {
   /** 楽天ウェブサービスのアプリID。 */
   applicationId: string;
+  /** アプリIDと共に必要。URLではなく accessKey ヘッダーで送信する。 */
+  accessKey: string;
   /** アフィリエイトID。これが無いと affiliateUrl は返らない。 */
   affiliateId: string;
 };
@@ -27,16 +29,18 @@ function read(name: string): string | null {
 
 export function readRakutenCredentials(): CredentialStatus {
   const applicationId = read('RAKUTEN_APPLICATION_ID');
+  const accessKey = read('RAKUTEN_ACCESS_KEY');
   const affiliateId = read('RAKUTEN_AFFILIATE_ID');
 
   const missing: string[] = [];
   if (!applicationId) missing.push('RAKUTEN_APPLICATION_ID');
+  if (!accessKey) missing.push('RAKUTEN_ACCESS_KEY');
   if (!affiliateId) missing.push('RAKUTEN_AFFILIATE_ID');
   if (missing.length > 0) return { ok: false, missing };
 
   return {
     ok: true,
-    credentials: { applicationId: applicationId as string, affiliateId: affiliateId as string },
+    credentials: { applicationId: applicationId as string, accessKey: accessKey as string, affiliateId: affiliateId as string },
   };
 }
 
@@ -57,7 +61,30 @@ export function readApiReferer(): string | null {
   try {
     const url = new URL(raw);
     if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
-    return url.toString();
+  } catch {
+    return null;
+  }
+  // URL として妥当かだけを見て、**設定された文字列をそのまま送る**。
+  // new URL().toString() は末尾スラッシュを補ってしまい、登録したURLと
+  // 1文字違いになる。楽天側が完全一致で照合している場合に効く。
+  return raw;
+}
+
+/**
+ * 送信元のオリジン（scheme://host[:port]）。
+ *
+ * 現行の楽天APIは、サーバーからの呼び出しに対して **Origin ヘッダー** で
+ * 送信元を判定する。Referer だけでは
+ * `REQUEST_CONTEXT_BODY_HTTP_REFERRER_MISSING` で拒否される。
+ * Origin は仕様上パス・末尾スラッシュを含まないため、設定値から組み立てる。
+ */
+export function readApiOrigin(): string | null {
+  const raw = read('RAKUTEN_API_REFERER');
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
+    return url.origin;
   } catch {
     return null;
   }

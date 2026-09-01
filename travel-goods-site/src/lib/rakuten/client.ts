@@ -1,4 +1,4 @@
-import { readApiReferer, redactSecrets, type RakutenCredentials } from './config';
+import { readApiOrigin, readApiReferer, redactSecrets, type RakutenCredentials } from './config';
 import { normalizeItems, type RakutenItem } from './types';
 
 /**
@@ -12,9 +12,9 @@ import { normalizeItems, type RakutenItem } from './types';
  * - 資格情報をログ・例外メッセージに出さない。
  */
 
-export const RAKUTEN_API_HOST = 'app.rakuten.co.jp';
+export const RAKUTEN_API_HOST = 'openapi.rakuten.co.jp';
 export const RAKUTEN_SEARCH_ENDPOINT =
-  'https://app.rakuten.co.jp/services/api/IchibaItem/Search/20220601';
+  'https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260701';
 
 export type SearchParams = {
   /** 検索語。JAN・型番・キーワードなど。 */
@@ -60,6 +60,28 @@ export class RequestBudgetExceededError extends Error {
 
 const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
+/**
+ * エラー応答から楽天が返した errorMessage だけを取り出す。
+ *
+ * 403 が「キーが違う」のか「登録したアクセス条件で拒否された」のかは、
+ * ステータスだけでは切り分けられない。原因を指す1行だけを拾う。
+ * 本文全体は出さず、長さを切り、資格情報が混じっていれば伏せる。
+ */
+export async function readApiErrorMessage(response: {
+  json: () => Promise<unknown>;
+}): Promise<string | null> {
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    return null;
+  }
+  const errors = (body as { errors?: unknown } | null)?.errors;
+  const message = (errors as { errorMessage?: unknown } | null)?.errorMessage;
+  if (typeof message !== 'string' || message.trim().length === 0) return null;
+  return redactSecrets(message.trim().slice(0, 200));
+}
+
 export class RakutenClient {
   private readonly credentials: RakutenCredentials;
   private readonly minIntervalMs: number;
@@ -97,7 +119,7 @@ export class RakutenClient {
   /**
    * 取得先を決める。
    *
-   * 本番は app.rakuten.co.jp のみ。
+   * 本番は openapi.rakuten.co.jp のみ。
    * 例外として RAKUTEN_API_ENDPOINT_OVERRIDE を認めるが、
    * **ループバック（127.0.0.1 / localhost）に限る**。
    * 資格情報なしでジョブの動作を確認するための口で、
@@ -165,19 +187,26 @@ export class RakutenClient {
       let response: Response;
       try {
         const referer = readApiReferer();
+        const origin = readApiOrigin();
         response = await this.fetchImpl(url, {
           signal: AbortSignal.timeout(this.timeoutMs),
+          // 別ホストへのリダイレクトに資格情報を引き継がない。
+          redirect: 'error',
           headers: {
             accept: 'application/json',
+            accessKey: this.credentials.accessKey,
             // 楽天のアプリ登録「許可されたWebサイト」に合わせて送信元を名乗る。
             // 自分が登録・所有しているドメインだけを設定すること。
+            // 現行APIは Origin で判定する。Referer だけでは拒否される。
+            ...(origin ? { origin } : {}),
             ...(referer ? { referer } : {}),
           },
         });
-      } catch (error) {
+      } catch {
         // ネットワーク障害・タイムアウト
         if (attempt >= this.maxRetries) {
-          throw new RakutenApiError(`取得に失敗しました: ${(error as Error).message}`, null);
+          // 外部例外にはURL・ヘッダーが含まれる可能性があるため原文を出さない。
+          throw new RakutenApiError('取得に失敗しました。通信・タイムアウト・リダイレクト拒否を確認してください。', null);
         }
         attempt += 1;
         await this.sleepImpl(this.backoffMs(attempt));
@@ -185,20 +214,29 @@ export class RakutenClient {
       }
 
       if (response.ok) {
-        const body: unknown = await response.json();
+        let body: unknown;
+        try {
+          body = await response.json();
+        } catch {
+          throw new RakutenApiError('楽天APIの応答をJSONとして解析できませんでした。', response.status);
+        }
         return normalizeItems(body);
       }
 
       // 429（レート超過）と 5xx のみ再試行する。400番台の他は設定ミスなので即失敗。
       const retryable = response.status === 429 || response.status >= 500;
       if (!retryable || attempt >= this.maxRetries) {
+        const apiMessage = await readApiErrorMessage(response);
         throw new RakutenApiError(
           `楽天APIがエラーを返しました (HTTP ${response.status})。` +
+            (apiMessage ? ` 楽天からの説明: ${apiMessage}` : '') +
             (response.status === 400
-              ? ' パラメータかアプリIDを確認してください。'
-              : response.status === 429
-                ? ' レート制限に達しました。時間をおいて再実行してください。'
-                : ''),
+              ? ' パラメータ・アプリID・アクセスキーを確認してください。'
+              : response.status === 401 || response.status === 403
+                ? ' アプリID・アクセスキー・登録したアクセス条件を確認してください。'
+                : response.status === 429
+                  ? ' レート制限に達しました。時間をおいて再実行してください。'
+                  : ''),
           response.status,
         );
       }

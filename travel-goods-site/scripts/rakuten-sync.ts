@@ -2,6 +2,8 @@
  * 楽天からの自動取得ジョブ（Phase 2-1）。
  *
  *   --mode links     登録済み商品のJAN・型番で検索し、紹介URLを取得して登録する
+ *   --exclude a,b    指定した商品IDを対象から外す（links）。確認が済んでいない候補を
+ *                    差分に入れないための口。値は商品ID（カンマ区切り）
  *   --mode discover  キーワードで検索し、新しい商品候補を「未確認」で保存する
  *   --mode audit     表示中のリンクがまだ生きているかを確認する（販売終了の検出）
  *
@@ -20,9 +22,19 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { readDatasetInput, resolveDatasetDir, resolveDatasetKind } from '../src/lib/catalog/load';
 import { inspectCatalog } from '../src/lib/catalog/validate';
-import { isAutomationEnabled, readRakutenCredentials, redactSecrets } from '../src/lib/rakuten/config';
+import {
+  isAutomationEnabled,
+  readApiReferer,
+  readRakutenCredentials,
+  redactSecrets,
+} from '../src/lib/rakuten/config';
 import { RakutenClient } from '../src/lib/rakuten/client';
-import { matchProduct, pickBestMatch, searchKeywordsFor } from '../src/lib/rakuten/match';
+import {
+  isHumanVerifiedLink,
+  matchProduct,
+  pickBestMatch,
+  searchKeywordsFor,
+} from '../src/lib/rakuten/match';
 import {
   mergeCandidates,
   pruneCandidates,
@@ -30,6 +42,7 @@ import {
   writeCandidates,
   type Candidate,
 } from '../src/lib/rakuten/candidates';
+import { itemPageUrlFromAffiliateUrl } from '../src/lib/affiliate/rakuten';
 import type { MerchantLink, Product } from '../src/lib/catalog/types';
 
 const argv = process.argv.slice(2);
@@ -52,6 +65,12 @@ const autoVerify = has('auto-verify');
 const keyword = flag('keyword');
 const category = flag('category');
 const maxRequests = Number(flag('max-requests') ?? 30);
+const excluded = new Set(
+  (flag('exclude') ?? '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0),
+);
 const today = new Date().toISOString().slice(0, 10);
 
 if (mode !== 'links' && mode !== 'discover' && mode !== 'audit') {
@@ -105,6 +124,9 @@ async function main(): Promise<void> {
   console.log(`データセット : ${datasetKind}`);
   console.log(`書き込み     : ${apply ? 'あり' : 'なし（dry-run）'}`);
   console.log(`自動 verified: ${autoVerify ? 'あり（strong一致のみ）' : 'なし'}`);
+  // 楽天の「許可されたWebサイト」の判定に使われる。送ったかどうかが分からないと
+  // 403 の原因を切り分けられないため、値（秘密ではない）をそのまま出す。
+  console.log(`送信元(Referer): ${readApiReferer() ?? '送らない（RAKUTEN_API_REFERER 未設定または不正なURL）'}`);
   console.log('');
 
   if (mode === 'links') {
@@ -125,13 +147,40 @@ async function syncLinks(
   client: RakutenClient,
 ): Promise<void> {
   // 対象は「公開または確認中」で、JANか十分な長さの型番を持つ商品。
-  const targets = products.filter(
+  const existingByProduct = new Map(
+    existingLinks.filter((link) => link.merchant === 'rakuten').map((link) => [link.productId, link]),
+  );
+  // 除外指定のIDが実在するかを先に確かめる。打ち間違いを黙って通すと、
+  // 外したつもりの商品が差分に入る。
+  const known = new Set(products.map((product) => product.id));
+  const unknown = [...excluded].filter((id) => !known.has(id));
+  if (unknown.length > 0) {
+    fail(`--exclude に存在しない商品IDが含まれています: ${unknown.join(', ')}`);
+  }
+
+  const candidates = products.filter(
     (product) =>
       (product.status === 'published' || product.status === 'review') &&
-      searchKeywordsFor(product).length > 0,
+      searchKeywordsFor(product).length > 0 &&
+      !excluded.has(product.id),
   );
+  // 目視確認済みのリンクは自動取得で置き換えない（根拠の強い方を残す）。
+  const protectedProducts = candidates.filter((product) =>
+    isHumanVerifiedLink(existingByProduct.get(product.id)),
+  );
+  const targets = candidates.filter((product) => !isHumanVerifiedLink(existingByProduct.get(product.id)));
 
   console.log(`対象商品: ${targets.length} 件`);
+  if (excluded.size > 0) {
+    console.log(`指定により除外: ${excluded.size} 件`);
+    for (const id of excluded) console.log(`  ${id}: --exclude で対象外`);
+  }
+  if (protectedProducts.length > 0) {
+    console.log(`目視確認済みのため対象外: ${protectedProducts.length} 件`);
+    for (const product of protectedProducts) {
+      console.log(`  ${product.id}: 既存リンクが verified / visual のため触りません`);
+    }
+  }
   const updates: MerchantLink[] = [];
   const skipped: string[] = [];
 
@@ -170,9 +219,12 @@ async function syncLinks(
     updates.push(link);
 
     console.log(
-      `  ${product.id}\n` +
+      `  ${product.id}（${product.brand} ${product.model} / ${product.variant}）\n` +
         `    一致度   : ${best.match.confidence}\n` +
-        `    販売ページ: ${best.item.itemName.slice(0, 60)}\n` +
+        `    店舗     : ${best.item.shopName ?? '(店舗名なし)'} / ${best.item.itemCode}\n` +
+        // 商品コードの数字からURLを組み立てない。紹介URLの pc から取り出す。
+        `    確認用URL: ${itemPageUrlFromAffiliateUrl(best.item.affiliateUrl) ?? '取り出せませんでした'}\n` +
+        `    販売ページ: ${best.item.itemName.slice(0, 110)}\n` +
         `    状態     : ${link.status}${shouldVerify ? '（自動で表示対象）' : '（未表示）'}`,
     );
     if (best.match.blockers.length > 0) {
@@ -342,6 +394,34 @@ async function discover(products: Product[], client: RakutenClient): Promise<voi
       status: 'new',
     };
   });
+
+  // 紹介URLが返っているか（affiliateId の設定確認）とホスト名。
+  // **URL 自体は出さない。** 紹介URLにはアフィリエイトIDが含まれる。
+  const withAffiliate = incoming.filter((entry) => entry.affiliateUrl !== null);
+  const hosts = [
+    ...new Set(
+      withAffiliate.map((entry) => {
+        try {
+          return new URL(entry.affiliateUrl as string).hostname;
+        } catch {
+          return '(URLとして不正)';
+        }
+      }),
+    ),
+  ];
+  console.log(
+    `  紹介URL(affiliateUrl)あり: ${withAffiliate.length} / ${incoming.length} 件` +
+      (hosts.length > 0 ? `（ホスト: ${hosts.join(', ')}）` : ''),
+  );
+
+  const matched = incoming.filter((entry) => entry.matchedProductId !== null);
+  if (matched.length > 0) {
+    console.log(`  既存商品と結び付いた: ${matched.length} 件`);
+    for (const entry of matched.slice(0, 10)) {
+      console.log(`    - ${entry.matchedProductId}（一致度 ${entry.matchConfidence}）`);
+      for (const reason of entry.matchReasons.slice(0, 3)) console.log(`      ${reason}`);
+    }
+  }
 
   const newOnes = incoming.filter((entry) => entry.matchedProductId === null);
   console.log(`  うち既存商品と結び付かない候補: ${newOnes.length} 件`);

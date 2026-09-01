@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildAmazonUrl } from '@/lib/affiliate/amazon';
-import { isRakutenAffiliateUrl } from '@/lib/affiliate/rakuten';
+import { isRakutenAffiliateUrl, itemPageUrlFromAffiliateUrl } from '@/lib/affiliate/rakuten';
 import { resolveMerchantLinks } from '@/lib/affiliate/resolve';
 import type { MerchantConfig } from '@/config/merchants';
 import { makeMerchantLink, makeProduct } from './fixtures/catalog';
@@ -138,5 +138,58 @@ describe('resolveMerchantLinks: 表示してよいリンクだけ返す', () => 
     const result = resolveMerchantLinks(product, [], bothEnabled);
     expect(result.links).toHaveLength(0);
     expect(result.suppressed.map((s) => s.merchant).sort()).toEqual(['amazon', 'rakuten']);
+  });
+});
+
+describe('確認用URLの取り出し: 商品コードとURLスラッグを混同しない', () => {
+  // 実際にあった間違い: externalProductId 「ils-web:10001396」の数字を
+  // URLに入れて https://item.rakuten.co.jp/ils-web/10001396/ を案内したが、
+  // それは商品ページではなかった。正しいURLは紹介URLの pc に入っている。
+  const itemUrl = 'https://item.rakuten.co.jp/ils-web/lac0017901-0010/';
+  const affiliate =
+    'https://hb.afl.rakuten.co.jp/ichiba/00000000.00000000.00000001.00000002/' +
+    `?pc=${encodeURIComponent(itemUrl)}&link_type=picttext`;
+
+  it('紹介URLの pc から商品ページURLを取り出す', () => {
+    expect(itemPageUrlFromAffiliateUrl(affiliate)).toBe(itemUrl);
+  });
+
+  it('取り出したURLに管理番号は現れない（スラッグと数値コードの混同を防ぐ）', () => {
+    const resolved = itemPageUrlFromAffiliateUrl(affiliate) as string;
+    expect(resolved).toContain('lac0017901-0010');
+    expect(resolved).not.toContain('10001396');
+    expect(resolved).not.toBe('https://item.rakuten.co.jp/ils-web/10001396/');
+  });
+
+  it('取り出したURLに紹介URLの情報を混ぜない', () => {
+    const resolved = itemPageUrlFromAffiliateUrl(affiliate) as string;
+    expect(resolved).not.toContain('hb.afl.rakuten.co.jp');
+    expect(resolved).not.toContain('00000001');
+  });
+
+  it('item.rakuten.co.jp 以外の遷移先は返さない', () => {
+    const cases = [
+      'https://example.com/item',
+      'https://item.rakuten.co.jp.example.com/shop/item/',
+      'https://www.rakuten.co.jp/shop/',
+      'http://item.rakuten.co.jp/shop/item/',
+    ];
+    for (const target of cases) {
+      const url =
+        'https://hb.afl.rakuten.co.jp/ichiba/00000000.00000000.00000001.00000002/' +
+        `?pc=${encodeURIComponent(target)}`;
+      expect(itemPageUrlFromAffiliateUrl(url)).toBeNull();
+    }
+  });
+
+  it('pc が無い・紹介URLでない・空なら null', () => {
+    expect(
+      itemPageUrlFromAffiliateUrl('https://hb.afl.rakuten.co.jp/ichiba/0.0.0.0/?link_type=text'),
+    ).toBeNull();
+    // 短縮URLは遷移先を含まない
+    expect(itemPageUrlFromAffiliateUrl('https://a.r10.to/abcdef')).toBeNull();
+    expect(itemPageUrlFromAffiliateUrl('https://item.rakuten.co.jp/shop/item/')).toBeNull();
+    expect(itemPageUrlFromAffiliateUrl(null)).toBeNull();
+    expect(itemPageUrlFromAffiliateUrl('')).toBeNull();
   });
 });

@@ -53,14 +53,56 @@
 RAKUTEN_API_REFERER=https://あなたのサイト/
 ```
 
-未設定なら Referer を送りません。まず未設定で試し、
-リクエストが拒否される場合に設定してください。
+**2026-08-31 の dry-run で、未設定では拒否されることが分かりました。**
+GitHub Actions から資格情報つきで実行したところ、次が返りました。
+
+```
+HTTP 403 REQUEST_CONTEXT_BODY_HTTP_REFERRER_MISSING
+```
+
+無効なアクセスキーのときは 403 `Invalid Access Key` という別の文言が返ります
+（架空の値で確認済み）。つまりこれは**キーの誤りではなく、Referer が無いことによる拒否**です。
+
+そのため、サーバー側から実行するこのジョブでは `RAKUTEN_API_REFERER` の設定が必要です。
+値は**楽天のアプリ登録で「許可されたWebサイト」に登録したURLそのまま**にしてください。
+GitHub では Secrets ではなく **Variables**（Settings → Secrets and variables → Actions →
+Variables）に `RAKUTEN_API_REFERER` として登録します。
+
 **他人のサイトを名乗ることはできません。**
 
-### 2-1. 楽天ウェブサービスのアプリIDを取る
+#### 現行APIは Referer ではなく **Origin** で送信元を判定します
+
+2026-08-31 の dry-run で、`RAKUTEN_API_REFERER` を設定しても
+`403 REQUEST_CONTEXT_BODY_HTTP_REFERRER_MISSING` が返り続けました。
+
+原因は**送るヘッダーが違っていた**ことです。旧エンドポイントは `Referer` を見ていましたが、
+`openapi.rakuten.co.jp` の現行APIは **`Origin` ヘッダー**で送信元を判定します。
+ブラウザからの呼び出しでは自動で付くため気づきにくく、サーバーからの呼び出しでは
+明示的に付ける必要があります。
+
+そこで `RAKUTEN_API_REFERER` の値から `Origin`（scheme://host、パスと末尾スラッシュを含まない形）
+を組み立てて送るようにしました。`Referer` も従来どおり送ります。設定する環境変数は
+1つのままです。
+
+```
+RAKUTEN_API_REFERER=https://example.com/     ← 設定する値
+  → Referer: https://example.com/            （そのまま送る）
+  → Origin:  https://example.com             （組み立てて送る）
+```
+
+切り分けの過程で確認できたこと（同じ調査を繰り返さないための記録）:
+
+| 確認 | 結果 |
+|---|---|
+| 値がジョブに届いているか | 届いている（ログの「送信元(Referer)」に出る） |
+| クライアントが実際に送っているか | 送っている。ローカルのHTTPサーバーに実クライアントを向けて実測 |
+| キーの誤りか | 別物。無効なキーなら 403 `Invalid Access Key` が返る |
+| 正規化のズレか | `new URL().toString()` の末尾スラッシュ補完をやめ、設定文字列をそのまま送る |
+
+### 2-1. 楽天ウェブサービスのアプリIDとアクセスキーを取る
 
 1. 楽天ウェブサービス（`webservice.rakuten.co.jp`）でアプリを登録し、**アプリID
-   （applicationId）** を取得します。
+   （applicationId）** と **アクセスキー（accessKey）** を取得します。
 2. 楽天アフィリエイトに登録し、**アフィリエイトID（affiliateId）** を確認します。
    **affiliateId を渡さないと、APIは紹介URL（`affiliateUrl`）を返しません。**
 
@@ -72,12 +114,25 @@ RAKUTEN_API_REFERER=https://あなたのサイト/
 - GitHub Actions: リポジトリの Settings → Secrets and variables → Actions
 
 ```
-RAKUTEN_APPLICATION_ID=...
-RAKUTEN_AFFILIATE_ID=...
-AUTOMATION_ENABLED=false   # 書き込みを行う実行だけ true にする
+RAKUTEN_APPLICATION_ID: （楽天ウェブサービスのアプリID）
+RAKUTEN_ACCESS_KEY: （アクセスキー）
+RAKUTEN_AFFILIATE_ID: （アフィリエイトID）
+AUTOMATION_ENABLED: false   # 書き込みを行う実行だけ true にする
 ```
 
 `NEXT_PUBLIC_` は付けないでください。付けるとビルド成果物に埋め込まれます。
+
+GitHub Actions では3つとも **Repository secrets** に登録してください。
+ワークフローは取得ステップにだけ渡します。アクセスキーは `accessKey` ヘッダーで送信し、URLには付けません。
+どれかが未設定・空白なら、CLIは通信・データ書き込みの前に終了コード3で停止します。
+本物の資格情報による接続成功はまだ確認していません。設定後に dry-run が必要です。
+
+ローカルの `npm run rakuten:sync` は `.env.local` を自動では読み込みません。
+ファイルに設定した場合は Node.js 20.11以上で次を使ってください（この節以降の引数も同様に指定できます）。
+
+```bash
+CATALOG_DATASET=production node --env-file=.env.local --import tsx scripts/rakuten-sync.ts --mode links
+```
 
 ---
 
@@ -158,7 +213,7 @@ CATALOG_DATASET=production AUTOMATION_ENABLED=true npm run rakuten:sync -- \
 |---|---|
 | 既定は dry-run | `--apply` が無ければ1文字も書き込まない |
 | 自動処理の既定は OFF | `AUTOMATION_ENABLED=true` が無いと `--apply` を拒否 |
-| 取得先の限定 | `app.rakuten.co.jp` のみ。任意のURLを叩けない |
+| 取得先の限定 | `openapi.rakuten.co.jp`。テスト時のみループバックへ差し替え可。リダイレクトは拒否 |
 | レート制限 | 既定 1リクエスト/秒 |
 | リクエスト上限 | 1回の実行で既定30回まで。超えたら停止 |
 | 再試行の上限 | 429・5xx のみ、最大2回まで。400番台は即失敗（設定ミスを繰り返さない） |
@@ -185,21 +240,159 @@ CATALOG_DATASET=production AUTOMATION_ENABLED=true npm run rakuten:sync -- \
 
 ---
 
-## 7. 初回に必ず確認すること
+## 7. 資格情報が届く前に済ませた確認（2026-08-31）
 
-**この実装環境から楽天APIへ接続できないため、実レスポンスとの突き合わせができていません。**
-初回の実行時に、次を確認してください。
+アプリIDが無い状態でも確認できることは、先に済ませてあります。
 
-- [ ] `Items` の形式（`[{Item:{…}}]` か `[{…}]` か）— どちらでも読めるようにしてありますが、
-      0件しか返らない場合はレスポンス形式を確認してください。
-- [ ] `affiliateUrl` が実際に返っているか（affiliateId の設定漏れだと返りません）。
-- [ ] 返ってきた `affiliateUrl` のホストが `hb.afl.rakuten.co.jp` か `a.r10.to` か。
-      **違うホストなら `src/lib/affiliate/rakuten.ts` の許可リストに追記が必要です**
-      （現状は追記するまでリンクが拒否されます）。
-- [ ] JANで検索して該当商品が出るか。出ない場合は型番での検索に切り替わります。
-- [ ] APIの利用規約・レート制限の現行値（実装時点の想定と変わっている可能性があります）。
-- [ ] 「許可されたWebサイト」の制限が、サーバー側（GitHub Actions）からのリクエストに
-      どう適用されるか。拒否される場合は `RAKUTEN_API_REFERER` を設定してください。
+### 7-1. 公式ドキュメントとの突き合わせ
+
+[公式ドキュメント](https://webservice.rakuten.co.jp/documentation/ichiba-item-search)を再確認し、
+旧 `20220601` 接続先から現行版へ修正しました（2026-08-31）。
+
+接続先: `https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260701`
+
+`applicationId` と `accessKey` は必須です。紹介URLを取得する本ジョブでは `affiliateId` も必須にしています。
+
+| 確認したこと | 結果 |
+|---|---|
+| `affiliateUrl` が返る条件 | **affiliateId を入力パラメータに含めたときだけ**返ると明記。実装と一致 |
+| `itemUrl` の扱い | affiliateId を含めると `itemUrl` も `affiliateUrl` と同じ値になる（2015/7/1〜）。**`itemUrl` を「紹介URLでないURL」として扱ってはいけません** |
+| レスポンスの形 | 現行ドキュメントの例は小文字（`items[0].item.itemName`）。互換性のため大文字も受ける。認証付き実APIの応答形式は未確認 |
+
+3点目は**0件しか返らない**という形で表面化します。どちらの表記でも読めるように
+パーサーを直し、単体テストを追加しました（`tests/rakuten.test.ts`）。
+
+### 7-2. ローカルのモックで通し確認
+
+`RAKUTEN_API_ENDPOINT_OVERRIDE`（ループバックのみ許可）を使い、
+楽天APIの応答を模したサーバーに対してジョブを最後まで通しました。
+
+```bash
+npm run rakuten:mock          # 別のターミナルで起動（127.0.0.1:8791）
+# 既定は小文字形式。MOCK_FORMAT=upper / flat で互換形式を確認できます
+
+mkdir -p .preview/rehearsal && cp -r datasets/production/* .preview/rehearsal/
+env RAKUTEN_APPLICATION_ID\=dummy RAKUTEN_ACCESS_KEY\=dummy RAKUTEN_AFFILIATE_ID\=dummy \
+  RAKUTEN_API_ENDPOINT_OVERRIDE\=http://127.0.0.1:8791/ \
+  CATALOG_DATASET\=production CATALOG_DATASET_DIR\=.preview/rehearsal \
+  npm run rakuten:sync -- --mode links
+```
+
+本番のデータセットを触らずに済むよう、**コピーに対して実行してください**
+（`CATALOG_DATASET_DIR`）。確認できたことは次のとおりです。
+モックでもアプリIDとアクセスキーヘッダーが無ければ401を返します。
+モックには架空の資格情報だけを使用し、ログには資格情報の有無だけを残します。
+
+| 場面 | 結果 |
+|---|---|
+| 型番とJANの両方が一致 | `strong`。`--auto-verify` を付けたときだけ `verified` になる |
+| 型番だけ一致（JAN未登録） | `weak`。`unverified` で保存され、画面には出ない |
+| `affiliateUrl` が無い応答 | 採用しない（リンクを作らない） |
+| 小文字形式（`items` / `item`）の応答 | 7-1 の修正後は正しく読める |
+| `--mode audit` | 販売継続を確認できた／できなかったを報告する |
+| `--mode discover` | 既存商品と結び付かない候補だけを候補ファイルに残す |
+
+### 7-3. 見つけて直した問題：目視確認済みリンクの上書き
+
+通し確認の途中で、**`--apply --auto-verify` が、運営者が目視確認した既存リンクを
+自動取得の結果で上書きしていました。** 販売ページが別の店舗のURLに黙って差し替わり、
+根拠も `visual` から `identifier-match` に下がります。
+
+`verified` かつ `verificationMethod: visual` のリンクを持つ商品は、自動取得の
+対象から外すように直しました。ジョブの出力にも「目視確認済みのため対象外」として
+表示されます。
+
+### 7-4. 初回の実行で期待できること
+
+**いま登録している23商品のうち、JANを持つのはエレコムの3商品だけです。**
+`strong` 一致には型番とJANの両方が必要なので、**残りの商品は `weak` 止まりで、
+`--auto-verify` を付けても表示対象にはなりません。**
+
+つまり自動取得だけでは購入ボタンは増えません。実際の流れはこうなります。
+
+1. ジョブが `unverified` のリンク（紹介URL付き）をまとめて作る
+2. プルリクエストで内容を確認する
+3. 運営者がリンク先を開き、色・サイズの一致を確認する
+4. `npm run link:set --verify --visual-check` で表示対象にする
+
+**3番目は人の作業です。** 探す手間は自動化できますが、確認は自動化しません。
+
+### 7-5. 実レスポンスで確認できたこと（2026-08-31）
+
+`Origin` を送るようにしたところ、**本番APIへの接続が通りました。**
+GitHub Actions から dry-run（`--mode discover --keyword 4549550317535 --max-requests 1`）
+を実行した結果です。
+
+| 確認項目 | 結果 |
+|---|---|
+| 認証 | **成功**（applicationId + accessKey ヘッダー + Origin） |
+| 取得件数 | 6 件 |
+| `affiliateUrl` | **6/6 件で返却**。affiliateId は正しく効いている |
+| `affiliateUrl` のホスト | **`hb.afl.rakuten.co.jp`**。既存の許可リストに入っており、追記は不要 |
+| 既存商品との照合 | 4 件が `elecom-bma-trcs01mbk-m-black` に一致（strong 2 / weak 2） |
+| strong 一致の根拠 | 型番 `BMA-TRCS01MBK` と JAN `4549550317535` の両方が販売ページの文言に含まれる |
+| 結び付かなかった 2 件 | Lサイズ 20L の別商品。当サイトに未登録のため候補扱い（バリエーション違いを取り違えていない） |
+| 書き込み | なし（dry-run）。データもプルリクエストも作られていない |
+
+残っている確認:
+
+- [ ] 型番だけの商品（エース各シリーズ）で、意図した商品ページが返るか。
+      「クレスタS 09161」のような検索語は、関係のない商品を拾う可能性があります。
+- [ ] APIの利用規約・レート制限の現行値。
+- [ ] リクエスト数の上限。商品23件の `--mode links` では 24 リクエストを使う見込みです
+      （既定の上限は30）。商品を増やすときはワークフローの `max_requests` を上げてください。
+
+### 7-6. `--mode links` の dry-run 結果（2026-08-31）
+
+上限30リクエストで実行し、**23リクエストで完走**しました（書き込みなし）。
+
+| 区分 | 件数 |
+|---|---:|
+| 対象商品 | 22 |
+| 既存リンク保護（verified / visual） | 1 |
+| 候補あり | 18（strong 2 / weak 16。すべて unverified） |
+| 候補なし | 4（Anker 3機種・プロテカ 360G4。型番が販売ページの文言に無い） |
+
+**weak が16件なのは JAN 未登録が理由です。** メーカー公式がJANを公表していないため
+型番一致どまりで、`--auto-verify` を付けても表示対象になりません。
+
+確認作業で特に注意する点:
+
+- **色の確認がほぼ全件で必要です。** 楽天の商品名は色番を省く店舗が多く、当サイトは
+  「35L / 01 ブラックヘアライン」までバリエーションを指定しています。
+- **「当店限定色」表記の候補（ラディアル 06971 / 06972）は要注意です。** 店舗独自色で、
+  メーカー公表色と別物の可能性があります。
+- **review 状態の商品（DE-C63-10000BK）にも候補が付きます。** リンクを登録しても商品は
+  非公開のままですが、リコール告知の確認が終わるまで登録自体を見送る判断もあります。
+- 法人向け通販（プロキュアエース）が候補になる場合があります。読者が購入できる導線か
+  どうかは別途判断が必要です。
+
+### 7-7. 確認用URLの作り方（重要な間違い）
+
+**`externalProductId` の数字部分をURLに入れてはいけません。**
+`ils-web:10001396` の `10001396` は店舗内の管理番号で、商品ページのURLスラッグ
+（`lac0017901-0010`）とは別物です。数字を入れたURLは別ページか404になります。
+
+正しい入手元は**紹介URLの `pc` パラメータ**です。`itemPageUrlFromAffiliateUrl()`
+（`src/lib/affiliate/rakuten.ts`）が取り出します。デコード後に **https かつ
+`item.rakuten.co.jp`** のものだけを通し、それ以外は null を返します。
+戻り値は通常の商品URLでアフィリエイトIDを含まないため、ログに出せます。
+
+**紹介URL本体はログに出しません。** アフィリエイトIDが含まれます。
+
+確認待ちの一覧は次で出せます。
+
+```bash
+CATALOG_DATASET=production npm run link:pending
+```
+
+確認できたものから1件ずつ承認します。**`--url` は省略できます**
+（保存済みの紹介URLを使うので、コマンド履歴に紹介URLが残りません）。
+
+```bash
+CATALOG_DATASET=production npm run link:set -- \
+  --product <商品ID> --merchant rakuten --verify --visual-check --note "確認内容"
+```
 
 ---
 
