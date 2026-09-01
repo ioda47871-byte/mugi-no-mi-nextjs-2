@@ -3,6 +3,7 @@
 ## 1. GitHub連携
 
 - Repository: `ioda47871-byte/mugi-no-mi-nextjs-2`
+- Pages project name: `tabimono-hikaku`
 - Production branch: `main`
 - Root directory: `travel-goods-site`
 - Build command: `npm run build`
@@ -48,14 +49,41 @@ browser-enabled 環境で別途実行して記録する。
 行う。マージ前に実行できない運用上の例外では、Production公開をこの3系統の成功まで**必ず
 ブロック**する。
 
-## 4. 独自ドメイン
+## 4. 独自ドメインとリダイレクト
 
 1. `tabimono-hikaku.jp` を取得する。
 2. Cloudflareへzoneを追加する。
 3. レジストラのネームサーバーをCloudflare指定値へ変更する。
 4. Pages > Custom domains で `tabimono-hikaku.jp` を追加する。
-5. `www.tabimono-hikaku.jp` をapexへ恒久転送する。
-6. TLSが有効であることを確認する。
+5. TLSが有効であることを確認する。
+
+### `pages.dev` からのリダイレクト
+
+Cloudflare account-level の **Bulk Redirects** でリストを作成し、次の1件を登録する。
+
+| Source URL | Target URL | Status | Parameters |
+|---|---|---:|---|
+| `tabimono-hikaku.pages.dev` | `https://tabimono-hikaku.jp` | 301 | Preserve query string、Subpath matching、Preserve path suffix、Include subdomains をすべて有効化 |
+
+続けてそのリストを使う Bulk Redirect rule を作成する。これにより、
+`https://tabimono-hikaku.pages.dev/guide/?x=1` は
+`https://tabimono-hikaku.jp/guide/?x=1` へ301で転送される。
+
+### `www` からapexへのリダイレクト
+
+同じく **Bulk Redirects** に次の1件を追加し、そのリストの rule を有効化する。
+
+| Source URL | Target URL | Status | Parameters |
+|---|---|---:|---|
+| `www.tabimono-hikaku.jp` | `https://tabimono-hikaku.jp` | 301 | Preserve query string、Subpath matching、Preserve path suffix、Include subdomains をすべて有効化 |
+
+Cloudflare zone の DNS > Records で、redirect rule が受けられるよう次のDNSレコードも作成する。
+
+| Type | Name | IPv4 address | Proxy status |
+|---|---|---|---|
+| `A` | `www` | `192.0.2.1` | Proxied |
+
+`192.0.2.1` は転送先originではなく、Cloudflareがredirect ruleを適用するための予約アドレスである。
 
 ## 5. 本番切替
 
@@ -72,8 +100,7 @@ Production 環境だけに次を設定し、再デプロイする。
 | `PUBLIC_OPERATOR_NAME` | 公開を承認した運営者名 |
 | `PUBLIC_CONTACT_EMAIL` | 公開を承認した連絡先 |
 
-Preview 環境の `SITE_MODE=preview` は変更しない。`*.pages.dev` の Production URL は
-独自ドメインへ転送する。
+Preview 環境の `SITE_MODE=preview` は変更しない。
 
 ## 6. 本番確認
 
@@ -82,7 +109,7 @@ Preview 環境の `SITE_MODE=preview` は変更しない。`*.pages.dev` の Pro
 - robotsがクロールを許可する
 - sitemapが本番URLだけを含む
 - 照合済み楽天CTAが14件、未照合CTAが0件
-- CTAの `rel` が `nofollow sponsored noopener`
+- CTAの `rel` が正確に `nofollow sponsored noopener` で、`noreferrer` が無い
 - デモ・Preview文言・資格情報が出ない
 
 ## 7. ロールバック

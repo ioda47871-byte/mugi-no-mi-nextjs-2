@@ -50,6 +50,11 @@
 `RAKUTEN_*` と `ANTHROPIC_API_KEY` は Phase 2 用です。Phase 1 では空のままで動きます。
 **API認証キーに `NEXT_PUBLIC_` を付けないでください。** ビルド成果物に埋め込まれます。
 
+楽天APIを使う更新ジョブでは、`RAKUTEN_APPLICATION_ID`、`RAKUTEN_ACCESS_KEY`、
+`RAKUTEN_AFFILIATE_ID` は **GitHub Actions Repository Secrets のみに**設定する。
+`RAKUTEN_API_REFERER` は **GitHub Actions Variables のみに**設定する。これら4つは
+Cloudflare Pages のProduction・Previewいずれの環境変数にも設定しない。
+
 ---
 
 ## 2. アフィリエイト設定
@@ -73,7 +78,8 @@
 
 - [ ] 紹介IDが未設定の店舗のボタンが**表示されていない**こと。
 - [ ] 型番・容量・バリエーションが一致しない販売先が掲載されていないこと。
-- [ ] 広告リンクに `rel="sponsored noopener noreferrer"` が付いていること。
+- [ ] 広告リンクの `rel` が正確に `nofollow sponsored noopener` であり、`noreferrer` が付いていないこと。
+      リファラを落とすと楽天の成果判定に影響する可能性があるため。
 - [ ] 少数のリンクを実際に押し、正しい商品ページへ遷移することを目視で確認する（自動購入や大量クリックはしない）。
 
 ---

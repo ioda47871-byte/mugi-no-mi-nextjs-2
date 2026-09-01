@@ -34,5 +34,7 @@ Vercel の旅行用品サイトプロジェクトで、Root Directory が `trave
 ## 3. Cloudflare切替後に停止する
 
 Cloudflareの独自ドメインで、canonical、robots、sitemap、照合済み楽天CTA、公開用運営者情報を
-確認してから、Vercel旅行用品サイトプロジェクトの自動デプロイを停止する。
+確認してから、Vercel旅行用品サイトプロジェクトのGit連携を停止する。これは未実施の手順である。
+Vercelの旅行用品サイトプロジェクトで **Project → Settings → Git → Connected Git Repository →
+Disconnect** を選び、確認画面で切断する。
 問題が起きてもDNSをVercelへ戻さず、Cloudflare Pagesの直前の成功デプロイへRollbackする。
