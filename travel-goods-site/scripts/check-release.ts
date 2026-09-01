@@ -145,6 +145,8 @@ if (outDir) {
       { pattern: /B0TEST\d{4}/, label: 'テスト用ASIN' },
       { pattern: /example-22/, label: 'テスト用アソシエイトタグ' },
       { pattern: /【未記入】|TODO:/, label: '下書きの未記入マーカー' },
+      { pattern: /旅じたくガイド/, label: '旧サイト名 旅じたくガイド' },
+      { pattern: /https:\/\/[^\s"'<>]*vercel\.app/i, label: 'Vercel URL' },
     ];
     const hits: string[] = [];
     // 4-2. 秘密情報の流出

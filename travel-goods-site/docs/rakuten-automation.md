@@ -114,10 +114,10 @@ RAKUTEN_API_REFERER=https://example.com/     ← 設定する値
 - GitHub Actions: リポジトリの Settings → Secrets and variables → Actions
 
 ```
-RAKUTEN_APPLICATION_ID=...
-RAKUTEN_ACCESS_KEY=...
-RAKUTEN_AFFILIATE_ID=...
-AUTOMATION_ENABLED=false   # 書き込みを行う実行だけ true にする
+RAKUTEN_APPLICATION_ID: （楽天ウェブサービスのアプリID）
+RAKUTEN_ACCESS_KEY: （アクセスキー）
+RAKUTEN_AFFILIATE_ID: （アフィリエイトID）
+AUTOMATION_ENABLED: false   # 書き込みを行う実行だけ true にする
 ```
 
 `NEXT_PUBLIC_` は付けないでください。付けるとビルド成果物に埋め込まれます。
@@ -272,9 +272,9 @@ npm run rakuten:mock          # 別のターミナルで起動（127.0.0.1:8791�
 # 既定は小文字形式。MOCK_FORMAT=upper / flat で互換形式を確認できます
 
 mkdir -p .preview/rehearsal && cp -r datasets/production/* .preview/rehearsal/
-RAKUTEN_APPLICATION_ID=dummy RAKUTEN_ACCESS_KEY=dummy RAKUTEN_AFFILIATE_ID=dummy \
-RAKUTEN_API_ENDPOINT_OVERRIDE=http://127.0.0.1:8791/ \
-CATALOG_DATASET=production CATALOG_DATASET_DIR=.preview/rehearsal \
+env RAKUTEN_APPLICATION_ID\=dummy RAKUTEN_ACCESS_KEY\=dummy RAKUTEN_AFFILIATE_ID\=dummy \
+  RAKUTEN_API_ENDPOINT_OVERRIDE\=http://127.0.0.1:8791/ \
+  CATALOG_DATASET\=production CATALOG_DATASET_DIR\=.preview/rehearsal \
   npm run rakuten:sync -- --mode links
 ```
 

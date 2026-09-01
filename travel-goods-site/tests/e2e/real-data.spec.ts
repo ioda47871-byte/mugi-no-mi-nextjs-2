@@ -94,6 +94,14 @@ test('実データのプレビューでは「架空」ではなく「未公開�
   expect(await page.locator('body').innerText()).not.toContain('架空');
 });
 
+test('正式名称を表示し、旧仮称を配信しない', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('banner')).toContainText('旅モノ比較');
+  await expect(page.locator('footer')).toContainText('旅モノ比較');
+  await expect(page).toHaveTitle(/旅モノ比較/);
+  expect(await page.locator('body').innerText()).not.toContain('旅じたくガイド');
+});
+
 test('実データの記事が公開され、出典が実在のメーカーを指す', async ({ page }) => {
   await page.goto('/articles/');
   await expect(page.getByRole('link', { name: /旅行ポーチを選ぶときに見る/ })).toBeVisible();

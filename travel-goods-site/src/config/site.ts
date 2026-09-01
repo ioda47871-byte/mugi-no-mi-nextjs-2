@@ -1,8 +1,8 @@
 /**
- * サイト設定。名称・URL・公開モードを 1 か所に集約する（計画書 1節・8節）。
+ * サイト設定。正式名称・URL・公開モードを 1 か所に集約する（計画書 1節・8節）。
  *
  * 重要:
- * - 「仮称」と「正式名称」を混同しない。正式名称・商標・ドメインは未確認。
+ * - 正式名称は固定し、公開用の運営者情報は環境変数からのみ取得する。
  * - 公開用の運営者情報は、ユーザーから公開用として提供された値だけを使う。
  *   未提供なら null のままにし、画面には「未設定」と表示する（架空の値を入れない）。
  */
@@ -31,14 +31,12 @@ function normalizeBaseUrl(raw: string | null): string | null {
 
 export const SITE_MODE: SiteMode = env('SITE_MODE') === 'production' ? 'production' : 'preview';
 
-/** 仮称。正式名称が決まったら SITE_NAME で上書きする。 */
-export const PROVISIONAL_SITE_NAME = '旅じたくガイド';
+/** 正式名称。SITE_NAME は Preview など環境別の表示名を上書きするときだけ使う。 */
+export const DEFAULT_SITE_NAME = '旅モノ比較';
 
 export const siteConfig = {
-  /** 表示名。SITE_NAME 未設定なら仮称。 */
-  name: env('SITE_NAME') ?? PROVISIONAL_SITE_NAME,
-  /** 名称が仮称のままかどうか。画面上の注記に使う。 */
-  nameIsProvisional: env('SITE_NAME') === null,
+  /** 表示名。SITE_NAME 未設定なら正式名称。 */
+  name: env('SITE_NAME') ?? DEFAULT_SITE_NAME,
   tagline: '旅の荷物を、軽く、迷わず。',
   description:
     '重さ・サイズ・容量から、2〜3泊の旅行に合う持ちものを比較して選べるサイトです。メーカー公表仕様を横並びにして、確認できた範囲と不明な項目を分けて掲載します。',
@@ -71,7 +69,6 @@ export function absoluteUrl(path: string): string | null {
 /** 公開前に埋めるべき設定の一覧。about ページと check:release が同じ情報源を使う。 */
 export function missingLaunchSettings(): string[] {
   const missing: string[] = [];
-  if (siteConfig.nameIsProvisional) missing.push('SITE_NAME（正式名称。現在は仮称を表示中）');
   if (!siteConfig.baseUrl) missing.push('SITE_URL（正規URL。canonical・サイトマップに必要）');
   if (!siteConfig.operatorName) missing.push('PUBLIC_OPERATOR_NAME（公開用の運営者名）');
   if (!siteConfig.contactEmail) missing.push('PUBLIC_CONTACT_EMAIL（公開用の問い合わせ先）');
