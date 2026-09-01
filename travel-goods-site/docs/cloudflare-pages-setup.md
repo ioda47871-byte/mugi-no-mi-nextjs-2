@@ -63,11 +63,13 @@ Cloudflare account-level の **Bulk Redirects** でリストを作成し、次�
 
 | Source URL | Target URL | Status | Parameters |
 |---|---|---:|---|
-| `tabimono-hikaku.pages.dev` | `https://tabimono-hikaku.jp` | 301 | Preserve query string、Subpath matching、Preserve path suffix、Include subdomains をすべて有効化 |
+| `tabimono-hikaku.pages.dev` | `https://tabimono-hikaku.jp` | 301 | Preserve query string、Subpath matching、Preserve path suffix を有効化。Include subdomains は有効化しない |
 
 続けてそのリストを使う Bulk Redirect rule を作成する。これにより、
 `https://tabimono-hikaku.pages.dev/guide/?x=1` は
 `https://tabimono-hikaku.jp/guide/?x=1` へ301で転送される。
+`<hash>.tabimono-hikaku.pages.dev` のbranch Preview URLはこのruleの対象外とし、直接アクセス可能かつ
+`noindex` のまま残す。
 
 ### `www` からapexへのリダイレクト
 
@@ -111,6 +113,9 @@ Preview 環境の `SITE_MODE=preview` は変更しない。
 - 照合済み楽天CTAが14件、未照合CTAが0件
 - CTAの `rel` が正確に `nofollow sponsored noopener` で、`noreferrer` が無い
 - デモ・Preview文言・資格情報が出ない
+- `https://tabimono-hikaku.pages.dev/` は `https://tabimono-hikaku.jp/` へ301で転送され、
+  path と query string が保持される
+- `<hash>.tabimono-hikaku.pages.dev` のbranch Preview URLは直接表示でき、`noindex` のままである
 
 ## 7. ロールバック
 
