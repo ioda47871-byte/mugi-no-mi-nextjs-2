@@ -133,21 +133,100 @@ travel-goods-site/scripts/
 
 ```ts
 // tests/article-meta.test.ts
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { describe, expect, it } from 'vitest';
 import { articleMetaSchema } from '../src/lib/catalog/schema';
 import { evaluatePublication } from '../src/lib/content/publication';
+import { makeArticle, makeCatalog } from './factories';
 
-it('formatId だけ指定して formatVersion を省けない', () => {
-  const meta = { /* 有効な最小メタ */, formatId: 'comparison', formatVersion: null };
-  expect(articleMetaSchema.safeParse(meta).success).toBe(false);
+const here = path.dirname(fileURLToPath(import.meta.url));
+
+/** ArticleMeta の最小形（body を除いたもの）。 */
+function metaFixture(over: Record<string, unknown> = {}) {
+  const { body: _body, ...meta } = makeArticle();
+  return { ...meta, formatId: null, formatVersion: null, reviewMethod: null, ...over };
+}
+
+describe('記事メタの拡張', () => {
+  it('3 フィールドすべて null なら通る（既存 10 記事の後方互換）', () => {
+    expect(articleMetaSchema.safeParse(metaFixture()).success).toBe(true);
+  });
+
+  it('formatId だけ指定して formatVersion を省けない', () => {
+    expect(articleMetaSchema.safeParse(metaFixture({ formatId: 'comparison', formatVersion: null })).success)
+      .toBe(false);
+    expect(articleMetaSchema.safeParse(metaFixture({ formatId: null, formatVersion: 1 })).success)
+      .toBe(false);
+    expect(articleMetaSchema.safeParse(metaFixture({ formatId: 'comparison', formatVersion: 1 })).success)
+      .toBe(true);
+  });
+
+  it('既存 10 記事のファイルが新スキーマを通る', () => {
+    const dir = path.join(here, '../datasets/production/articles');
+    const files = fs.readdirSync(dir).filter((f) => f.endsWith('.md'));
+    expect(files).toHaveLength(10);
+  });
 });
 
-it('自動レビューは reviewer が automation:<formatId>@<version> 形式でなければ落ちる', () => {
-  const article = { /* ... */, reviewMethod: 'derived-from-verified-facts', reviewer: '編集部' };
-  const verdict = evaluatePublication(article, catalog);
-  expect(verdict.ok).toBe(false);
-  expect(verdict.reasons.join()).toContain('automation:');
+describe('自動レビューの reviewer 形式', () => {
+  const catalog = makeCatalog();
+
+  it('derived-from-verified-facts では automation:<formatId>@<version> を要求する', () => {
+    const article = makeArticle({
+      reviewMethod: 'derived-from-verified-facts',
+      reviewer: '編集部',
+      formatId: 'comparison',
+      formatVersion: 1,
+    });
+    const verdict = evaluatePublication(article, catalog);
+    expect(verdict.ok).toBe(false);
+    expect(verdict.reasons.join(' ')).toContain('automation:');
+  });
+
+  it('正しい形式なら通る', () => {
+    const article = makeArticle({
+      reviewMethod: 'derived-from-verified-facts',
+      reviewer: 'automation:comparison@1',
+      formatId: 'comparison',
+      formatVersion: 1,
+    });
+    expect(evaluatePublication(article, catalog).ok).toBe(true);
+  });
+
+  it('人のレビュー（reviewMethod: null）は従来どおり任意の文字列でよい', () => {
+    expect(evaluatePublication(makeArticle({ reviewer: '編集部' }), catalog).ok).toBe(true);
+  });
 });
 ```
+
+### 既存 10 記事の移行方針（legacy 経路）
+
+**既存記事のファイルを書き換えない。** 3 フィールドは `null` のままにする。
+
+| slug | `formatId` | `formatVersion` | `reviewMethod` | 扱い |
+|---|---|---|---|---|
+| `suitcase-under-3kg` | `null` | `null` | `null` | legacy |
+| `suitcase-capacity-weight` | `null` | `null` | `null` | legacy |
+| `suitcase-stopper` | `null` | `null` | `null` | legacy |
+| `backpack-lightweight-specs` | `null` | `null` | `null` | legacy |
+| `backpack-2n3d-choose` | `null` | `null` | `null` | legacy（下書き） |
+| `pouch-size-weight-compartments` | `null` | `null` | `null` | legacy |
+| `toiletry-pouch-choose` | `null` | `null` | `null` | legacy（下書き） |
+| `power-bank-specs` | `null` | `null` | `null` | legacy |
+| `charging-kit-lighter` | `null` | `null` | `null` | legacy |
+| `packing-list-2n3d` | `null` | `null` | `null` | legacy（下書き） |
+
+**legacy 経路の定義**:
+
+- `reviewMethod !== 'derived-from-verified-facts'` の記事は **legacy** とする。
+- legacy には `evaluatePublication` の従来の検査だけを適用する。
+- **legacy は自動非公開の対象にしない**（Task 7）。
+- **新規の自動生成記事の 14 検査は 1 つも弱めない。** legacy 経路は
+  「既存記事を壊さないための後方互換」であって、自動生成記事の逃げ道ではない。
+- 将来 legacy を移行する場合は、**人がコード PR で `formatId` を付ける**。
+  自動処理が既存記事に `formatId` を書き込むことは禁止する。
 
 ### テスト実行コマンド
 
@@ -331,21 +410,77 @@ formatId ごとに必要商品数・必須仕様・禁止表現・商品選定�
 ### 最初に失敗するテスト
 
 ```ts
+// tests/article-formats-plugins.test.ts
+import { describe, expect, it } from 'vitest';
 import { comparisonPlugin } from '../src/lib/article-formats/comparison';
 import { destinationPlugin } from '../src/lib/article-formats/destination';
+import { selectionsPlugin } from '../src/lib/article-formats/selections';
+import { specExplainerPlugin } from '../src/lib/article-formats/spec-explainer';
+import type { ArticleContext } from '../src/lib/article-formats/types';
+import { makeCatalog, makeProduct } from './factories';
 
-it('旅行先別は初期は常に無効', () => {
-  expect(destinationPlugin.eligibility(catalog, ctx)).toBe(false);
-});
+const ctx: ArticleContext = {
+  category: 'suitcases', axis: 'weight',
+  tripNights: null, domestic: null, transport: null, purpose: null,
+};
 
-it('外寸を比較軸にするとき sizeBasis: unspecified を除外する', () => {
-  const picked = comparisonPlugin.selectProducts(catalog, { ...ctx, axis: 'outer-size' });
-  expect(picked.every((p) => p.sizeBasis !== 'unspecified')).toBe(true);
-});
+/** sizeBasis を指定した商品を n 件作る。 */
+function suitcases(specified: number, unspecified: number) {
+  const products = [
+    ...Array.from({ length: specified }, (_, i) =>
+      makeProduct({ id: `spec-${i}`, sizeBasis: 'with-handle-and-wheels' })),
+    ...Array.from({ length: unspecified }, (_, i) =>
+      makeProduct({ id: `unspec-${i}`, sizeBasis: 'unspecified' })),
+  ];
+  return makeCatalog({ products, articles: [], merchantLinks: [] });
+}
 
-it('重量を比較軸にするときは除外しない', () => {
-  const picked = comparisonPlugin.selectProducts(catalog, { ...ctx, axis: 'weight' });
-  expect(picked.some((p) => p.sizeBasis === 'unspecified')).toBe(true);
+describe('記事構成プラグイン', () => {
+  it('旅行先別は初期は常に無効', () => {
+    expect(destinationPlugin.eligibility(suitcases(4, 0), ctx)).toBe(false);
+  });
+
+  it('外寸を比較軸にするとき sizeBasis: unspecified を除外する', () => {
+    const picked = comparisonPlugin.selectProducts(suitcases(2, 3), { ...ctx, axis: 'outer-size' });
+    expect(picked).toHaveLength(2);
+    expect(picked.every((p) => p.sizeBasis !== 'unspecified')).toBe(true);
+  });
+
+  it('重量を比較軸にするときは除外しない', () => {
+    const picked = comparisonPlugin.selectProducts(suitcases(2, 3), { ...ctx, axis: 'weight' });
+    expect(picked).toHaveLength(5);
+  });
+
+  it('除外の結果 2 件未満になれば生成しない', () => {
+    expect(comparisonPlugin.eligibility(suitcases(1, 4), { ...ctx, axis: 'outer-size' })).toBe(false);
+    expect(comparisonPlugin.eligibility(suitcases(2, 4), { ...ctx, axis: 'outer-size' })).toBe(true);
+  });
+
+  it('商品選定は同じ入力で常に同じ順序を返す', () => {
+    const catalog = suitcases(5, 0);
+    const first = comparisonPlugin.selectProducts(catalog, ctx).map((p) => p.id);
+    const second = comparisonPlugin.selectProducts(catalog, ctx).map((p) => p.id);
+    expect(second).toEqual(first);
+  });
+
+  it('○選は 3〜5 件のときだけ成立する', () => {
+    expect(selectionsPlugin.eligibility(suitcases(2, 0), ctx)).toBe(false);
+    expect(selectionsPlugin.eligibility(suitcases(3, 0), ctx)).toBe(true);
+    expect(selectionsPlugin.eligibility(suitcases(5, 0), ctx)).toBe(true);
+  });
+
+  it('仕様解説は 1 件で成立する', () => {
+    expect(specExplainerPlugin.eligibility(suitcases(1, 0), ctx)).toBe(true);
+    expect(specExplainerPlugin.minProducts).toBe(1);
+  });
+
+  it('タイトルに禁止表現を含めない', () => {
+    const catalog = suitcases(4, 0);
+    const title = comparisonPlugin.buildTitle(ctx, comparisonPlugin.selectProducts(catalog, ctx));
+    for (const term of comparisonPlugin.forbiddenExpressions) {
+      expect(title).not.toContain(term);
+    }
+  });
 });
 ```
 
@@ -625,7 +760,13 @@ feat(travel-goods-site): 記事の決定的 14 検査を追加
 - Produces:
   - `export type BuiltArticle = { meta: ArticleMeta; body: string }`
   - `export function buildArticle(plugin: ArticleFormatPlugin, ctx: ArticleContext, products: Product[], catalog: Catalog, today: string): BuiltArticle`
-  - `export function selectionsShareExceeded(recent: Article[]): boolean`（直近 20 本のうち `selections` が 8 本を超えていれば `true`）
+  - `export const SELECTIONS_WINDOW = 20`
+  - `export const SELECTIONS_MAX_IN_WINDOW = 8`
+  - `export function selectionsShareExceeded(recent: readonly Article[]): boolean`（直近 20 本のうち `selections` が **8 本以上**なら `true`）
+  - `export const ARTICLES_PER_WEEK = 2`
+  - `export function jstWeekStart(isoDate: string): string`
+  - `export function generatedThisWeek(articles: readonly Article[], today: string): number`
+  - `export function remainingThisWeek(articles: readonly Article[], today: string): number`
   - CLI: `npm run article:generate -- [--apply] [--limit N] [--dataset production]`
 
 ### 仕様（設計書 7.1・7.2・7.6 に対応）
@@ -634,8 +775,49 @@ feat(travel-goods-site): 記事の決定的 14 検査を追加
 - 本文は固定文＋比較表。数値は `Fact.value` をそのまま。`null` は「公表なし」。
 - 各数値に `sourceId` と `checkedAt` を併記。
 - **形容詞的な評価を書かない。**
-- 「○選」は直近 20 本のうち 8 本を超えていたらその回は他形式を選ぶ。
-- **週 2 本まで**の制限は CLI の `--limit`（既定 2）で表す。
+- **「○選」は直近 20 本のうち 8 本以上あれば、その回は生成しない。**
+  「8 本を超えたら」ではない。20 本中 8 本がちょうど 40% であり、
+  9 本目を作ると 45% になって上限を超えるためである。
+- **週 2 本まで**は CLI の `--limit` ではなく、**JST 週単位の決定的な計算**で決める（下記）。
+
+#### 週 2 本の上限（JST 週単位・再実行に強い）
+
+火曜と金曜の実行を**合わせて**週 2 本にする。実行ごとの上限では足りない
+（火曜が 2 本作ると金曜も 2 本作ってしまう）。
+
+```ts
+export const ARTICLES_PER_WEEK = 2;
+
+/** JST の週の始まり（月曜）を YYYY-MM-DD で返す。 */
+export function jstWeekStart(isoDate: string): string {
+  const [y, m, d] = isoDate.split('-').map(Number);
+  const utc = Date.UTC(y, m - 1, d);
+  const jstDay = new Date(utc).getUTCDay();       // 0=日
+  const backToMonday = (jstDay + 6) % 7;
+  return new Date(utc - backToMonday * 86_400_000).toISOString().slice(0, 10);
+}
+
+/** その週にすでに公開された自動生成記事の本数。 */
+export function generatedThisWeek(articles: readonly Article[], today: string): number {
+  const weekStart = jstWeekStart(today);
+  return articles.filter(
+    (a) => a.reviewMethod === 'derived-from-verified-facts'
+      && a.publishedAt !== null
+      && jstWeekStart(a.publishedAt) === weekStart,
+  ).length;
+}
+
+/** 今回作ってよい本数。0 なら生成しない。 */
+export function remainingThisWeek(articles: readonly Article[], today: string): number {
+  return Math.max(0, ARTICLES_PER_WEEK - generatedThisWeek(articles, today));
+}
+```
+
+- **本数は「その週にすでに公開した自動生成記事」から数える。実行回数を数えない。**
+  そのため**同じ日に何度再実行しても週 2 本を超えない。**
+- 週の境界は **JST 月曜**。`publishedAt` は JST の日付として扱う。
+- 実際に作る本数は `Math.min(limit, remainingThisWeek(articles, today))`。
+- 人が書いた記事（`reviewMethod !== 'derived-from-verified-facts'`）は本数に数えない。
 - 生成した記事が 14 検査を通らなければ**ファイルを作らず**、理由を `queue.json` に
   `kind: 'article-plan'` として積む。
 
@@ -646,7 +828,12 @@ feat(travel-goods-site): 記事の決定的 14 検査を追加
 - [ ] `capacityL.value === null` の商品で本文に「公表なし」が出る失敗テストを書く（3 分）
 - [ ] `buildArticle` の出力の `meta.reviewer` が `automation:<formatId>@<version>` 形式である失敗テストを書く（3 分）
 - [ ] `meta.status` が `'published'`、`meta.reviewMethod` が `'derived-from-verified-facts'` である失敗テストを書く（3 分）
-- [ ] `selectionsShareExceeded` が 20 本中 9 本で `true`、8 本で `false` を返す失敗テストを書く（3 分）
+- [ ] `selectionsShareExceeded` が 20 本中 **8 本で `true`**、7 本で `false` を返す失敗テストを書く（3 分）
+- [ ] `jstWeekStart` が水曜・月曜・日曜・翌月曜で正しい週頭を返す失敗テストを書く（4 分）
+- [ ] 火曜に 2 本作ったら金曜が 0 本になる失敗テストを書く（4 分）
+- [ ] 同じ日に再実行しても週 2 本を超えない失敗テストを書く（3 分）
+- [ ] 週が変われば上限が戻る失敗テストを書く（3 分）
+- [ ] 人が書いた記事を週の本数に数えない失敗テストを書く（3 分）
 - [ ] 同じ入力で 2 回 `buildArticle` を呼ぶと同一の本文になる（決定的）失敗テストを書く（3 分）
 - [ ] CLI を `--dry-run`（既定）で実行してもファイルが増えない失敗テストを書く（一時ディレクトリで実行）（5 分）
 - [ ] テストを実行し失敗を確認する（1 分）

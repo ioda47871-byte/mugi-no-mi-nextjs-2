@@ -17,20 +17,30 @@
   automation-links.yml       … 新規。毎日 JST 06:00
   automation-discover.yml    … 新規。月・木 JST 06:30
   automation-articles.yml    … 新規。火・金 JST 06:30
-  automation-commit.yml      … 新規。毎日 JST 07:30。検証・PR・auto-merge
-  automation-revert.yml      … 新規。公開後検査の失敗時
+  automation-commit.yml      … 新規。毎日 JST 07:30。
+                                 job: verify-and-merge → wait-for-deploy →
+                                      post-deploy-check → revert（失敗時のみ）
   automation-reset.yml       … 新規。workflow_dispatch のみ。breaker 解除
+
+  ※ revert は automation-commit.yml の後続 job にする。
+    同一 concurrency group 内で reusable workflow（workflow_call）の完了を待つと
+    デッドロックするため、automation-revert.yml は作らない。
 
 travel-goods-site/src/lib/automation/
   changed-paths.ts   … 変更パス検査（純関数）
   breaker.ts         … circuit breaker の判定と遷移（純関数）
   switches.ts        … 停止スイッチの読み取りと正規化
+  revert-target.ts   … revert 対象の妥当性検証（純関数）
+  deploy-gate.ts     … マージ確認とデプロイ確認（純関数）
+  notify.ts          … Issue 通知の条件（純関数）
 
 travel-goods-site/scripts/
   check-changed-paths.ts  … CLI。git diff の結果を検査
   check-breaker.ts        … CLI。budget.json を読んで停止判定
   post-verify-status.ts   … CLI。automation/verify status を付ける
   plan-revert.ts          … CLI。revert 対象の妥当性を検証
+  wait-for-deploy.ts      … CLI。マージとデプロイの bounded polling
+  post-deploy-check.ts    … CLI。公開後検査
 ```
 
 ## Tech Stack
@@ -62,7 +72,7 @@ travel-goods-site/scripts/
 
 | ファイル | 触る計画 | 競合しない理由 |
 |---|---|---|
-| `travel-goods-site/package.json` | 2・3・4 | **追加する npm script 名がすべて異なる**（計画2: `article:generate` `article:recheck` ／ 計画3: `check:changed-paths` `check:breaker` `plan:revert` `post:verify-status` `check:post-deploy` ／ 計画4: `automation:dry-run` `automation:summarize`）。依存順に実行すれば同じ行を書き換えない |
+| `travel-goods-site/package.json` | 1・2・3・4 | **追加する npm script 名がすべて異なる**（計画1: `automation:sync` ／ 計画2: `article:generate` `article:recheck` ／ 計画3: `check:changed-paths` `check:breaker` `plan:revert` `post:verify-status` `wait:deploy` `check:post-deploy` ／ 計画4: `automation:dry-run` `automation:summarize`）。依存順に実行すれば同じ行を書き換えない |
 | `travel-goods-site/tests/workflow-yaml.test.ts` | 3（作成）・4（describe を追加） | 計画4 は末尾に `describe` ブロックを足すだけ。既存の describe を変更しない |
 
 **同じファイルを 2 つの計画が「作成」することはない。**
@@ -84,7 +94,8 @@ travel-goods-site/scripts/
 - [ ] `npm run typecheck` 成功
 - [ ] `npm run lint` 成功
 - [ ] `npm test` 成功。計画2 完了時点から **+38 件以上**
-- [ ] `.github/workflows/` に**新規 6 本**（links / discover / articles / commit / revert / reset）が存在し、YAML として妥当
+- [ ] `.github/workflows/` に**新規 5 本**（links / discover / articles / commit / reset）が存在し、YAML として妥当
+- [ ] `automation-revert.yml` という別ファイルが**存在しない**（revert は commit の job）
 - [ ] `.github/workflows/travel-goods-ci.yml` が `automation/verify` status を付けるよう**変更**されている
 - [ ] すべての `automation-*.yml` が同一 concurrency group `travel-goods-automation` と `cancel-in-progress: false` を持つ
 - [ ] `datasets/` に差分がない
@@ -328,7 +339,9 @@ reset 以外の workflow が closed への遷移を作ったら中止する。
   - `export type PrKind = 'content' | 'revert-tripping' | 'revert-normal' | 'reset'`
   - `export type MergeGate = { allowVerifyStatus: boolean; allowAutoMerge: boolean; reason: string }`
   - `export function evaluateMergeGate(breaker: CircuitBreaker, prKind: PrKind, transition: { before: CircuitBreaker['state']; after: CircuitBreaker['state'] }): MergeGate`
+  - `export function recentReverts(breaker: CircuitBreaker, today: string): RevertRecord[]`
   - `export function shouldTrip(breaker: CircuitBreaker, newRevertSha: string, today: string): boolean`
+  - `export function isKnownRevertSha(breaker: CircuitBreaker, sha: string): boolean`（reset の入力検証に使う）
   - `export function trip(breaker: CircuitBreaker, sha: string, today: string): CircuitBreaker`
 
 ### 仕様（設計書 12.6 に対応）
@@ -348,8 +361,19 @@ reset 以外の workflow が closed への遷移を作ったら中止する。
 **`prKind: 'revert-tripping'` は、その PR 自身が `closed` → `open` を含むときだけ有効。**
 `open` → `open` や `open` → `closed` は例外1 に当たらない。
 
-`shouldTrip` は `breaker.revertedShas` に **3 日以内の revert が既に 1 件**あり、
-`newRevertSha` がそれと異なるときに `true`。
+`shouldTrip` は次のときに `true`。
+
+- `recentReverts(breaker, today)` が **1 件以上**あり、
+- その中に `newRevertSha` と**同じ SHA が無い**（同じ commit の再 revert を 2 回目と数えない）。
+
+`revertHistory` は `{ sha, revertedOn }[]`（計画1 Task 2）。
+**`revertedShas: string[]` では日付が無く 3 日窓を計算できないため使わない。**
+
+**3 日窓の境界**: `revertedOn` が `today`・`today - 1`・`today - 2` のものを「3 日以内」とする。
+`today - 3` は窓の外。
+
+`trip` は `revertHistory` の**先頭**に `{ sha, revertedOn: today }` を足し、
+`REVERT_HISTORY_LIMIT`（20）件で切る。
 
 ### ステップ
 
@@ -360,8 +384,13 @@ reset 以外の workflow が closed への遷移を作ったら中止する。
 - [ ] `open` + `revert-tripping` + `open→open` が拒否される失敗テストを書く（3 分）
 - [ ] `open` + `reset` + `open→closed` が**許可される**失敗テストを書く（例外2）（4 分）
 - [ ] `open` + `reset` + `closed→closed` が拒否される失敗テストを書く（3 分）
-- [ ] `shouldTrip` が 3 日以内 2 回目で `true`、4 日空けば `false` を返す失敗テストを書く（4 分）
-- [ ] `trip` が `state`・`trippedOn`・`reason`・`revertedShas` をすべて設定する失敗テストを書く（3 分）
+- [ ] `recentReverts` が 3 日窓の内外を分ける失敗テストを書く（`today`／`-1`／`-2` は内、`-3` は外）（5 分）
+- [ ] `shouldTrip` が 3 日以内 2 回目で `true` を返す失敗テストを書く（3 分）
+- [ ] `shouldTrip` が 4 日空けば `false` を返す失敗テストを書く（3 分）
+- [ ] `shouldTrip` が**同じ SHA の再 revert**では `false` を返す失敗テストを書く（4 分）
+- [ ] `trip` が `state`・`trippedOn`・`reason`・`revertHistory` をすべて設定する失敗テストを書く（3 分）
+- [ ] `trip` を 25 回呼んでも履歴が 20 件で切られる失敗テストを書く（4 分）
+- [ ] `isKnownRevertSha` が履歴に無い SHA を拒否する失敗テストを書く（3 分）
 - [ ] テストを実行し失敗を確認する（1 分）
 - [ ] `breaker.ts` と CLI を実装する（12 分）
 - [ ] テストが成功することを確認する（1 分）
@@ -369,23 +398,122 @@ reset 以外の workflow が closed への遷移を作ったら中止する。
 ### 最初に失敗するテスト
 
 ```ts
-import { evaluateMergeGate, shouldTrip } from '../src/lib/automation/breaker';
+// tests/automation-breaker.test.ts
+import { describe, expect, it } from 'vitest';
+import {
+  REVERT_WINDOW_DAYS,
+  evaluateMergeGate,
+  isKnownRevertSha,
+  recentReverts,
+  shouldTrip,
+  trip,
+} from '../src/lib/automation/breaker';
+import { REVERT_HISTORY_LIMIT, type CircuitBreaker } from '../src/lib/automation/state/schema';
 
-const open = { state: 'open' as const, trippedOn: '2026-09-20', reason: 'x', revertedShas: ['a', 'b'] };
+const SHA_A = 'a'.repeat(40);
+const SHA_B = 'b'.repeat(40);
+const SHA_C = 'c'.repeat(40);
 
-it('例外1: breaker を作動させる当の revert PR は通す', () => {
-  const gate = evaluateMergeGate(open, 'revert-tripping', { before: 'closed', after: 'open' });
-  expect(gate.allowVerifyStatus).toBe(true);
-  expect(gate.allowAutoMerge).toBe(true);
+const closed: CircuitBreaker = { state: 'closed', trippedOn: null, reason: null, revertHistory: [] };
+
+function openBreaker(history: { sha: string; revertedOn: string }[]): CircuitBreaker {
+  return { state: 'open', trippedOn: '2026-09-20', reason: '3日以内に2回の自動revert', revertHistory: history };
+}
+
+describe('マージ可否の判定', () => {
+  it('closed ではすべての PR 種別を許可する', () => {
+    for (const kind of ['content', 'revert-normal', 'revert-tripping', 'reset'] as const) {
+      const gate = evaluateMergeGate(closed, kind, { before: 'closed', after: 'closed' });
+      expect(gate.allowVerifyStatus).toBe(true);
+      expect(gate.allowAutoMerge).toBe(true);
+    }
+  });
+
+  it('open では通常の自動 PR を止める', () => {
+    const gate = evaluateMergeGate(openBreaker([]), 'content', { before: 'open', after: 'open' });
+    expect(gate.allowVerifyStatus).toBe(false);
+    expect(gate.allowAutoMerge).toBe(false);
+  });
+
+  it('open では通常の revert PR も止める', () => {
+    expect(evaluateMergeGate(openBreaker([]), 'revert-normal', { before: 'open', after: 'open' }).allowAutoMerge)
+      .toBe(false);
+  });
+
+  it('例外1: breaker を作動させる当の revert PR は通す', () => {
+    const gate = evaluateMergeGate(openBreaker([]), 'revert-tripping', { before: 'closed', after: 'open' });
+    expect(gate.allowVerifyStatus).toBe(true);
+    expect(gate.allowAutoMerge).toBe(true);
+  });
+
+  it('例外1 は closed→open の遷移を含むときだけ', () => {
+    expect(evaluateMergeGate(openBreaker([]), 'revert-tripping', { before: 'open', after: 'open' }).allowAutoMerge)
+      .toBe(false);
+    expect(evaluateMergeGate(openBreaker([]), 'revert-tripping', { before: 'open', after: 'closed' }).allowAutoMerge)
+      .toBe(false);
+  });
+
+  it('例外2: reset PR は open→closed のときだけ通す', () => {
+    expect(evaluateMergeGate(openBreaker([]), 'reset', { before: 'open', after: 'closed' }).allowAutoMerge)
+      .toBe(true);
+    expect(evaluateMergeGate(openBreaker([]), 'reset', { before: 'closed', after: 'closed' }).allowAutoMerge)
+      .toBe(false);
+  });
 });
 
-it('例外2: reset PR は open 状態でも通す', () => {
-  const gate = evaluateMergeGate(open, 'reset', { before: 'open', after: 'closed' });
-  expect(gate.allowAutoMerge).toBe(true);
-});
+describe('3 日窓と revert 履歴', () => {
+  it('窓は 3 日', () => {
+    expect(REVERT_WINDOW_DAYS).toBe(3);
+  });
 
-it('open 状態の通常の自動 PR は通さない', () => {
-  expect(evaluateMergeGate(open, 'content', { before: 'open', after: 'open' }).allowAutoMerge).toBe(false);
+  it('today / -1 / -2 は窓の内、-3 は外', () => {
+    const breaker = openBreaker([
+      { sha: SHA_A, revertedOn: '2026-09-20' },
+      { sha: SHA_B, revertedOn: '2026-09-18' },
+      { sha: SHA_C, revertedOn: '2026-09-17' },
+    ]);
+    const recent = recentReverts(breaker, '2026-09-20').map((r) => r.sha);
+    expect(recent).toContain(SHA_A);
+    expect(recent).toContain(SHA_B);
+    expect(recent).not.toContain(SHA_C);
+  });
+
+  it('3 日以内の 2 回目で作動する', () => {
+    const breaker = openBreaker([{ sha: SHA_A, revertedOn: '2026-09-19' }]);
+    expect(shouldTrip(breaker, SHA_B, '2026-09-20')).toBe(true);
+  });
+
+  it('4 日空けば作動しない', () => {
+    const breaker = openBreaker([{ sha: SHA_A, revertedOn: '2026-09-16' }]);
+    expect(shouldTrip(breaker, SHA_B, '2026-09-20')).toBe(false);
+  });
+
+  it('同じ SHA の再 revert は 2 回目と数えない', () => {
+    const breaker = openBreaker([{ sha: SHA_A, revertedOn: '2026-09-19' }]);
+    expect(shouldTrip(breaker, SHA_A, '2026-09-20')).toBe(false);
+  });
+
+  it('trip はすべてのフィールドを設定する', () => {
+    const next = trip(closed, SHA_A, '2026-09-20');
+    expect(next.state).toBe('open');
+    expect(next.trippedOn).toBe('2026-09-20');
+    expect(next.reason).not.toBeNull();
+    expect(next.revertHistory[0]).toEqual({ sha: SHA_A, revertedOn: '2026-09-20' });
+  });
+
+  it('履歴は保持上限で切られる', () => {
+    let breaker = closed;
+    for (let i = 0; i < REVERT_HISTORY_LIMIT + 5; i += 1) {
+      breaker = trip(breaker, String(i).padStart(40, '0'), '2026-09-20');
+    }
+    expect(breaker.revertHistory).toHaveLength(REVERT_HISTORY_LIMIT);
+  });
+
+  it('reset の入力 SHA は履歴にあるものだけ受け付ける', () => {
+    const breaker = openBreaker([{ sha: SHA_A, revertedOn: '2026-09-20' }]);
+    expect(isKnownRevertSha(breaker, SHA_A)).toBe(true);
+    expect(isKnownRevertSha(breaker, SHA_B)).toBe(false);
+  });
 });
 ```
 
@@ -560,7 +688,14 @@ reset PR と人の PR、および既存の auto-revert コミットは対象に�
 
 ### `travel-goods-ci.yml` への変更（この Task で行う唯一の workflow 変更）
 
-- `permissions: { statuses: write }` を追加する。
+- `permissions` を**追加ではなく明示**する。`permissions:` を書くと**書いていない権限が none になる**ため、
+  `actions/checkout` に必要な `contents: read` を必ず残す。
+
+```yaml
+permissions:
+  contents: read      # checkout に必要。statuses を足すときに落とさない
+  statuses: write     # automation/verify を付けるために追加
+```
 - `verify` ジョブの最後に次のステップを足す。
 
 ```yaml
@@ -863,76 +998,153 @@ merge commit 方式で auto-merge する。squash / rebase は使わない。
 
 ---
 
-## Task 8: automation-revert.yml と automation-reset.yml
+## Task 8: revert job と automation-reset.yml
 
 ### 対象ファイル
 
 | 種別 | パス |
 |---|---|
-| 作成 | `.github/workflows/automation-revert.yml` |
+| 変更 | `.github/workflows/automation-commit.yml`（`revert` job を追加） |
 | 作成 | `.github/workflows/automation-reset.yml` |
 | 変更 | `travel-goods-site/tests/workflow-yaml.test.ts` |
 
 ### Consumes / Produces
 
 - Consumes: `plan:revert`, `check:breaker`, `check:changed-paths --mode reset`, `post:verify-status`
-- Produces: revert PR と reset PR
+- Produces: `revert` job と reset PR
 
-### 仕様（設計書 12.5・12.6 に対応）
+### revert を別 workflow にしない理由
 
-**`automation-revert.yml`**:
+すべての `automation-*` workflow が同じ concurrency group
+`travel-goods-automation`（`cancel-in-progress: false`）を使う。
+このとき、**親 workflow が同じ group の reusable workflow（`workflow_call`）の完了を待つと、
+親が group を占有したまま子が起動できずデッドロックする。**
 
-1. `plan:revert` で対象 SHA の 4 条件を検証。落ちたら Issue を上げて終了。
-2. `automation/revert-YYYY-MM-DD` を現在の `main` から作る。
-3. `git revert -m 1 <対象SHA>` → **通常 push**。
+したがって revert は **`automation-commit.yml` の後続 job** として実装する。
+同一 workflow 内の `needs:` による job 依存であれば、concurrency group は 1 つの run として扱われる。
+
+```yaml
+jobs:
+  verify-and-merge:
+  wait-for-deploy:      # needs: verify-and-merge
+  post-deploy-check:    # needs: wait-for-deploy
+  revert:               # needs: post-deploy-check
+    if: ${{ always() && needs.post-deploy-check.result == 'failure' }}
+```
+
+**手動で revert したい場合**は `automation-commit.yml` を
+`workflow_dispatch`（入力 `revert_sha`）で起動し、`verify-and-merge` を
+`if: ${{ inputs.revert_sha == '' }}` で飛ばす。**別 run として安全に起動できる。**
+
+### `revert` job の手順
+
+1. `plan:revert` で対象 SHA の 4 条件（2 親の merge commit／第1親が `main` 系統／
+   reset PR・人の PR でない／`[auto-revert]` を含まない）を検証。落ちたら Issue を上げて終了。
+2. `automation/revert-YYYY-MM-DD` を現在の `main` から作り、`git revert -m 1 <SHA>` して**通常 push**。
+3. `shouldTrip` が `true` なら、**同じブランチに `budget.json` の
+   `circuitBreaker.state = "open"` と `revertHistory` への追記を同梱**する（12.6 節 例外1）。
 4. revert PR を作る（タイトルに `[auto-revert]`）。
-5. **この workflow 自身が** `automation-commit` と同等の全検証を実行する。
+5. **この job 自身が** `verify-and-merge` と同等の全検証を実行する。
 6. 成功時のみ revert PR の head SHA に `automation/verify` を付け、auto-merge を有効にする。
-7. `shouldTrip` が `true` なら、**同じ PR に `circuitBreaker.state = "open"` の変更を同梱する**（例外1）。
-8. 必ず Issue を上げる。**1 日 1 回まで。**
+7. 必ず Issue を上げる。**1 日 1 回まで。**
 
-**`automation-reset.yml`**:
+### `automation-reset.yml`
 
 - `on: workflow_dispatch` のみ。**`schedule` も他のイベントも持たない。**
 - 必須入力 3 つ:
-  - `reason`（`required: true`）
-  - `revert_sha`（`required: true`。`budget.json` の `revertedShas` に含まれることを検証）
-  - `confirm`（`required: true`。**`RESET` と完全一致**しなければ終了コード 2 で中止）
+
+| 入力 | 検証 |
+|---|---|
+| `reason` | `required: true`。空文字なら終了コード 2 |
+| `revert_sha` | `required: true`。`budget.json` の `revertHistory` に含まれる `sha` であること |
+| `confirm` | `required: true`。**`RESET` と完全一致**しなければ終了コード 2 |
+
 - `budget.json` の `circuitBreaker` だけを `open` → `closed` に変える PR を作る。
 - `check:changed-paths -- --mode reset` に成功したときだけ `automation/verify` を付けて auto-merge。
 
 ### ステップ
 
+- [ ] `automation-commit.yml` に `revert` job があり `needs: post-deploy-check` を持つ失敗テストを書く（3 分）
+- [ ] `automation-revert.yml` という**別ファイルが存在しない**失敗テストを書く（2 分）
+- [ ] どの workflow も `uses:` で同一リポジトリの reusable workflow を呼ばない失敗テストを書く（4 分）
 - [ ] `automation-reset.yml` が `schedule` を持たない失敗テストを書く（3 分）
-- [ ] `automation-reset.yml` が 3 つの必須入力を持つ失敗テストを書く（4 分）
-- [ ] `confirm` の検査で `RESET` の完全一致を要求する失敗テストを書く（3 分）
-- [ ] `automation-revert.yml` が `git revert -m 1` を含む失敗テストを書く（2 分）
-- [ ] `automation-revert.yml` が `main` への直接 push を含まない失敗テストを書く（`git push origin HEAD:main` が無い）（3 分）
-- [ ] 両方が全 6 検証を自前で実行する失敗テストを書く（4 分）
+- [ ] `automation-reset.yml` が 3 つの必須入力を持ち `RESET` の完全一致を要求する失敗テストを書く（4 分）
+- [ ] `revert` job が `main` への直接 push を含まない失敗テストを書く（3 分）
+- [ ] `revert` job が `git revert -m 1` を含む失敗テストを書く（2 分）
 - [ ] `--force` を含まない失敗テストを書く（2 分）
 - [ ] テストを実行し失敗を確認する（1 分）
-- [ ] `automation-revert.yml` を書く（15 分）
+- [ ] `automation-commit.yml` に `revert` job を足す（14 分）
 - [ ] `automation-reset.yml` を書く（12 分）
 - [ ] テストが成功することを確認する（1 分）
 
 ### 最初に失敗するテスト
 
 ```ts
-it('reset は workflow_dispatch だけで起動する', () => {
-  const y = fs.readFileSync(path.join(dir, 'automation-reset.yml'), 'utf8');
-  expect(y).toContain('workflow_dispatch:');
-  expect(y).not.toMatch(/^\s*schedule:/m);
+// tests/workflow-yaml.test.ts（describe を追加）
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { describe, expect, it } from 'vitest';
+
+const workflowDir = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)), '../../.github/workflows');
+const read = (name: string) => fs.readFileSync(path.join(workflowDir, name), 'utf8');
+const automationFiles = () =>
+  fs.readdirSync(workflowDir).filter((f) => f.startsWith('automation-'));
+
+describe('revert の構成', () => {
+  it('revert は automation-commit の後続 job で、別 workflow にしない', () => {
+    const commit = read('automation-commit.yml');
+    expect(commit).toMatch(/^\s{2}revert:/m);
+    expect(commit).toMatch(/needs:\s*post-deploy-check/);
+    expect(fs.existsSync(path.join(workflowDir, 'automation-revert.yml'))).toBe(false);
+  });
+
+  it('同一 concurrency group 内で reusable workflow を呼ばない', () => {
+    for (const file of automationFiles()) {
+      const y = read(file);
+      expect(y).not.toMatch(/uses:\s*\.\/\.github\/workflows\//);
+      expect(y).not.toMatch(/uses:\s*ioda47871-byte\/mugi-no-mi-nextjs-2\/\.github\/workflows\//);
+    }
+  });
+
+  it('main へ直接 push しない。force push もしない', () => {
+    for (const file of automationFiles()) {
+      const y = read(file);
+      expect(y).not.toMatch(/git push[^\n]*HEAD:main|git push origin main\b/);
+      expect(y).not.toMatch(/--force(-with-lease)?\b/);
+    }
+  });
+
+  it('revert は 2 親の merge commit だけを対象にする', () => {
+    expect(read('automation-commit.yml')).toContain('git revert -m 1');
+    expect(read('automation-commit.yml')).toContain('plan:revert');
+  });
 });
 
-it('reset は confirm に RESET の完全一致を要求する', () => {
-  const y = fs.readFileSync(path.join(dir, 'automation-reset.yml'), 'utf8');
-  expect(y).toContain('confirm');
-  expect(y).toMatch(/!=\s*"RESET"|"\$CONFIRM"\s*!=\s*'RESET'|CONFIRM.*RESET/);
-});
+describe('automation-reset.yml', () => {
+  it('workflow_dispatch だけで起動する', () => {
+    const y = read('automation-reset.yml');
+    expect(y).toContain('workflow_dispatch:');
+    expect(y).not.toMatch(/^\s*schedule:/m);
+    expect(y).not.toMatch(/^\s*(push|pull_request|workflow_run):/m);
+  });
 
-it('revert は main へ直接 push しない', () => {
-  const y = fs.readFileSync(path.join(dir, 'automation-revert.yml'), 'utf8');
-  expect(y).not.toMatch(/git push[^\n]*HEAD:main|git push origin main/);
+  it('理由・revert SHA・確認文字列を必須にする', () => {
+    const y = read('automation-reset.yml');
+    for (const name of ['reason', 'revert_sha', 'confirm']) {
+      expect(y).toContain(`${name}:`);
+    }
+    expect((y.match(/required:\s*true/g) ?? [])).toHaveLength(3);
+  });
+
+  it('確認文字列は RESET の完全一致', () => {
+    expect(read('automation-reset.yml')).toContain('"$CONFIRM" = "RESET"');
+  });
+
+  it('reset 専用の変更パス検査を通す', () => {
+    expect(read('automation-reset.yml')).toContain('--mode reset');
+  });
 });
 ```
 
@@ -950,10 +1162,10 @@ Error: ENOENT: no such file or directory, open '.../automation-reset.yml'
 
 ### 最小実装
 
-`automation-revert.yml` は `workflow_dispatch`（入力 `target_sha`）と、
-`automation-commit` からの `workflow_call` の両方で起動できるようにする。
-`automation-reset.yml` は最初のステップで
-`[ "$CONFIRM" = "RESET" ] || { echo '確認文字列が一致しません'; exit 2; }`。
+`revert` job は `if: ${{ always() && needs.post-deploy-check.result == 'failure' }}`。
+`automation-reset.yml` の最初のステップは
+`[ "$CONFIRM" = "RESET" ] || { echo '確認文字列が一致しません'; exit 2; }`
+（入力は `env:` に入れてからシェル変数として参照する。直接展開しない）。
 
 ### 成功確認コマンド
 
@@ -964,117 +1176,270 @@ cd travel-goods-site && npx vitest run tests/workflow-yaml.test.ts && npm test &
 ### コミット
 
 ```
-feat: automation-revert.yml と automation-reset.yml を追加
+feat: revert job と automation-reset.yml を追加
 
-revert は main へ直接 push せず、revert ブランチと PR を経由する。
-GITHUB_TOKEN の PR では別 workflow が起動しないため、自身が検証と status 付与を行う。
-breaker を作動させる revert PR は state: open を同梱して自身は通す。
+revert は automation-commit の後続 job にする。
+同一 concurrency group 内で reusable workflow を待つとデッドロックするため、
+別 workflow にはしない。手動 revert は workflow_dispatch で別 run として起動する。
+main へ直接 push せず、revert ブランチと PR を経由する。
 reset は workflow_dispatch のみ。理由・revert SHA・確認文字列 RESET を必須にする。
 ```
 
 ---
 
-## Task 9: 公開後検査と Issue 通知
+## Task 9: マージ確認・デプロイ確認・公開後検査・Issue 通知
 
 ### 対象ファイル
 
 | 種別 | パス |
 |---|---|
+| 作成 | `travel-goods-site/src/lib/automation/deploy-gate.ts` |
+| 作成 | `travel-goods-site/scripts/wait-for-deploy.ts` |
 | 作成 | `travel-goods-site/scripts/post-deploy-check.ts` |
 | 作成 | `travel-goods-site/src/lib/automation/notify.ts` |
-| 変更 | `travel-goods-site/package.json`（`check:post-deploy` を追加） |
-| 変更 | `.github/workflows/automation-commit.yml`（公開後検査ジョブを追加） |
+| 変更 | `travel-goods-site/package.json`（`wait:deploy` と `check:post-deploy` を追加） |
+| 変更 | `.github/workflows/automation-commit.yml`（`wait-for-deploy` と `post-deploy-check` job） |
+| 作成 | `travel-goods-site/tests/automation-deploy-gate.test.ts` |
 | 作成 | `travel-goods-site/tests/automation-notify.test.ts` |
 
 ### Consumes / Produces
 
-- Consumes: `runArticleChecks`（計画2 Task 5）、`resolveMerchantLinks`（既存）
+- Consumes: `runArticleChecks`（計画2）、`resolveMerchantLinks`（既存）
 - Produces:
-  - `export const ISSUE_LABELS = ['automation-failure', 'automation-revert', 'automation-safety', 'automation-blocked', 'automation-adapter', 'automation-backlog', 'automation-budget'] as const`（**7 個**）
-  - `export type NotifyCondition = { label: (typeof ISSUE_LABELS)[number]; title: string; body: string }`
-  - `export function decideNotifications(input: NotifyInput): NotifyCondition[]`
-  - `export type NotifyInput = { consecutiveFailureDays: number; revertHappened: boolean; recallDetected: string[]; mergeBlocked: boolean; adapterFailures: Record<ManufacturerId, number>; heldCount: number; budgetShortDays: number }`
-  - CLI: `npm run check:post-deploy -- --site-url <url>`
+  - `export const DEPLOY_CHECK_NAME_PATTERN: RegExp`（Cloudflare Pages の check run 名に一致）
+  - `export type MergeState = { merged: false } | { merged: true; mergeCommitSha: string }`
+  - `export type DeployState = { status: 'success' | 'pending' | 'failure' | 'absent'; forSha: string | null }`
+  - `export function readMergeState(pr: { merged: boolean; merge_commit_sha: string | null }): MergeState`
+  - `export function readDeployState(checkRuns: readonly CheckRunLike[], expectedSha: string): DeployState`
+  - `export type CheckRunLike = { name: string; head_sha: string; status: string; conclusion: string | null }`
+  - `export const POLL_INTERVALS_MS: readonly number[]`（bounded。合計 20 分）
+  - `export const ISSUE_LABELS`（7 個）と `decideNotifications`（従来どおり）
 
-### 仕様（設計書 12.4・13.2 に対応）
+### 固定待機をやめる（設計書 12.4 の実装方法）
 
-通知するのは 7 条件だけ:
+**「10 分待ってから検査」は行わない。** 次を順に確認する。
 
-| 条件 | ラベル |
+| # | 確認 | 手段 | 失敗時 |
+|---:|---|---|---|
+| 1 | PR が**実際に merged になった** | `GET /repos/{o}/{r}/pulls/{n}` の `merged === true` | タイムアウトまで再確認 |
+| 2 | **merge commit SHA を取得** | 同じ応答の `merge_commit_sha` | `null` なら 1 に戻る |
+| 3 | **その SHA に対応する Cloudflare Pages のデプロイが成功** | `GET /repos/{o}/{r}/commits/{merge_commit_sha}/check-runs` から Pages の check run を探し、`status: 'completed'` かつ `conclusion: 'success'` | タイムアウトまで再確認 |
+| 4 | 公開後検査を実行 | `check:post-deploy` | `revert` job へ |
+
+**別 SHA の成功デプロイを success と誤認しない。**
+`readDeployState` は `head_sha === expectedSha` の check run だけを見る。
+`/commits/{sha}/check-runs` は指定 SHA の check run だけを返すが、
+**呼び出し側の SHA 取り違えを防ぐため、関数側でも `head_sha` を照合する。**
+
+Cloudflare Pages は GitHub 連携で**check run**としてビルド結果を返す
+（[Cloudflare Docs](https://developers.cloudflare.com/pages/configuration/git-integration/github-integration/)、2026-09-02 確認）。
+**Cloudflare の API トークンは不要**で、`GITHUB_TOKEN` の `checks: read` だけで足りる。
+
+### bounded polling とタイムアウト
+
+```ts
+/** 合計 20 分。最初は短く、あとは 60 秒間隔。 */
+export const POLL_INTERVALS_MS: readonly number[] = [
+  15_000, 15_000, 30_000, 30_000, 60_000, 60_000, 60_000, 60_000, 60_000, 60_000,
+  60_000, 60_000, 60_000, 60_000, 60_000, 60_000, 60_000, 60_000, 60_000, 60_000,
+];
+```
+
+| 状況 | 扱い |
 |---|---|
-| 同一の失敗が 7 日連続 | `automation-failure` |
-| 自動 revert が発生 | `automation-revert` |
-| リコール・安全情報を検出 | `automation-safety` |
-| 自動マージ不能 | `automation-blocked` |
-| メーカー単位の取得故障（5 件連続または 7 日連続成功率 0%） | `automation-adapter` |
-| 保留が 10 件以上 | `automation-backlog` |
-| 無料枠不足が 7 日継続 | `automation-budget` |
+| 20 分以内に merged にならない | **revert しない。** `automation-blocked` の Issue を上げて job を失敗させる。翌日の実行が同じ PR を見つけて続きから進める |
+| merged したがデプロイ check run が 20 分以内に完了しない | **revert しない。** `automation-failure` の Issue を上げて job を失敗させる。デプロイが遅いだけの可能性があるため、勝手に戻さない |
+| デプロイ check run が `conclusion: 'failure'` | **revert しない。** Pages 側のビルド失敗であり、直前の公開版が残る。`automation-failure` の Issue を上げる |
+| デプロイ成功後の公開後検査が失敗 | **`revert` job を動かす**（Task 8） |
 
-- **通常の成功は通知しない。**
-- **Workers AI の参考所見は、それ自体では通知しない**（設計書 1.3・13.2）。
-- ラベルごとに**開いている Issue は最大 1 件**。既存があれば本文を更新。条件が解消したら自動で閉じる。
-
-公開後検査（`main` マージから 10 分後）:
-
-1. 公開サイトの `robots.txt` / `sitemap.xml` / トップページが期待どおりか。
-2. その日に公開した記事の 14 検査を再実行。
-3. その日に公開した商品の CTA が正しく出ているか。
+> **タイムアウトでは revert しない。** 「まだ終わっていない」と「壊れている」を区別する。
+> revert するのは**公開後検査が実際に失敗したときだけ**である。
 
 ### ステップ
 
-- [ ] `ISSUE_LABELS` がちょうど 7 個である失敗テストを書く（2 分）
-- [ ] 何も起きていない入力で `decideNotifications` が空配列を返す失敗テストを書く（3 分）
-- [ ] 6 日連続失敗では通知せず、7 日で通知する失敗テストを書く（4 分）
-- [ ] `revertHappened: true` で `automation-revert` を返す失敗テストを書く（2 分）
-- [ ] 保留 9 件で通知せず、10 件で `automation-backlog` を返す失敗テストを書く（3 分）
+- [ ] `readMergeState` が `merged: false` と `merge_commit_sha: null` を区別する失敗テストを書く（3 分）
+- [ ] `readDeployState` が期待 SHA と異なる check run を無視する失敗テストを書く（5 分）
+- [ ] `readDeployState` が Pages 以外の check run（`verify` など）を無視する失敗テストを書く（4 分）
+- [ ] `readDeployState` が `pending` / `failure` / `absent` を区別する失敗テストを書く（4 分）
+- [ ] `POLL_INTERVALS_MS` の合計が 20 分ちょうどである失敗テストを書く（3 分）
+- [ ] `ISSUE_LABELS` が 7 個で、何も起きていなければ通知が空になる失敗テストを書く（4 分）
+- [ ] 6 日連続失敗では通知せず 7 日で通知する失敗テストを書く（4 分）
+- [ ] 保留 9 件で通知せず 10 件で通知する失敗テストを書く（3 分）
 - [ ] `decideNotifications` の入力に AI 関連のフィールドが無いことを型で確認する失敗テストを書く（3 分）
-- [ ] 複数条件が同時に立つと複数の `NotifyCondition` を返す失敗テストを書く（3 分）
 - [ ] テストを実行し失敗を確認する（1 分）
-- [ ] `notify.ts` と `post-deploy-check.ts` を実装する（12 分）
-- [ ] `automation-commit.yml` に公開後検査ジョブ（`needs` + 10 分待機）を足す（6 分）
+- [ ] `deploy-gate.ts` / `notify.ts` / CLI 2 本を実装する（16 分）
+- [ ] `automation-commit.yml` に `wait-for-deploy` と `post-deploy-check` の 2 job を足す（8 分）
 - [ ] テストが成功することを確認する（1 分）
 
 ### 最初に失敗するテスト
 
 ```ts
-import { ISSUE_LABELS, decideNotifications } from '../src/lib/automation/notify';
+// tests/automation-deploy-gate.test.ts
+import { describe, expect, it } from 'vitest';
+import {
+  POLL_INTERVALS_MS,
+  readDeployState,
+  readMergeState,
+  type CheckRunLike,
+} from '../src/lib/automation/deploy-gate';
 
-it('通知条件はちょうど 7 種', () => {
-  expect(ISSUE_LABELS).toHaveLength(7);
+const MERGE_SHA = 'a'.repeat(40);
+const OTHER_SHA = 'b'.repeat(40);
+
+function checkRun(over: Partial<CheckRunLike> = {}): CheckRunLike {
+  return {
+    name: 'Cloudflare Pages: travel-goods-site',
+    head_sha: MERGE_SHA,
+    status: 'completed',
+    conclusion: 'success',
+    ...over,
+  };
+}
+
+describe('マージ確認', () => {
+  it('merged でなければ merge commit を返さない', () => {
+    expect(readMergeState({ merged: false, merge_commit_sha: null })).toEqual({ merged: false });
+  });
+
+  it('merged でも SHA が無ければ未完了として扱う', () => {
+    expect(readMergeState({ merged: true, merge_commit_sha: null })).toEqual({ merged: false });
+  });
+
+  it('merged かつ SHA があれば取得できる', () => {
+    expect(readMergeState({ merged: true, merge_commit_sha: MERGE_SHA }))
+      .toEqual({ merged: true, mergeCommitSha: MERGE_SHA });
+  });
 });
 
-it('通常の成功では通知しない', () => {
-  expect(decideNotifications({
-    consecutiveFailureDays: 0, revertHappened: false, recallDetected: [],
-    mergeBlocked: false, adapterFailures: {} as never, heldCount: 3, budgetShortDays: 0,
-  })).toEqual([]);
+describe('デプロイ確認', () => {
+  it('期待した SHA のデプロイ成功だけを success とする', () => {
+    expect(readDeployState([checkRun()], MERGE_SHA))
+      .toEqual({ status: 'success', forSha: MERGE_SHA });
+  });
+
+  it('別 SHA の成功デプロイを success と誤認しない', () => {
+    expect(readDeployState([checkRun({ head_sha: OTHER_SHA })], MERGE_SHA))
+      .toEqual({ status: 'absent', forSha: null });
+  });
+
+  it('Pages 以外の check run は見ない', () => {
+    const runs = [checkRun({ name: 'verify' }), checkRun({ name: 'automation/verify' })];
+    expect(readDeployState(runs, MERGE_SHA)).toEqual({ status: 'absent', forSha: null });
+  });
+
+  it('完了していないデプロイは pending', () => {
+    expect(readDeployState([checkRun({ status: 'in_progress', conclusion: null })], MERGE_SHA).status)
+      .toBe('pending');
+  });
+
+  it('ビルド失敗は failure', () => {
+    expect(readDeployState([checkRun({ conclusion: 'failure' })], MERGE_SHA).status).toBe('failure');
+  });
+
+  it('check run が 1 つも無ければ absent', () => {
+    expect(readDeployState([], MERGE_SHA)).toEqual({ status: 'absent', forSha: null });
+  });
 });
 
-it('7 日連続で初めて通知する', () => {
-  const base = { revertHappened: false, recallDetected: [], mergeBlocked: false,
-    adapterFailures: {} as never, heldCount: 0, budgetShortDays: 0 };
-  expect(decideNotifications({ ...base, consecutiveFailureDays: 6 })).toEqual([]);
-  expect(decideNotifications({ ...base, consecutiveFailureDays: 7 })).toHaveLength(1);
+describe('bounded polling', () => {
+  it('待ち時間の合計は 20 分', () => {
+    const total = POLL_INTERVALS_MS.reduce((a, b) => a + b, 0);
+    expect(total).toBe(20 * 60 * 1000);
+  });
+
+  it('無限に待たない', () => {
+    expect(POLL_INTERVALS_MS.length).toBeLessThanOrEqual(30);
+  });
+});
+```
+
+```ts
+// tests/automation-notify.test.ts
+import { describe, expect, it } from 'vitest';
+import { ISSUE_LABELS, decideNotifications, type NotifyInput } from '../src/lib/automation/notify';
+
+function notifyInput(over: Partial<NotifyInput> = {}): NotifyInput {
+  return {
+    consecutiveFailureDays: 0,
+    revertHappened: false,
+    recallDetected: [],
+    mergeBlocked: false,
+    adapterFailures: { ace: 0, proteca: 0, 'world-traveler': 0, elecom: 0, anker: 0 },
+    heldCount: 0,
+    budgetShortDays: 0,
+    ...over,
+  };
+}
+
+describe('Issue 通知の条件', () => {
+  it('通知条件はちょうど 7 種', () => {
+    expect(ISSUE_LABELS).toHaveLength(7);
+  });
+
+  it('通常の成功では通知しない', () => {
+    expect(decideNotifications(notifyInput({ heldCount: 3 }))).toEqual([]);
+  });
+
+  it('7 日連続で初めて通知する', () => {
+    expect(decideNotifications(notifyInput({ consecutiveFailureDays: 6 }))).toEqual([]);
+    expect(decideNotifications(notifyInput({ consecutiveFailureDays: 7 }))).toHaveLength(1);
+  });
+
+  it('自動 revert は必ず通知する', () => {
+    const notes = decideNotifications(notifyInput({ revertHappened: true }));
+    expect(notes.map((n) => n.label)).toContain('automation-revert');
+  });
+
+  it('保留は 10 件で初めて通知する', () => {
+    expect(decideNotifications(notifyInput({ heldCount: 9 }))).toEqual([]);
+    expect(decideNotifications(notifyInput({ heldCount: 10 })).map((n) => n.label))
+      .toContain('automation-backlog');
+  });
+
+  it('複数条件が同時に立てば複数返す', () => {
+    const notes = decideNotifications(notifyInput({
+      revertHappened: true, heldCount: 12, budgetShortDays: 7,
+    }));
+    expect(notes.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('AI の所見は通知条件に含まれない', () => {
+    const keys = Object.keys(notifyInput());
+    expect(keys.some((k) => /advisory|ai|workersAi/i.test(k))).toBe(false);
+  });
 });
 ```
 
 ### テスト実行コマンド
 
 ```bash
-cd travel-goods-site && npx vitest run tests/automation-notify.test.ts
+cd travel-goods-site && npx vitest run tests/automation-deploy-gate.test.ts tests/automation-notify.test.ts
 ```
 
 ### 期待する失敗内容
 
 ```
-Error: Failed to load url ../src/lib/automation/notify
+Error: Failed to load url ../src/lib/automation/deploy-gate
 ```
 
 ### 最小実装
 
-`decideNotifications` は 7 つの条件を順に評価し、立ったものだけを配列に積む純関数。
-Issue の開閉は `automation-commit.yml` の `actions/github-script@v7` が行う
-（既存 `travel-goods-audit.yml` と同じ方式）。
+```ts
+export const DEPLOY_CHECK_NAME_PATTERN = /cloudflare\s*pages/i;
+
+export function readDeployState(runs: readonly CheckRunLike[], expectedSha: string): DeployState {
+  const mine = runs.filter((r) => r.head_sha === expectedSha && DEPLOY_CHECK_NAME_PATTERN.test(r.name));
+  if (mine.length === 0) return { status: 'absent', forSha: null };
+  if (mine.some((r) => r.status !== 'completed')) return { status: 'pending', forSha: expectedSha };
+  if (mine.every((r) => r.conclusion === 'success')) return { status: 'success', forSha: expectedSha };
+  return { status: 'failure', forSha: expectedSha };
+}
+```
+
+`wait-for-deploy.ts` は `POLL_INTERVALS_MS` を順に消化し、
+`success` を得たら終了コード 0、使い切ったら終了コード 3（タイムアウト）で終わる。
+**タイムアウトの終了コードは公開後検査の失敗（終了コード 1）と分ける。**
+`revert` job は `post-deploy-check` の失敗にだけ反応する。
 
 ### 成功確認コマンド
 
@@ -1085,11 +1450,13 @@ cd travel-goods-site && npm test && npm run typecheck && npm run lint && npx vit
 ### コミット
 
 ```
-feat(travel-goods-site): 公開後検査と Issue 通知の条件を追加
+feat(travel-goods-site): マージ確認・デプロイ確認・公開後検査・Issue 通知を追加
 
-通知するのは 7 条件だけ。通常の成功は通知しない。
-Workers AI の参考所見はそれ自体では通知しない。
-ラベルごとに開く Issue は 1 件までとし、解消したら自動で閉じる。
+固定待機をやめ、PR が merged になるまで bounded polling し、
+merge commit SHA を取得してから、その SHA の Cloudflare Pages check run の
+成功を確認して公開後検査へ進む。別 SHA の成功を誤認しない。
+タイムアウトでは revert せず Issue を上げる。revert は公開後検査の失敗だけに反応する。
+Cloudflare の API トークンは使わず、GITHUB_TOKEN の checks: read だけで確認する。
 ```
 
 ---

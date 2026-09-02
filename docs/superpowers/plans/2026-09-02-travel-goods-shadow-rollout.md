@@ -57,7 +57,7 @@ travel-goods-site/scripts/
 
 | ファイル | 扱い |
 |---|---|
-| `travel-goods-site/package.json` | `automation:dry-run` と `automation:summarize` の 2 script を**追加するだけ**。計画2・3 が追加した script は変更しない |
+| `travel-goods-site/package.json` | `automation:dry-run` と `automation:summarize` の 2 script を**追加するだけ**。計画1・2・3 が追加した script は変更しない |
 | `travel-goods-site/tests/workflow-yaml.test.ts` | 計画3 が作成したファイルの**末尾に `describe` を足すだけ**。既存の describe は変更しない |
 
 本計画が新規作成するファイルを、他の計画が作成することはない。
@@ -90,7 +90,8 @@ travel-goods-site/scripts/
 - **段階2 以降の有効化**（停止スイッチを `true` / `S` にする操作）
 - `SITE_MODE` の変更
 - Cloudflare・DNS・Vercel の操作
-- Workers AI / Browser Run の**実運用**（Task 4 で参考所見の呼び出し口だけ作る。既定は無効）
+- **Workers AI の実通信**（Task 4 は型と無効実装だけ。実通信は段階3 以降の別 PR）
+- Browser Run の実運用（楽天の規約確認が前提。設計書 17.1 未解決事項1）
 
 ---
 
@@ -349,22 +350,87 @@ feat(travel-goods-site): 通しの dry-run 実行系を追加
 ### 最初に失敗するテスト
 
 ```ts
-import { pickLatestPerDate, summarize, OBSERVATION_WINDOW_DAYS } from '../src/lib/automation/summarize';
+// tests/automation-summarize.test.ts
+import { describe, expect, it } from 'vitest';
+import {
+  OBSERVATION_WINDOW_DAYS,
+  pickLatestPerDate,
+  summarize,
+} from '../src/lib/automation/summarize';
+import { emptyReport } from '../src/lib/automation/observe';
+import type { ObservationReport } from '../src/lib/automation/observe';
 
-it('同日に複数の成功 run があれば最新だけ採用する', () => {
-  const picked = pickLatestPerDate([
-    { runId: 1, createdAt: '2026-09-04T21:00:00Z', artifactName: 'observation-2026-09-04' },
-    { runId: 2, createdAt: '2026-09-04T23:00:00Z', artifactName: 'observation-2026-09-04' },
-  ]);
-  expect(picked.size).toBe(1);
-  expect(picked.get('2026-09-04')?.runId).toBe(2);
+const WINDOW = ['2026-09-04', '2026-09-05', '2026-09-06', '2026-09-07',
+  '2026-09-08', '2026-09-09', '2026-09-10'] as const;
+
+function report(date: string, over: Partial<ObservationReport> = {}): ObservationReport {
+  return { ...emptyReport(date), ...over };
+}
+
+const sevenReports = WINDOW.map((d) => report(d));
+const sixReports = WINDOW.filter((d) => d !== '2026-09-07').map((d) => report(d));
+
+describe('run の選別', () => {
+  it('同日に複数の成功 run があれば最新だけ採用する', () => {
+    const picked = pickLatestPerDate([
+      { runId: 1, createdAt: '2026-09-04T21:00:00Z', artifactName: 'observation-2026-09-04' },
+      { runId: 2, createdAt: '2026-09-04T23:00:00Z', artifactName: 'observation-2026-09-04' },
+    ]);
+    expect(picked.size).toBe(1);
+    expect(picked.get('2026-09-04')?.runId).toBe(2);
+  });
+
+  it('日付ごとに 1 件だけ返す', () => {
+    const picked = pickLatestPerDate([
+      { runId: 1, createdAt: '2026-09-04T21:00:00Z', artifactName: 'observation-2026-09-04' },
+      { runId: 2, createdAt: '2026-09-05T21:00:00Z', artifactName: 'observation-2026-09-05' },
+      { runId: 3, createdAt: '2026-09-05T22:00:00Z', artifactName: 'observation-2026-09-05' },
+    ]);
+    expect(picked.size).toBe(2);
+    expect(picked.get('2026-09-05')?.runId).toBe(3);
+  });
+
+  it('run の実行日ではなく artifact 名の日付で対応づける', () => {
+    const picked = pickLatestPerDate([
+      { runId: 9, createdAt: '2026-09-11T00:00:00Z', artifactName: 'observation-2026-09-04' },
+    ]);
+    expect([...picked.keys()]).toEqual(['2026-09-04']);
+  });
 });
 
-it('7 日分そろわなければ complete は false', () => {
-  const s = summarize(sixReports, '2026-09-04', '2026-09-10');
-  expect(s.daysExpected).toBe(OBSERVATION_WINDOW_DAYS);
-  expect(s.complete).toBe(false);
-  expect(s.missingDates).toHaveLength(1);
+describe('7 日分の集計', () => {
+  it('7 件そろえば complete', () => {
+    const s = summarize(sevenReports, '2026-09-04', '2026-09-10');
+    expect(s.daysExpected).toBe(OBSERVATION_WINDOW_DAYS);
+    expect(s.daysFound).toBe(7);
+    expect(s.missingDates).toEqual([]);
+    expect(s.complete).toBe(true);
+  });
+
+  it('6 件では complete にせず欠損日を記録する', () => {
+    const s = summarize(sixReports, '2026-09-04', '2026-09-10');
+    expect(s.daysFound).toBe(6);
+    expect(s.complete).toBe(false);
+    expect(s.missingDates).toEqual(['2026-09-07']);
+  });
+
+  it('日次の最大値を取る', () => {
+    const reports = [report('2026-09-04', { rakutenRequests: 12 }),
+      report('2026-09-05', { rakutenRequests: 28 })];
+    expect(summarize(reports, '2026-09-04', '2026-09-10').peakRakutenRequests).toBe(28);
+  });
+
+  it('availability は 7 日すべて true のときだけ true', () => {
+    const allTrue = WINDOW.map((d) => report(d, { availabilityFieldPresent: true }));
+    expect(summarize(allTrue, '2026-09-04', '2026-09-10').availabilityFieldPresent).toBe(true);
+    const oneFalse = allTrue.map((r, i) => (i === 3 ? { ...r, availabilityFieldPresent: false } : r));
+    expect(summarize(oneFalse, '2026-09-04', '2026-09-10').availabilityFieldPresent).toBe(false);
+  });
+
+  it('取得を試みていないメーカーの成功率は 0 とする', () => {
+    const s = summarize(sevenReports, '2026-09-04', '2026-09-10');
+    expect(s.manufacturerSuccessRate.elecom).toBe(0);
+  });
 });
 ```
 
@@ -402,7 +468,7 @@ artifact 名の日付で対応づけ、同日に複数の成功 run があれば
 
 ---
 
-## Task 4: 参考所見の呼び出し口（既定は無効）
+## Task 4: 参考所見のインターフェース（段階0 では実通信しない）
 
 ### 対象ファイル
 
@@ -413,52 +479,102 @@ artifact 名の日付で対応づけ、同日に複数の成功 run があれば
 
 ### Consumes / Produces
 
-- Consumes: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`（未設定なら無効）
+- Consumes: なし（`fetch` を呼ばない）
 - Produces:
-  - `export type Advisory = { available: false; reason: 'not-configured' | 'budget-exhausted' | 'request-failed' } | { available: true; notes: string[] }`
-  - `export function isAdvisoryConfigured(env: NodeJS.ProcessEnv): boolean`
-  - `export async function requestArticleAdvisory(input: { body: string; facts: Record<string, number | null> }, env: NodeJS.ProcessEnv, budget: BudgetFile): Promise<Advisory>`
+  - `export type AdvisoryInput = { body: string; facts: Readonly<Record<string, number | null>> }`
+  - `export type Advisory = { available: false; reason: 'disabled-in-phase-0' } | { available: true; notes: readonly string[] }`
+  - `export type AdvisoryProvider = (input: AdvisoryInput) => Promise<Advisory>`
+  - `export const disabledAdvisoryProvider: AdvisoryProvider`
   - `export function mergeAdvisoryIntoPrBody(prBody: string, advisory: Advisory): string`
 
-### 仕様（設計書 1.3・4.4・10.5 に対応）
+### 段階0 では実通信を計画しない
 
-- **`Advisory` は判定に使わない。** `mergeAdvisoryIntoPrBody` で PR 本文に載せるだけ。
-- **`requestArticleAdvisory` の戻り値を受け取る関数は、公開可否を返さない。**
-  型として `Advisory` から `boolean` を導く関数を作らない。
-- 渡すのは**自サイトが生成した記事本文と構造化データだけ**。
-  メーカーページの HTML・楽天の `itemCaption` 全文は**渡さない**（`input` の型がそれを許さない）。
-- `CLOUDFLARE_API_TOKEN` 未設定なら `{ available: false, reason: 'not-configured' }`。
-  **これは失敗ではない。** 既定の状態である。
-- 予算（`workersAiNeurons` が 8,000 に到達）なら `'budget-exhausted'`。
+**この Task は `fetch` を書かない。** 理由は次のとおり。
+
+1. 参考所見は**判定に影響しない**（設計書 1.3）。段階0 の目的は判定の正しさを固めることであり、
+   所見の実通信はそこに何も足さない。
+2. 実通信を計画するなら、公式のモデルID・REST エンドポイント・入力/出力上限・timeout・
+   レスポンス schema・Neuron 予算計算をすべて確定させる必要がある。
+   **これらは段階0 の完了条件に含まれない**ため、確定していない値を計画に書かない。
+3. `CLOUDFLARE_API_TOKEN` を段階0 で用意する必要がなくなる（付録A の Secrets が増えない）。
+
+したがって段階0 で作るのは、**`AdvisoryProvider` という型と、
+常に `{ available: false, reason: 'disabled-in-phase-0' }` を返す実装**だけである。
+
+**実通信を追加するのは段階3 以降の別 PR とする。** そのとき確定させる項目:
+
+| 確定が必要な項目 | なぜ段階0 で決めないか |
+|---|---|
+| モデルID | 無料枠で使えるモデルは変わりうる。使う直前に公式ドキュメントで確認する |
+| REST エンドポイント | 同上 |
+| 入力・出力の上限トークン数 | 記事本文の長さが決まってから測る |
+| timeout | 実測してから決める |
+| レスポンス schema | モデルが決まらないと書けない |
+| Neuron 予算計算 | 1 リクエストあたりの消費を実測してから決める（計画4 Task 3 の集計項目） |
+
+### 型が守ること
+
+- `AdvisoryInput` は `body`（**自サイトが生成した本文**）と `facts`（**構造化済みの数値**）だけを取る。
+  メーカーページの HTML も楽天の `itemCaption` 全文も**型として渡せない**（設計書 4.4）。
+- **`Advisory` から公開可否を導く関数を export しない。**
+  `mergeAdvisoryIntoPrBody` だけが `Advisory` を消費し、PR 本文の文字列を返す。
 
 ### ステップ
 
-- [ ] トークン未設定で `{ available: false, reason: 'not-configured' }` を返す失敗テストを書く（3 分）
-- [ ] 予算到達で `'budget-exhausted'` を返す失敗テストを書く（3 分）
-- [ ] `Advisory` の 3 状態すべてで `mergeAdvisoryIntoPrBody` が例外を投げない失敗テストを書く（3 分）
-- [ ] `requestArticleAdvisory` の `input` 型がメーカー本文を受け取れないことを `@ts-expect-error` で確認する失敗テストを書く（4 分）
-- [ ] `Advisory` から公開可否を導く関数が存在しないことを確認する（`advisory.ts` の export 一覧を検査）失敗テストを書く（4 分）
+- [ ] `disabledAdvisoryProvider` が常に `{ available: false, reason: 'disabled-in-phase-0' }` を返す失敗テストを書く（3 分）
+- [ ] `advisory.ts` が `fetch` を呼ばないことをソース検査で確かめる失敗テストを書く（4 分）
+- [ ] `AdvisoryInput` にメーカー本文を渡せないことを `@ts-expect-error` で確かめる失敗テストを書く（4 分）
+- [ ] `Advisory` から公開可否を導く関数を export していない失敗テストを書く（4 分）
+- [ ] `mergeAdvisoryIntoPrBody` が両方の状態で例外を投げない失敗テストを書く（3 分）
 - [ ] テストを実行し失敗を確認する（1 分）
-- [ ] `advisory.ts` を実装する（10 分）
+- [ ] `advisory.ts` を実装する（8 分）
 - [ ] テストが成功することを確認する（1 分）
 
 ### 最初に失敗するテスト
 
 ```ts
+// tests/automation-advisory.test.ts
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { describe, expect, it } from 'vitest';
 import * as advisory from '../src/lib/automation/advisory';
 
-it('未設定は失敗ではなく既定の状態', async () => {
-  const r = await advisory.requestArticleAdvisory({ body: 'x', facts: {} }, {}, budget);
-  expect(r).toEqual({ available: false, reason: 'not-configured' });
-});
+const source = fs.readFileSync(
+  path.join(path.dirname(fileURLToPath(import.meta.url)), '../src/lib/automation/advisory.ts'),
+  'utf8',
+);
 
-it('AI の所見から公開可否を導く関数を export しない', () => {
-  const names = Object.keys(advisory);
-  expect(names).not.toContain('isPublishableByAdvisory');
-  expect(names).not.toContain('advisoryAllowsPublish');
-  expect(names.sort()).toEqual([
-    'isAdvisoryConfigured', 'mergeAdvisoryIntoPrBody', 'requestArticleAdvisory',
-  ]);
+describe('参考所見のインターフェース', () => {
+  it('段階0 では常に無効を返す', async () => {
+    const result = await advisory.disabledAdvisoryProvider({ body: '本文', facts: { weightG: 2900 } });
+    expect(result).toEqual({ available: false, reason: 'disabled-in-phase-0' });
+  });
+
+  it('段階0 では外部通信を書かない', () => {
+    expect(source).not.toMatch(/\bfetch\s*\(/);
+    expect(source).not.toContain('api.cloudflare.com');
+  });
+
+  it('メーカー本文を渡せない型になっている', () => {
+    // @ts-expect-error html は AdvisoryInput に存在しない
+    void advisory.disabledAdvisoryProvider({ body: 'x', facts: {}, html: '<html>...</html>' });
+  });
+
+  it('所見から公開可否を導く関数を export しない', () => {
+    expect(Object.keys(advisory).sort()).toEqual([
+      'disabledAdvisoryProvider',
+      'mergeAdvisoryIntoPrBody',
+    ]);
+  });
+
+  it('無効でも PR 本文の組み立てが壊れない', () => {
+    const body = advisory.mergeAdvisoryIntoPrBody('## 変更', { available: false, reason: 'disabled-in-phase-0' });
+    expect(body).toContain('## 変更');
+    const withNotes = advisory.mergeAdvisoryIntoPrBody('## 変更', { available: true, notes: ['表記ゆれ 1 件'] });
+    expect(withNotes).toContain('表記ゆれ 1 件');
+    expect(withNotes).toContain('参考所見');
+  });
 });
 ```
 
@@ -476,9 +592,17 @@ Error: Failed to load url ../src/lib/automation/advisory
 
 ### 最小実装
 
-`requestArticleAdvisory` は `isAdvisoryConfigured` → 予算 → `fetch` の順に判定し、
-どこかで落ちたら `available: false` を返す。
-`fetch` 先は `https://api.cloudflare.com/client/v4/accounts/{id}/ai/run/{model}`。
+```ts
+export const disabledAdvisoryProvider: AdvisoryProvider = async () => ({
+  available: false,
+  reason: 'disabled-in-phase-0',
+});
+
+export function mergeAdvisoryIntoPrBody(prBody: string, advisory: Advisory): string {
+  if (!advisory.available) return prBody;
+  return `${prBody}\n\n### 参考所見（判定には使っていません）\n\n${advisory.notes.map((n) => `- ${n}`).join('\n')}`;
+}
+```
 
 ### 成功確認コマンド
 
@@ -489,10 +613,13 @@ cd travel-goods-site && npx vitest run tests/automation-advisory.test.ts && npm 
 ### コミット
 
 ```
-feat(travel-goods-site): Workers AI の参考所見の呼び出し口を追加（既定は無効）
+feat(travel-goods-site): 参考所見のインターフェースを追加（段階0 は無効）
 
-渡すのは自サイトが生成した本文と構造化データだけ。メーカー本文は型として渡せない。
-所見から公開可否を導く関数を export しない。未設定は失敗ではなく既定の状態。
+型と、常に無効を返す実装だけを置く。段階0 では外部通信を書かない。
+渡せるのは自サイトが生成した本文と構造化済みの数値だけで、
+メーカー本文は型として渡せない。所見から公開可否を導く関数を export しない。
+実通信の追加は、モデルID・エンドポイント・上限・timeout・schema・Neuron 予算を
+確定させたうえで段階3 以降の別 PR で行う。
 ```
 
 ---
