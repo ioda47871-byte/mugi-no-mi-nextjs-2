@@ -27,10 +27,32 @@
 
 - GitHub Actions を主系のオーケストレータとする。
 - **公開可否の判定はすべて決定的ルールで行う。**
-- Workers AI と Browser Run は補助に限定し、**公開判定に一切入れない**。
+- Browser Run は補助に限定する。
+- **Workers AI は参考所見だけを生成する。その出力は判定を一切変更しない**（1.4 節）。
 - **新しい Cloudflare Worker・KV・D1・Cloudflare Cron は作らない。**
 
-### 1.3 非目的（この設計では扱わない）
+### 1.3 Workers AI の位置づけ（設計全体の前提）
+
+**Workers AI は参考所見（non-binding advisory）だけを生成する。**
+
+| 事項 | 定め |
+|---|---|
+| AI が何かを指摘した（不一致） | **判定を変更しない。** PR 本文と Issue に参考所見として載せるだけ |
+| AI が問題なしと答えた（一致） | **判定を変更しない。** 公開の根拠にしない |
+| AI が使えない（枠到達・障害・未設定） | **判定を変更しない。** 参考所見の欄が空になるだけ |
+
+したがって次が全節で成立する。
+
+- **商品の S/A/B 判定に AI は関与しない。**
+- **記事の公開・保留に AI は関与しない。**
+- **リンクの交換・非表示に AI は関与しない。**
+- **公開判定は決定的ルールだけで行う。**
+
+AI の所見は、人が PR や Issue を読むときの手がかりであり、
+**自動処理の分岐条件としては一切参照しない。**
+この位置づけは 3.3・4.4・5.4・5.5・7.7・10.5・13.2 節と整合する。
+
+### 1.4 非目的（この設計では扱わない）
 
 | 項目 | 理由 |
 |---|---|
@@ -135,8 +157,8 @@ Actions が public リポジトリで無料である以上、**主系を Cloudfl
 | 指揮 | **GitHub Actions** | スケジュール、予算管理、楽天 API 呼び出し、メーカー公式取得、照合、S/A/B 判定、記事生成、検証、ビルド、コミット／PR、Issue 通知、公開後検査、自動 revert | 無料（public） |
 | 状態 | **Git 上の JSON** | 繰越キュー、日次予算、リンク健全性 | 0 円 |
 | 配信 | **Cloudflare Pages** | `main` 更新で自動デプロイ | 500 ビルド/月 |
-| 補助（任意） | **Browser Rendering REST** | 選択式ページの初期選択状態の確認。**結果は PR の参考情報にのみ使う** | 1 日 8 分（自己制限） |
-| 補助（任意） | **Workers AI REST** | 生成記事の再検査（補助）、重複意図の指摘。**公開判定に入れない** | 無料割当の 80%（自己制限） |
+| 補助（任意） | **Browser Rendering REST** | 選択式ページの初期選択状態の観測。**S/A 判定の条件 6a の入力**（5.5 節） | 1 日 8 分（自己制限） |
+| 参考所見（任意） | **Workers AI REST** | 生成記事への所見、重複意図の指摘。**判定を一切変更しない**（1.3 節） | 無料割当の 80%（自己制限） |
 
 Browser Rendering も Workers AI も REST エンドポイントを持つため、**Worker を書かずに Actions から直接呼べる**。
 これにより Worker の 10 ms CPU 制約、Cron 5 本制限、binding 設定、Cloudflare 側での秘密管理がすべて不要になる。
@@ -162,14 +184,18 @@ Browser Rendering も Workers AI も REST エンドポイントを持つため�
                           公開後検査（失敗ならその日の変更を revert）
 
   補助（落ちても本線は止まらない）:
-    Browser Rendering REST ──► 初期選択状態の観測 ──► PR の参考情報
-    Workers AI REST        ──► 生成記事の再検査    ──► PR の参考情報／保留の根拠
+    Browser Rendering REST ──► 初期選択状態の観測 ──► 判定材料（5.5 節 6a）
+    Workers AI REST        ──► 参考所見           ──► PR/Issue に併記するだけ
+                                                     （判定を一切変更しない）
 ```
 
 ### 3.3 縮退運転
 
-補助（Browser Run / Workers AI）が使えない場合、**その分の判定材料が得られないだけ**で、本線は止まらない。
+**Browser Run** が使えない場合、初期選択状態の観測という判定材料が得られない。
 材料が足りない対象は B 判定（非公開保留）に落ちる。**補助が落ちて公開が甘くなることはない。**
+
+**Workers AI** が使えない場合、判定は一切変わらない（1.3 節）。参考所見の欄が空になるだけである。
+Workers AI は判定の入力ではないため、その可用性は公開の厳しさにも緩さにも影響しない。
 
 ---
 
@@ -181,7 +207,7 @@ Browser Rendering も Workers AI も REST エンドポイントを持つため�
 |---|---|---|
 | リポジトリ | `main` にマージされたコードと workflow | 自動処理が作る差分（必ず CI と変更パス検査を通す） |
 | データ | `validate:content` を通ったカタログ | 楽天 API の応答、メーカーページの HTML |
-| 判定 | 決定的ルールの出力 | Workers AI の出力 |
+| 判定 | 決定的ルールの出力 | Workers AI の出力（**判定に使わない**。参考所見としてのみ扱う） |
 | 秘密 | GitHub Secrets | それ以外すべて |
 
 ### 4.2 外部入力の扱い
@@ -224,6 +250,9 @@ Browser Rendering も Workers AI も REST エンドポイントを持つため�
 | `Fact` の数値と単位（構造化済み） | 楽天の `itemCaption` 全文 |
 | 商品の `brand` / `model` / `variant`（自サイトの登録値） | 取得した外部レスポンスの生データ |
 | 既存記事の `intentKey` とタイトル | 出典ページの引用文 |
+
+AI の出力は参考所見にとどまり判定を変更しない（1.3 節）ため、
+仮に AI が誤った所見を返しても、公開されるものは変わらない。
 
 この方針であれば、`llmInput` を `allowed` に変更しなくても Workers AI を使える。
 **`llmInput` の変更は、この設計の前提ではない。** 将来メーカー本文を渡したくなった時点で、出版社ごとに判断する（17 節）。
@@ -310,6 +339,8 @@ src/lib/manufacturers/
 | リコール・販売停止 | メーカー公式のリコール告知ページの語検査 | 決定的 |
 | 重複 | `brand`＋`model`＋`variant` の完全一致 | 決定的 |
 
+**この表に Workers AI の出力は含まれない。** S/A/B 判定に使う信号はすべて決定的である（1.3 節）。
+
 ### 5.5 S / A / B 判定
 
 #### S 判定 → **即時自動公開**
@@ -365,7 +396,11 @@ src/lib/manufacturers/
 5. リコール情報を確認できない（リコール告知ページ自体を取得できない）
 6. 型番が曖昧（正規化後 6 文字未満、または複数商品に一致）
 7. ページ取得拒否
-8. **AI（補助）とルールの判定が一致しない**
+
+> **AI の所見は B 判定の条件に含まれない。**
+> 以前の版にあった「AI とルールの判定が一致しない」という条件は削除した。
+> Workers AI は参考所見だけを生成し、S/A/B 判定を変更しない（1.3 節）。
+> AI が不一致を指摘した場合は PR 本文に併記するが、それだけでは保留にしない。
 
 B は **`automation/queue.json`** に `kind: 'candidate'` として残す。商品としては登録しない。
 60 日を過ぎた未処理の候補はキューから落とす（既存 `pruneCandidates()` と同じ保持期間）。
@@ -374,6 +409,19 @@ B は **`automation/queue.json`** に `kind: 'candidate'` として残す。商�
 > 自動変更を許可するパス（12.2 節）に含まれていないためである。
 > 既存ファイルと `--mode discover --apply` の手動実行経路はそのまま残すが、
 > 定期実行が書き込むのは `automation/queue.json` だけとする。この保存先の変更は段階0 のコード変更で行う。
+
+#### `sizeBasis: 'unspecified'` の扱い（決定済み）
+
+**`sizeBasis: 'unspecified'` は S/A/B 判定のブロッカーにしない。**
+測定条件が公表されていない商品でも、他の条件を満たせば S または A になりうる。
+
+理由: 現在の公開 22 件のうち 12 件が `unspecified` であり、
+既存の公開基準と揃える必要があるため。
+
+**代わりに記事側で制限する。** 測定条件に依存する比較軸を扱う記事では、
+`sizeBasis: 'unspecified'` の商品を対象から外す（7.10 節）。
+商品ページでは既存の `sizeLabel()` が「測定条件の公表なし」と明示するため、
+読者が条件を取り違えることはない。
 
 #### 判定の優先順位
 
@@ -538,10 +586,21 @@ src/lib/article-formats/
 | 12 | TODO・未設定・デモ文言がない | 決定的（既存 `DRAFT_PLACEHOLDER_MARKERS`） |
 | 13 | `evaluatePublication()` が ok | 決定的（既存） |
 | 14 | プラグインの `validate()` が ok | 決定的 |
-| 15 | Workers AI による再検査 | **補助。不一致なら公開せず保留（B と同じ扱い）。合格を公開の根拠にはしない** |
 
-検査 15 の位置づけ: **AI が「良い」と言っても公開しない。AI が「おかしい」と言ったら公開しない。**
-AI は公開を止める方向にのみ働く。
+
+記事の公開判定は上の **14 項目の決定的検査だけ**で決まる。
+
+**Workers AI による再検査は、公開判定の一部ではない。**
+以前の版にあった「検査 15」は削除した。Workers AI は次のとおり扱う。
+
+| 事項 | 定め |
+|---|---|
+| AI が問題を指摘した | **公開を止めない。** PR 本文に参考所見として併記し、Issue にも残す |
+| AI が問題なしと答えた | **公開の根拠にしない。** 14 項目を通っていることだけが根拠 |
+| AI が使えない | **何も変わらない。** 参考所見の欄が空になるだけ |
+
+AI の所見は人が後から読むための手がかりであり、
+**自動処理はその内容によって分岐しない**（1.3 節）。
 
 **`reviewedAt` / `reviewer` の扱い**: `evaluatePublication()` は両方を必須とし、
 コメントで「自動検査の合格を人の確認の代わりにしません」と明記している。
@@ -549,6 +608,10 @@ AI は公開を止める方向にのみ働く。
 `reviewMethod: 'derived-from-verified-facts'` を認める**契約変更**を行う。
 人のレビューを機械が名乗るのではなく、**別種のレビューとして記録する**形である。
 この変更は `articleMetaSchema` と `evaluatePublication()` のコード PR で行う（自動処理では変更しない）。
+
+> **この契約変更は承認済みである**（17.0 節）。
+> 「決定的な機械検査を通った安全な記事形式は、人間確認なしで公開してよい」という判断にもとづく。
+> **Workers AI はこの機械レビューの代替ではない。** 参考所見にとどまり、判定を変更しない（1.3 節）。
 
 ### 7.8 再検査と自動非公開
 
@@ -565,6 +628,33 @@ AI は公開を止める方向にのみ働く。
 - 初期に安全に生成できるのは、次の軸だけを使う記事:
   旅行日数／国内・海外／移動手段／機内持込・預入／荷物量／商品仕様
 - 旅行先データの構造化取得機能（航空会社の規定・電源プラグ規格など、公式出典を `Source` として登録できる仕組み）を追加した後に解禁する。
+
+### 7.10 測定条件に依存する比較軸の制限（決定済み）
+
+`sizeBasis: 'unspecified'` の商品は公開してよい（5.5 節）が、
+**測定条件に依存する比較軸を扱う記事では対象から外す。**
+
+対象から外す比較軸:
+
+| 比較軸 | 理由 |
+|---|---|
+| 外寸（幅・高さ・奥行） | ハンドル・キャスターを含むかで数値が変わる |
+| 機内持込可否 | 各社の 3 辺合計規定と比較するため、測定条件が一致していないと判定できない |
+| 収納サイズ・重ね置きの可否 | 同上 |
+| 「◯cm 以下」で絞り込む条件別比較 | 同上 |
+
+対象から外さない比較軸:
+
+| 比較軸 | 理由 |
+|---|---|
+| 本体重量（`weightG`） | 測定条件に依存しない |
+| 容量（`capacityL`） | メーカー公表値そのもの。`measurementState` で通常時／拡張時を区別済み |
+| 機能・仕様（ストッパー、開き方、端子など） | 測定条件と無関係 |
+
+各記事構成プラグインの `requiredSpecs` にこの制限を組み込む。
+たとえば `comparison` プラグインが外寸を比較軸に選んだ場合、
+`selectProducts()` は `sizeBasis !== 'unspecified'` の商品だけを返す。
+その結果、対象が 2 件未満になったらその記事は生成しない（7.2 節）。
 
 ---
 
@@ -657,7 +747,7 @@ travel-goods-site/automation/
 | ファイル | 内容 | 想定サイズ |
 |---|---|---|
 | `queue.json` | 繰越対象の `{ kind, targetId, queuedAt, attempts, lastReason }` | 〜3 KB |
-| `budget.json` | `{ date, rakutenRequests, workersAiNeurons, browserSeconds, pagesDeploysThisMonth }` | < 1 KB |
+| `budget.json` | `{ date, rakutenRequests, workersAiNeurons, browserSeconds, pagesDeploysThisMonth, circuitBreaker }`。`circuitBreaker` は 12.6 節 | < 1 KB |
 | `link-health.json` | リンクごとの 6 信号と `consecutiveFailures`、`lastHealthyAt` | 〜8 KB |
 
 **共通の制約**:
@@ -702,7 +792,7 @@ travel-goods-site/automation/
 | 資源 | 上限（自己制限） | 対公式上限 | 到達時 |
 |---|---|---|---|
 | 楽天 API | **30 リクエスト/日** | 1 req/秒 の範囲内（30 秒相当） | 繰越 |
-| Workers AI | **8,000 Neurons/日**（割当の 80%） | 10,000/日 | ジョブは続行。記事は決定的検査 14 項目だけで判定する（10.5 節） |
+| Workers AI | **8,000 Neurons/日**（割当の 80%） | 10,000/日 | ジョブは続行。**判定は一切変わらない**。参考所見の欄が空になるだけ（10.5 節） |
 | Browser Run | **8 分/日** | 10 分/日 | ジョブは続行。初期選択を観測できない商品は**すべて B 判定へ落ちる**（10.5 節） |
 | Pages デプロイ | **1 日 1 回**（＝最大 31/月） | 500/月 | 自動コミット停止 |
 | GitHub Actions | 実測 25 分/日程度 | 無制限 | — |
@@ -739,23 +829,20 @@ travel-goods-site/automation/
 
 ### 10.5 補助が使えないときの扱い（明示）
 
-「補助なしで続行」が何を意味するかを資源ごとに定める。**どの場合も、公開が甘くなる方向には働かない。**
-
-| 資源 | 使えないときの動作 | 公開への影響 |
+| 資源 | 使えないときの動作 | 判定への影響 |
 |---|---|---|
-| Browser Run | 6a（観測）を実行できない | 6b（推定）で判定できる商品は S/A になりうる。6b でも判定できない商品は**すべて B 判定（非公開保留）**。翌日キューで再試行 |
-| Workers AI | 記事の検査 15（AI 再検査）を実行できない | **記事は決定的検査 1〜14 だけで判定し、公開してよい。** AI は公開を止める方向にのみ働く検査であり（7.7 節）、実行できないことは不合格の根拠にならない |
-| Workers AI | 商品の B 判定条件 8（AI とルールの不一致）を評価できない | 不一致が観測されないため条件 8 は成立しない。他の条件だけで S/A/B を決める |
+| **Browser Run** | 6a（観測）を実行できない | 6b（推定）で判定できる商品は S/A になりうる。6b でも判定できない商品は**すべて B 判定（非公開保留）**。翌日キューで再試行。**観測なしで S にすることはない** |
+| **Workers AI** | 参考所見を生成できない | **なし。** 商品の S/A/B、記事の公開・保留、リンクの交換・非表示はいずれも変わらない。PR/Issue の参考所見欄が空になるだけ（1.3 節） |
 
-この非対称（商品は B へ落ち、記事はそのまま公開）は意図的である。
-Browser Run が担うのは**「別バリエーションを売っていないこと」の確認**という公開の必要条件であるのに対し、
-Workers AI が担うのは**決定的検査をすでに通った記事への追加の反証**だからである。
+この非対称は意図的である。
+Browser Run が担うのは**「別バリエーションを売っていないこと」の確認**という公開の必要条件であり、判定の入力である。
+Workers AI が担うのは**人が読むための所見**であり、判定の入力ではない。
 
 ---
 
 ## 11. workflow とスケジュール
 
-### 11.1 構成（既存 2 本 + 新規 4 本）
+### 11.1 構成（既存 2 本 + 新規 6 本）
 
 | workflow | 起動 | 書き込み | 通知 |
 |---|---|---|---|
@@ -764,7 +851,9 @@ Workers AI が担うのは**決定的検査をすでに通った記事への追�
 | `automation-links.yml`（新規） | 毎日 JST 06:00 / 手動 | `link-health.json`, `merchants/` | 例外時のみ |
 | `automation-discover.yml`（新規） | 月・木 JST 06:30 / 手動 | `queue.json`, `products/`, `sources.json` | 例外時のみ |
 | `automation-articles.yml`（新規） | 火・金 JST 06:30 / 手動 | `articles/` | 例外時のみ |
-| `automation-commit.yml`（新規） | 毎日 JST 07:30 / 手動 | 上記の変更をまとめて PR 化 | 例外時のみ |
+| `automation-commit.yml`（新規） | 毎日 JST 07:30 / 手動 | 上記の変更をまとめて PR 化・検証・auto-merge | 例外時のみ |
+| `automation-revert.yml`（新規） | 公開後検査の失敗時 / 手動 | revert ブランチと revert PR | **必ず Issue**（12.5 節） |
+| `automation-reset.yml`（新規） | `workflow_dispatch` のみ | `budget.json` の `circuitBreaker` 解除 PR | Issue を更新 |
 
 ### 11.2 スケジュール（cron は UTC）
 
@@ -792,6 +881,49 @@ Workers AI が担うのは**決定的検査をすでに通った記事への追�
 
 **検証は 1 日の最後に 1 回だけまとめて実行する。** 各ジョブは作業ブランチへコミットするだけで、
 個別に `main` を更新しない。これにより Pages デプロイが 1 日 1 回に収まる。
+
+### 11.5 日次 workflow の競合対策
+
+同じ日の複数 workflow が同じ作業ブランチ `automation/daily-YYYY-MM-DD` を触るため、
+競合を構造的に防ぐ。
+
+**1. 共通の concurrency group**
+
+すべての `automation-*` workflow が**同一の concurrency group** を使う。
+
+```yaml
+concurrency:
+  group: travel-goods-automation
+  cancel-in-progress: false
+```
+
+`cancel-in-progress: false` とするのは、走っているジョブを途中で殺すと
+作業ブランチが中途半端な状態で残るためである。**後から来たジョブは待つ。**
+これにより、同時刻に 2 つの automation workflow が走ることはない。
+
+**2. 作業ブランチの取得規則**
+
+各 workflow は実行開始時に次を行う。
+
+1. `origin/automation/daily-YYYY-MM-DD`（YYYY-MM-DD は JST の当日）が**存在すれば取得**して、その先端で作業する。
+2. **存在しなければ、実行開始時点の `origin/main` から作る。**
+
+この規則により、後続の workflow は必ず先行 workflow のコミットを含む作業ブランチの上で動く。
+`automation-links`（06:00）→ `automation-discover` / `automation-articles`（06:30）→
+`automation-commit`（07:30）の順に、同じブランチが積み上がる。
+
+**3. push の規則**
+
+- **通常 push のみ。** `--force` および `--force-with-lease` は使わない。
+- push が非 fast-forward で拒否された場合は、**`git pull --rebase` ではなく、
+  ブランチを取り直して処理をやり直す**（concurrency group により本来起きないが、保険）。
+  それでも失敗したら、その日の処理を中止して Issue を上げる。
+- 履歴の書き換え（`rebase` / `amend` / `filter-branch`）は行わない。
+
+**4. `automation-commit` の前提**
+
+`automation-commit` は、作業ブランチが存在しない日（＝その日の変更が 1 件も無い日）は
+**何もせず正常終了する**。空の PR を作らない。
 
 ### 11.4 上限と繰越
 
@@ -873,6 +1005,9 @@ travel-goods-site/automation/link-health.json
 `GITHUB_TOKEN` は `statuses: write` を追加で必要とするが、**追加の秘密（PAT・GitHub App）は不要**である。
 `travel-goods-ci.yml` へのこの追記は段階0 のコード変更として人が行う（自動処理は workflow を変更しない）。
 
+**同じ仕組みを自動 revert にも使う。** `automation-revert.yml` も自前で検証を行い、
+revert PR の head SHA に `automation/verify` を付ける（12.5 節）。
+
 **どちらの経路でも、検証に失敗すれば `automation/verify` は付かず、自動マージは成立しない。**
 管理者権限による必須チェックの回避は使わない。
 
@@ -886,17 +1021,87 @@ travel-goods-site/automation/link-health.json
 
 失敗したら、**その日の自動変更を revert して再デプロイする。**
 
+### 12.5 自動 revert の手順（ブランチ保護を回避しない）
+
+**`main` への直接 push は行わない。** 自動 revert も、人の変更とまったく同じ経路を通る。
+
+`automation-revert.yml`（新規 workflow）が次を順に行う。
+
+1. **対象 SHA の確認**
+   - revert 対象が、その日の `automation-commit` が作ったマージコミットの SHA と一致することを確認する。
+   - 一致しなければ**何もせず Issue を上げて終了する**。人のコミットは決して対象にしない。
+2. **緊急 revert ブランチの作成**
+   - `automation/revert-YYYY-MM-DD` を、現在の `main` から作る。
+   - `git revert -m 1 <対象SHA>` を実行し、**通常 push** する（force push は行わない）。
+3. **revert PR の作成**
+   - base は `main`、head は `automation/revert-YYYY-MM-DD`。
+   - タイトルと本文に `[auto-revert]` と対象 SHA、失敗した公開後検査の内容を書く。
+4. **検証と status 付与（この workflow 自身が行う）**
+   - `GITHUB_TOKEN` が作った PR では別の workflow が起動しない（12.3 節）。
+   - そのため **`automation-revert.yml` 自身が `automation-commit` と同等の検証**
+     （`typecheck` / `lint` / 単体テスト / `validate:content:all` / `build:only` /
+     `check:release -- --out out` / 必要な E2E）を実行する。
+   - 成功したときだけ、**revert PR の head SHA** に対して
+     `POST /repos/{owner}/{repo}/statuses/{sha}` で context `automation/verify` を `success` として付ける。
+5. **auto-merge**
+   - GitHub の auto-merge を有効にする。必須チェック `automation/verify` が満たされた時点でマージされる。
+   - **管理者権限による必須チェックの回避は使わない。**
+6. Cloudflare Pages が `main` 更新を検知して再デプロイする。
+
+検証が失敗した場合、**revert PR はマージされずに残る**。
+この場合は自動では解決できないため、Issue を上げて人の判断を待つ（13.2 節 `automation-revert`）。
+
 **自動 revert の安全装置**:
 
 | 装置 | 内容 |
 |---|---|
 | 対象の限定 | revert するのは**その日の自動マージコミット 1 つだけ**。人のコミットは対象にしない |
-| 同一コミット確認 | revert 対象の SHA が、その日の `automation-commit` が作ったマージコミットと一致することを確認する |
-| 件数制限 | **1 日あたり revert は 1 回まで** |
-| ループ防止 | revert コミットに `[auto-revert]` を付け、**このコミットに対しては公開後検査を再実行しない**。revert の revert を作らない |
+| 同一 SHA 確認 | 手順1。一致しなければ何もしない |
+| 件数制限 | **1 日あたり revert は 1 回まで**。同日 2 回目の要求は実行せず Issue に追記する |
+| revert の revert 禁止 | revert コミットには `[auto-revert]` を付ける。**`[auto-revert]` を含むマージコミットに対しては公開後検査を実行しない**ため、revert の revert は構造上起きない |
+| 直接 push の禁止 | `main` へ直接 push しない。必ず revert ブランチ → PR → 必須チェック → auto-merge |
+| force push の禁止 | revert ブランチへの push は通常 push のみ |
 | 停止 | 自動 revert が発生したら、**その日の残りの自動処理を停止する**（`queue.json` に持ち越す） |
 | 通知 | **必ず Issue を上げる**（13.2 節） |
-| 連続時の停止 | 3 日以内に 2 回 revert が起きたら、`AUTOMATION_ENABLED` を落とすことを Issue で促し、それ以降の自動マージを止める |
+| 連続時の停止 | 3 日以内に 2 回 revert が起きたら circuit breaker を作動させる（12.6 節） |
+
+### 12.6 circuit breaker（連続 revert 時の全面停止）
+
+**3 日以内に自動 revert が 2 回発生したら、すべての自動マージを止める。**
+
+停止状態は **`travel-goods-site/automation/budget.json`** に保存する
+（GitHub Variables を自動で書き換える権限は追加しない）。
+
+```jsonc
+{
+  "circuitBreaker": {
+    "state": "open",              // "closed" | "open"
+    "trippedOn": "2026-09-20",    // 作動した日
+    "reason": "3日以内に2回の自動revert",
+    "revertedShas": ["<SHA1>", "<SHA2>"]
+  }
+}
+```
+
+| 事項 | 定め |
+|---|---|
+| 判定 | すべての `automation-*` workflow が実行開始時に `budget.json` を読む |
+| 作動中の動作 | `circuitBreaker.state === "open"` なら、**`automation/verify` を付けず、auto-merge も有効にしない**。検証やデータ生成は行ってよいが、**マージは一切成立しない** |
+| 適用範囲 | 商品・記事・リンクの自動 PR、および自動 revert PR のすべて |
+| 書き込み権限 | `budget.json` は自動変更を許可されたパス（12.2 節）に含まれるため、workflow が書き込める。**GitHub Variables を変更する権限は追加しない** |
+| 人の PR | 影響を受けない。`travel-goods-ci.yml` が `automation/verify` を付けるため、通常どおりマージできる |
+| 通知 | 作動時に `automation-revert` ラベルの Issue を更新し、停止状態・発生日・理由・対象 SHA を明記する |
+
+**解除の方法（2 通り。どちらも人の明示的な操作）**:
+
+1. **`workflow_dispatch` による解除** — `automation-reset.yml`（新規）を手動起動する。
+   入力に「解除の理由」と「確認した対象 SHA」を必須とし、
+   `budget.json` の `circuitBreaker.state` を `"closed"` に戻す PR を作る。
+   この PR も通常の必須チェックを通ってマージされる。
+2. **人の PR による解除** — 人が直接 `budget.json` を編集する PR を出す。
+
+**自動処理が自分で解除することはない。** `circuitBreaker` を `closed` に戻す変更は、
+`workflow_dispatch` の明示的な起動か人の PR のどちらかからしか生まれない。
 
 ---
 
@@ -921,7 +1126,16 @@ GitHub Variables に置く（秘密ではない）。**すべて既定 `false` �
 
 `AUTO_PUBLISH_PRODUCTS` だけが 3 値を取るのは、段階2 で S のみ、段階3 で S+A と
 **段階的に広げるため**である。新しいスイッチを増やさずに済むよう、値で表現する。
-未知の値が設定されていた場合は `off` として扱う（安全側に倒す）。
+
+**取りうる値は `off` / `S` / `S,A` の 3 つだけ**であり、この 3 値は全節で統一して使う。
+`true` / `false` は `AUTO_PUBLISH_PRODUCTS` では使わない。
+未設定・空文字・上記以外の値はすべて `off` として扱う（安全側に倒す）。
+
+| 値 | 動作 |
+|---|---|
+| `off` | 商品を自動公開しない（既定） |
+| `S` | S 判定の商品のみ自動公開する（段階2） |
+| `S,A` | S 判定と A 判定の商品を自動公開する（段階3 以降） |
 
 ### 13.2 通知
 
@@ -930,12 +1144,17 @@ GitHub Variables に置く（秘密ではない）。**すべて既定 `false` �
 | 条件 | ラベル | 内容 |
 |---|---|---|
 | 同一の失敗が **7 日連続** | `automation-failure` | 対象、失敗の分類、連続日数 |
-| **自動 revert** が発生 | `automation-revert` | revert したコミット、失敗した検査 |
+| **自動 revert** が発生 | `automation-revert` | revert したコミット、失敗した検査、revert PR の URL |
+| **circuit breaker が作動**（3 日以内に 2 回 revert） | `automation-revert` | 停止状態・発生日・理由・対象 SHA。解除方法（12.6 節） |
 | **リコール・安全情報**を検出 | `automation-safety` | 該当商品、検出元 URL |
 | **自動マージ不能**（必須チェック失敗、コンフリクト） | `automation-blocked` | PR 番号、失敗したチェック |
 | **メーカー単位の取得故障**（同一メーカーで 5 件連続失敗、または 7 日連続で取得成功率 0%） | `automation-adapter` | メーカー、HTTP 状態の分類 |
 | **保留が 10 件以上** | `automation-backlog` | 保留の内訳（B 判定の理由別） |
 | **無料枠不足が 7 日継続** | `automation-budget` | どの資源が不足しているか |
+
+**Workers AI の参考所見は、それ自体では通知しない。**
+所見は上記いずれかの条件で作られる Issue／PR の本文に併記するだけで、
+所見の存在を理由に新しい Issue を作らない（1.3 節）。
 
 **Issue を増殖させない**: ラベルごとに**開いている Issue は最大 1 件**とし、
 既存があれば本文を更新する。条件が解消したら自動的にコメントを付けて閉じる。
@@ -967,7 +1186,10 @@ GitHub Variables に置く（秘密ではない）。**すべて既定 `false` �
 | 状態ファイルの安定性 | **同じ入力なら同じバイト列。内容が変わらなければ書き込まない** |
 | 変更パス検査 | 許可パス外の変更を検出して中止する |
 | 予算と繰越 | 上限到達で正常終了し、未処理分がキューに積まれる |
-| 自動 revert の安全装置 | 対象コミットの同一性確認、1 日 1 回制限、`[auto-revert]` のループ防止 |
+| 自動 revert の安全装置 | 対象コミットの同一性確認、1 日 1 回制限、`[auto-revert]` のループ防止、**`main` への直接 push を行わないこと** |
+| circuit breaker | 3 日以内 2 回の revert で `state: "open"` になる。open のとき **`automation/verify` を付けず auto-merge も有効にしない**。自動処理が自分で `closed` に戻さない |
+| 作業ブランチの取得規則 | 当日ブランチがあれば取得、無ければ `main` から作る。**force push を行わない** |
+| **AI 所見の非拘束性** | **Workers AI の出力が「不一致」でも「一致」でも「取得不能」でも、S/A/B 判定・記事の公開可否・リンクの交換結果が変わらないこと**（同じ入力で AI の返答だけを変えて 3 通り試す） |
 
 ### 14.3 E2E
 
@@ -993,7 +1215,7 @@ GitHub Variables に置く（秘密ではない）。**すべて既定 `false` �
 
 - 実装対象: メーカーアダプター、S/A/B 判定器、記事構成プラグイン、リンク状態機械、状態ファイル、予算・繰越、変更パス検査、自動 PR／マージ／revert、停止スイッチ。
 - `SITE_MODE=preview`。
-- **停止スイッチはすべて `false`。自動公開は一切行わない。**
+- **停止スイッチはすべて `false`（`AUTO_PUBLISH_PRODUCTS` は `off`）。自動公開は一切行わない。**
 - 完了条件: 14 節の単体テストと E2E がすべて成功する。
 
 ### 段階1 — 7 日間の観察運転
@@ -1009,9 +1231,53 @@ GitHub Variables に置く（秘密ではない）。**すべて既定 `false` �
   - 記事の重複判定閾値 0.60 の妥当性
 - 完了条件: 誤判定率が許容範囲であることを人が確認する（閾値は 17 節で決める）。
 
+#### 段階1 の測定結果の保存方法
+
+**本番データは変更しない。** dry-run なので `datasets/` にも `automation/` にも書き込まない。
+測定結果は **GitHub Actions の artifact** として保存する。
+
+| 事項 | 定め |
+|---|---|
+| 保存先 | GitHub Actions の artifact（`actions/upload-artifact`）。**リポジトリにはコミットしない** |
+| 単位 | 1 日 1 ファイル。`observation-YYYY-MM-DD.json` |
+| 保持期間 | 14 日（7 日分の集計に足り、必要以上に残さない） |
+| 最終日の集計 | 7 日目の実行が直近 7 日分の artifact を取得し、`observation-summary-YYYY-MM-DD.json` として集計結果を保存する |
+
+日次レポートの構造（すべて集計値と分類コード。**生データは含めない**）:
+
+```jsonc
+{
+  "date": "2026-09-10",
+  "tierCounts":      { "S": 0, "A": 3, "B": 12 },
+  "tierBReasons":    { "no-official-page": 5, "variant-unknown": 4, "model-ambiguous": 3 },
+  "rakutenRequests": 27,
+  "rakutenErrors":   { "429": 0, "403": 0, "5xx": 1 },
+  "manufacturerFetch": {
+    "ace":    { "attempted": 6, "succeeded": 6 },
+    "elecom": { "attempted": 3, "succeeded": 0, "lastStatus": 403 }
+  },
+  "workersAiNeurons": 420,
+  "browserSeconds":   215,
+  "articleCandidates": { "generated": 2, "rejectedByCheck": { "numeric-mismatch": 1 } },
+  "articleSimilarity": { "maxJaccard": 0.41 },
+  "linkSignals":  { "healthy": 13, "uncertain": 1, "hidden": 0, "replace": 0, "manualHold": 1 },
+  "availabilityFieldPresent": true,
+  "actionsMinutes": 22
+}
+```
+
+**artifact にも保存しないもの**（4.2 節と同じ規則を artifact にも適用する）:
+
+- 秘密情報（資格情報、紹介 URL 全文、アフィリエイト ID）
+- 外部レスポンス本文（楽天 API の応答、メーカーページの HTML）
+- 取得したページのスクリーンショットや DOM
+- 商品名・キャプションの原文（**分類結果と集計値だけを残す**）
+
+失敗理由は**分類コードと HTTP ステータス**で表す。エラー本文は保存しない。
+
 ### 段階2 — S 判定のみ自動公開（7 日間運用）
 
-- `AUTOMATION_ENABLED=true`、`AUTO_PUBLISH_PRODUCTS=true`（**S のみ**）、`AUTO_AUDIT_LINKS=true`。
+- `AUTOMATION_ENABLED=true`、**`AUTO_PUBLISH_PRODUCTS=S`**、`AUTO_AUDIT_LINKS=true`。
 - 記事生成・自動交換は `false` のまま。
 - リンク監視を有効化。**明確な販売終了リンクの非表示のみ**行う。
 - `SITE_MODE=preview` のまま（公開サイトには出ない）。
@@ -1020,7 +1286,7 @@ GitHub Variables に置く（秘密ではない）。**すべて既定 `false` �
 
 ### 段階3 — A 判定・記事・代替リンク交換
 
-- `AUTO_PUBLISH_PRODUCTS` を S+A に、`AUTO_GENERATE_ARTICLES`・`AUTO_PUBLISH_ARTICLES`・`AUTO_REPLACE_LINKS` を `true`。
+- **`AUTO_PUBLISH_PRODUCTS=S,A`**、`AUTO_GENERATE_ARTICLES`・`AUTO_PUBLISH_ARTICLES`・`AUTO_REPLACE_LINKS` を `true`。
 - 記事は週 2 本。
 - S/A の代替リンク交換を有効化。
 - 公開後検査と自動 revert を有効化。
@@ -1032,17 +1298,28 @@ GitHub Variables に置く（秘密ではない）。**すべて既定 `false` �
 - 公開用の運営者名・連絡先を設定する（`missingLaunchSettings()` が両方を必須にしている）。
 - `SITE_MODE=production` へ切り替える。
 - robots・sitemap を公開する。
+- `pages.dev` から独自ドメインへの 301 リダイレクトを設定する。
 - Vercel の旧デプロイを停止する。
 
-段階4 の前提条件（現行コードが要求しているもの）:
+段階4 の前提条件（済／未の区別）:
 
-1. `PUBLIC_OPERATOR_NAME` と `PUBLIC_CONTACT_EMAIL` の決定（**未確定**）
-2. `SITE_URL=https://tabimono-hikaku.com`（設定済み）
-3. XServer のネームサーバーを Cloudflare 指定値へ変更し、DNS と TLS が有効（**未実施**）
-4. Cloudflare Pages の Production 環境変数を `SITE_MODE=production` / `CATALOG_DATASET=production` に設定
-5. `check:release -- --out out` が Production 相当環境で終了コード 0（**確認済み**）
-6. `pages.dev` から独自ドメインへの 301 リダイレクト設定
-7. Vercel の自動デプロイ停止
+| # | 項目 | 状態 |
+|---:|---|---|
+| 1 | Cloudflare Pages への GitHub 連携 | **実施済み** |
+| 2 | `SITE_URL=https://tabimono-hikaku.com` の設定 | **実施済み** |
+| 3 | **Cloudflare の DNS 設定** | **実施済み・有効** |
+| 4 | **TLS** | **実施済み・有効** |
+| 5 | **カスタムドメイン `tabimono-hikaku.com` の関連付け** | **実施済み・有効** |
+| 6 | `check:release -- --out out` が Production 相当環境で終了コード 0 | **確認済み** |
+| 7 | `PUBLIC_OPERATOR_NAME` と `PUBLIC_CONTACT_EMAIL` の決定 | **未完了**（未確定） |
+| 8 | `SITE_MODE` の切替（現在 `preview`） | **未完了** |
+| 9 | Cloudflare Pages の Production 環境変数を `SITE_MODE=production` / `CATALOG_DATASET=production` に設定 | **未完了** |
+| 10 | `pages.dev` から独自ドメインへの 301 リダイレクト設定 | **未完了** |
+| 11 | Vercel の自動デプロイ停止 | **未完了** |
+
+**現在も `SITE_MODE=preview` である。** DNS・TLS・カスタムドメインが有効になっていても、
+`preview` である限り全ページ `noindex`、`robots.txt` は全面 `Disallow`、`sitemap.xml` の URL 数は 0 である。
+段階0〜3 はこの状態のまま検証する。
 
 ---
 
@@ -1058,6 +1335,7 @@ GitHub Variables に置く（秘密ではない）。**すべて既定 `false` �
 | Issue 対応 | 発生時のみ | — | — |
 | 紹介 URL の新規発行 | 新規店舗時 | 5 分 | 楽天の管理画面操作 |
 | 段階移行の判断 | 段階ごと 1 回 | — | 誤判定率の許容判断 |
+| circuit breaker の解除 | 作動時のみ | 15 分 | 自動処理が自分で解除しない設計（12.6 節） |
 
 段階3 まで到達した状態での想定は**月に合計 1〜2 時間程度**で、
 そのほとんどが「新しいメーカーや記事形式を増やすとき」に集中する。
@@ -1067,18 +1345,28 @@ GitHub Variables に置く（秘密ではない）。**すべて既定 `false` �
 
 ## 17. 未解決事項と実装前に測定する項目
 
+### 17.0 決定済み事項（この設計に反映済み）
+
+| 項目 | 決定 | 反映先 |
+|---|---|---|
+| **安全な記事形式の自動公開** | **承認済み。** 決定的な機械検査を通った記事は、人間確認なしで公開してよい。`evaluatePublication()` に `reviewer: 'automation:<formatId>@<formatVersion>'` と `reviewMethod: 'derived-from-verified-facts'` を認める契約変更を行う | 7.3・7.7 節 |
+| **`sizeBasis: 'unspecified'` の扱い** | **商品公開の一律ブロッカーにしない。** ただし寸法・外寸・機内持込可否など**測定条件に依存する比較軸の記事では対象外**にする | 5.5・7.10 節 |
+| **Workers AI の位置づけ** | 上記の機械レビューの**代替ではない**。非拘束の参考所見であり、判定を一切変更しない | 1.3 節 |
+
 ### 17.1 未解決事項（人の判断が必要）
 
 | # | 論点 | 何が決まらないと困るか | 期限 |
 |---:|---|---|---|
 | 1 | **楽天の商品ページを自動取得してよいか（規約）** | robots.txt は禁止していない（8.2 節）が、利用規約・アフィリエイト規約の明示的な許可は確認できていない。**確認が済むまで `httpStatus` 信号を有効化しない** | 段階2 前 |
-| 2 | **機械レビューを記事の公開条件として認めるか** | `evaluatePublication()` の「自動検査の合格を人の確認の代わりにしません」を意図的に変更することになる。認めない場合、記事の自動公開は成立しない | 段階3 前 |
-| 3 | **`sizeBasis: 'unspecified'` の商品を自動公開してよいか** | 現在 12/23 件が `unspecified`。「測定条件不明なら公開しない」を S/A の条件にすると過半が落ちる。**この設計の既定は「条件に入れない」**（＝ `unspecified` でも公開しうる）。既存の公開 22 件が同じ基準で公開されているため。厳しくする場合は 5.5 節に条件を追加する | 段階2 前 |
-| 4 | **誤判定率の許容値** | 段階1→2、段階2→3 の移行判断に必要。「サンプル 20 件で誤り 0 件」等の具体値 | 段階1 終了時 |
-| 5 | **自動公開したものを事後にどこまで見るか** | 「通常時は人が関与しない」を厳密に取ると、公開後の記事を誰も読まない状態になる。月 1 回まとめて見るかで判定条件の厳しさが変わる | 段階3 前 |
-| 6 | **モバイルバッテリーを自動公開の対象にするか** | 安全情報が関わる。既存 audit は 90 日の再確認を要求している | 段階2 前 |
-| 7 | 公開用の運営者名・連絡先 | 未確定のため段階4 へ進めない | 段階4 前 |
-| 8 | `llmInput` を `allowed` にする出版社があるか | **この設計の前提ではない**（4.4 節）。将来メーカー本文を AI へ渡したくなった場合のみ必要 | 不要（将来） |
+| 2 | **誤判定率の許容値** | 段階1→2、段階2→3 の移行判断に必要。「サンプル 20 件で誤り 0 件」等の具体値 | 段階1 終了時 |
+| 3 | **自動公開したものを事後にどこまで見るか** | 「通常時は人が関与しない」を厳密に取ると、公開後の記事を誰も読まない状態になる。月 1 回まとめて見るかで判定条件の厳しさが変わる | 段階3 前 |
+| 4 | **モバイルバッテリーを自動公開の対象にするか** | 安全情報が関わる。既存 audit は 90 日の再確認を要求している | 段階2 前 |
+| 5 | 公開用の運営者名・連絡先 | 未確定のため段階4 へ進めない | 段階4 前 |
+| 6 | `llmInput` を `allowed` にする出版社があるか | **この設計の前提ではない**（4.4 節）。将来メーカー本文を AI へ渡したくなった場合のみ必要 | 不要（将来） |
+
+**番号 1 は据え置いた**（5.5・8.2・8.3 節から「未解決事項1」として参照しているため）。
+以前この表にあった「機械レビューを記事の公開条件として認めるか」と
+「`sizeBasis: 'unspecified'` の商品を自動公開してよいか」は**決定済みとなり 17.0 節へ移した**。
 
 ### 17.2 実装前ではなく段階1 で測定する項目
 
@@ -1141,7 +1429,7 @@ Git の revert による再デプロイを正規の手段とする（外部設�
 | Variables（新規） | 停止スイッチ 7 種（13.1 節） | すべて `false` で導入 | — |
 | Secrets（新規・任意） | `CLOUDFLARE_API_TOKEN` | Workers AI と Browser Rendering のみに限定 | **Pages 編集権限を含めない**。補助を使う場合のみ |
 | Variables（新規・任意） | `CLOUDFLARE_ACCOUNT_ID` | 秘密ではない | 同上 |
-| workflow 権限 | `contents: write` + `pull-requests: write` + `statuses: write` | `automation-*` のみ | Issue を作るジョブは `issues: write` を追加。`travel-goods-ci.yml` にも `statuses: write` を追加する |
+| workflow 権限 | `contents: write` + `pull-requests: write` + `statuses: write` | `automation-*` のみ | Issue を作るジョブは `issues: write` を追加。`travel-goods-ci.yml` にも `statuses: write` を追加する。**GitHub Variables を変更する権限は追加しない**（12.6 節） |
 | ブランチ保護 | `main` の必須チェックを **`automation/verify` の 1 つだけ**にする | — | 人の PR は `travel-goods-ci`、自動 PR は `automation-commit` が同じ context を付ける（12.3 節）。管理者回避は使わない |
 
 ### Cloudflare
@@ -1177,11 +1465,16 @@ travel-goods-site/
     budget.ts        … 予算と繰越
     changed-paths.ts … 変更パス検査
 .github/workflows/
-  automation-links.yml
-  automation-discover.yml
-  automation-articles.yml
-  automation-commit.yml
+  automation-links.yml       … 日次。リンク点検とキュー消化
+  automation-discover.yml    … 月・木。新商品探索
+  automation-articles.yml    … 火・金。記事企画・生成
+  automation-commit.yml      … 日次。検証・PR・auto-merge
+  automation-revert.yml      … 公開後検査の失敗時。revert PR を作り自前で検証（12.5 節）
+  automation-reset.yml       … workflow_dispatch のみ。circuit breaker の解除（12.6 節）
 ```
+
+すべての `automation-*` workflow は共通の concurrency group
+`travel-goods-automation`（`cancel-in-progress: false`）を使う（11.5 節）。
 
 ---
 
