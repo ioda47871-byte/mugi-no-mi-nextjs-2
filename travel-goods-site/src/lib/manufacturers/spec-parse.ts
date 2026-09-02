@@ -55,11 +55,19 @@ function clean(raw: string): string | null {
   if (text.startsWith('約')) text = text.slice(1).trim();
   if (text.includes('約')) return null;
 
-  // カンマは 3 桁区切りとしてのみ許可する
-  for (const match of text.matchAll(/[\d,]+/g)) {
+  // カンマは 3 桁区切りとしてのみ許可する。
+  //
+  // **数値は「整数部・小数点・小数部」を含む全体を 1 つの文法として検査する。**
+  // 走査を `[\d,]+` にすると小数点で数値が分断され、`1.2,345` が
+  // `1` と `2,345` の 2 つの正しい数値に見えてしまう。カンマを落とした
+  // `1.2345` は元の入力に無い値であり、丸めれば 1 になって成功扱いになる。
+  // 走査に `.` を含め、小数部のカンマを必ず拒否する。
+  //   許可: 1250 / 1250.5 / 1,250 / 1,250.5 / 1,000,000
+  //   拒否: 1.2,345 / 12.3,000 / 12,000.0,001 / 1,2,5,0 / 12,50
+  for (const match of text.matchAll(/[\d.,]+/g)) {
     const run = match[0];
     if (!run.includes(',')) continue;
-    if (!/^\d{1,3}(?:,\d{3})+$/.test(run)) return null;
+    if (!/^\d{1,3}(?:,\d{3})*(?:\.\d+)?$/.test(run)) return null;
   }
   return text.replace(/,/g, '');
 }
@@ -114,8 +122,12 @@ const SIZE_UNIT = '(mm|cm)';
  * 終端・空白・注記の開始記号だけを認める。
  * `(?![0-9A-Za-z])` だけでは Unicode の単位記号や日本語が通ってしまい、
  * `cm²` `cmセンチ` `cm㎝` を受理してしまう。
+ *
+ * `/` は注記の開始として認めない。`cm/㎝` `cm/mm` `cm/25cm` のように
+ * スラッシュの後へ別の単位や寸法が続く表記は、注記ではなく曖昧・混在であり、
+ * 先頭側だけを採用すると書かれていない解釈を選んでしまう。曖昧なら null に倒す。
  */
-const SIZE_END = '(?=$|[\\s（(［\\[【※/、,。])';
+const SIZE_END = '(?=$|[\\s（(［\\[【※、,。])';
 
 /** A: 末尾に単位が 1 つ。 */
 const SIZE_TRAILING_UNIT = new RegExp(

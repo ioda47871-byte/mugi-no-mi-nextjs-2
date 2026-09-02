@@ -389,6 +389,72 @@ describe('解釈できない target variant を色だけで一致させない', 
   });
 });
 
+describe('英数字に接続した容量・セット数を独立トークンにしない', () => {
+  it('型番に埋もれた容量を拾わない（前が英数字）', () => {
+    expect(verifyVariant('30L / ブラック', '商品 A30L ブラック').matched).toBe(false);
+    expect(verifyVariant('10000mAh / ブラック', '商品 A10000mAh ブラック').matched).toBe(false);
+    expect(verifyVariant('3個セット / ブラック', '商品 A3個セット ブラック').matched).toBe(false);
+  });
+
+  it('単位の後ろが英数字なら拾わない', () => {
+    expect(verifyVariant('30L / ブラック', '商品 30L2 ブラック').matched).toBe(false);
+    expect(verifyVariant('10000mAh / ブラック', '商品 10000mAh2 ブラック').matched).toBe(false);
+    expect(verifyVariant('3個セット / ブラック', '商品 3個セット2 ブラック').matched).toBe(false);
+  });
+
+  it('target 側でも同じ境界を適用する', () => {
+    expect(extractVariantTokens('A30L').capacities).toEqual([]);
+    expect(extractVariantTokens('30L2').capacities).toEqual([]);
+    expect(extractVariantTokens('A10000mAh').capacities).toEqual([]);
+    expect(extractVariantTokens('A3個セット').setCounts).toEqual([]);
+  });
+
+  it('正常なトークンは維持する', () => {
+    expect(verifyVariant('30L / ブラック', '商品 30L ブラック').matched).toBe(true);
+    expect(verifyVariant('10000mAh / ブラック', '商品 10000mAh ブラック').matched).toBe(true);
+    expect(verifyVariant('3個セット / ブラック', '商品 3個セット ブラック').matched).toBe(true);
+  });
+
+  it('日本語の説明文に隣接する正常トークンは維持する', () => {
+    expect(verifyVariant('30L / ブラック', '大容量30L大型リュック ブラック').matched).toBe(true);
+    expect(verifyVariant('3個セット / ブラック', '圧縮袋3個セット入り ブラック').matched).toBe(true);
+  });
+
+  it('2XLサイズ を容量として拾わない', () => {
+    expect(extractVariantTokens('2XLサイズ').capacities).toEqual([]);
+  });
+});
+
+describe('壊れた拡張容量の一部分だけを採用しない', () => {
+  it('余分なスラッシュがあれば variant 全体を不一致にする', () => {
+    const v = verifyVariant('18 / / 24L / ブラック', '商品 24L ブラック');
+    expect(v.matched).toBe(false);
+    expect(v.matchedVariantLabel).toBeNull();
+  });
+
+  it('全角の区切りでも同じ', () => {
+    const v = verifyVariant('１８ ／ ／ ２４L / ブラック', '商品 24L ブラック');
+    expect(v.matched).toBe(false);
+    expect(v.matchedVariantLabel).toBeNull();
+  });
+
+  it('連続区切りも不一致にする', () => {
+    expect(verifyVariant('18//24L / ブラック', '商品 24L ブラック').matched).toBe(false);
+  });
+
+  it('後半だけを切り出して有効扱いしない', () => {
+    expect(extractVariantTokens('18 / / 24L').capacities).toEqual([]);
+    expect(extractVariantTokens('18//24L').capacities).toEqual([]);
+  });
+
+  it('正常な拡張容量は維持する', () => {
+    expect(extractVariantTokens('18/24L').capacities).toEqual(['18L', '24L']);
+    expect(extractVariantTokens('18 / 24L').capacities).toEqual(['18L', '24L']);
+    expect(extractVariantTokens('１８／２４Ｌ').capacities).toEqual(['18L', '24L']);
+    expect(verifyVariant('18/24L / 01 ブラック', '商品 18/24L 01 ブラック').matched).toBe(true);
+  });
+});
+
 describe('除外語の検出', () => {
   it('中古・訳ありを検出する', () => {
     expect(hasExcludedTerm('【中古】スーツケース')).toBe(true);

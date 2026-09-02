@@ -73,28 +73,73 @@ function normalizeVariantText(value: string): string {
 }
 
 /**
- * 数値トークンの前側の境界。
+ * 容量・mAh・セット数の**唯一の字句解析**。
  *
- * **不正な数値列の途中からトークンを切り出さない。**
- * この境界が無いと `30.5.6L` の中の `5.6L`、`1.2.3mAh` の中の `2.3mAh`、
- * `1.3個セット` の中の `3個セット` を拾ってしまい、
- * 別物の容量・セット数に一致してしまう。
- * 直前が数字または小数点なら、その数値列はより長い（そして解釈できない）
- * 数値の一部なので、トークンとして採らない。
- * 対象と販売ページの両方が同じ規則を通るので、判定は常に fail-closed 側へ倒れる。
+ * 抽出と「解析できなかった箇所の検出」で別々の正規表現を持たない。
+ * 1 回の走査で、読めたトークンと「書いてあるのに読めなかった」印の両方を返す。
+ *
+ * 境界:
+ *   - 数値の直前が ASCII 英数字なら候補にしない（型番 `A30L` から容量を作らない）
+ *   - 単位の直後が ASCII 英数字なら候補にしない（`30L2` `10000mAh2` `3個セット2`）
+ *   - 日本語の説明文に隣接する正常なトークン（`大容量30L大型`）は拾う
+ *
+ * 妥当性:
+ *   - 候補として拾った数値部分**全体**を単位ごとの文法で検査する
+ *   - 一部分だけを採用しない。`18 / / 24L` から `24L` を切り出さない
+ *   - 検査に落ちたら malformed とし、呼び出し側が variant 全体を不一致にする
+ *
+ * 対象と販売ページの両方が同じ走査を通るので、判定は常に fail-closed 側へ倒れる。
  */
-const NUMBER_START = '(?<![\\d.])';
+const STRUCTURED_CANDIDATE = /(?<![0-9A-Za-z])(\d[\d.\s/]*?)(L|mAh|個セット)(?![0-9A-Za-z])/gi;
 
-/** 「18/24L」のように / でつながった容量も 1 つずつに分ける。 */
-const CAPACITY_L_RE = new RegExp(
-  `${NUMBER_START}(\\d+(?:\\.\\d+)?(?:\\s*\\/\\s*\\d+(?:\\.\\d+)?)*)\\s*L(?![a-zA-Z])`,
-  'g',
-);
-/** モバイルバッテリーの容量。 */
-const CAPACITY_MAH_RE = new RegExp(
-  `${NUMBER_START}(\\d+(?:\\.\\d+)?)\\s*mAh(?![a-zA-Z])`,
-  'gi',
-);
+/** 容量(L)。`18/24` のような拡張表記だけを許す。 */
+const VALID_CAPACITY_L = /^\d+(?:\.\d+)?(?:\s*\/\s*\d+(?:\.\d+)?)*$/;
+/** mAh。区切りは許さない。 */
+const VALID_CAPACITY_MAH = /^\d+(?:\.\d+)?$/;
+/** セット数。小数も区切りも許さない。 */
+const VALID_SET_COUNT = /^\d+$/;
+
+type StructuredScan = {
+  capacities: string[];
+  setCounts: string[];
+  /** 構造化表記らしい箇所があるのに、文法検査に落ちたものがあるか。 */
+  malformed: boolean;
+};
+
+function scanStructured(normalized: string): StructuredScan {
+  const capacities: string[] = [];
+  const setCounts: string[] = [];
+  let malformed = false;
+
+  for (const match of normalized.matchAll(STRUCTURED_CANDIDATE)) {
+    const numberPart = (match[1] ?? '').trim();
+    const unit = (match[2] ?? '').toLowerCase();
+
+    if (unit === 'l') {
+      if (!VALID_CAPACITY_L.test(numberPart)) {
+        malformed = true;
+        continue;
+      }
+      // 「18/24L」は 18L と 24L の 2 つに分ける
+      for (const part of numberPart.split('/')) capacities.push(`${part.trim()}L`);
+    } else if (unit === 'mah') {
+      if (!VALID_CAPACITY_MAH.test(numberPart)) {
+        malformed = true;
+        continue;
+      }
+      capacities.push(`${numberPart}mAh`);
+    } else {
+      if (!VALID_SET_COUNT.test(numberPart)) {
+        malformed = true;
+        continue;
+      }
+      setCounts.push(`${numberPart}個セット`);
+    }
+  }
+
+  return { capacities: uniq(capacities), setCounts: uniq(setCounts), malformed };
+}
+
 /**
  * S/M/L/XL/2XL のサイズ表記。長いものを先に見る。
  *
@@ -104,7 +149,6 @@ const CAPACITY_MAH_RE = new RegExp(
  * 後ろは必ず「サイズ」なので、英数字が続く心配はない。
  */
 const SIZE_RE = /(?<![0-9A-Za-z])(2XL|XL|S|M|L)サイズ/g;
-const SET_COUNT_RE = new RegExp(`${NUMBER_START}(\\d+)個セット`, 'g');
 
 function uniq(values: string[]): string[] {
   return [...new Set(values)];
@@ -121,17 +165,7 @@ function captures(text: string, pattern: RegExp): string[] {
 }
 
 function capacitiesIn(text: string): string[] {
-  const found: string[] = [];
-  for (const group of captures(text, CAPACITY_L_RE)) {
-    // 「18/24L」は 18L と 24L の 2 つに分ける
-    for (const part of group.split('/')) {
-      found.push(`${part.trim()}L`);
-    }
-  }
-  for (const value of captures(text, CAPACITY_MAH_RE)) {
-    found.push(`${value}mAh`);
-  }
-  return uniq(found);
+  return scanStructured(text).capacities;
 }
 
 function sizesIn(text: string): string[] {
@@ -139,7 +173,7 @@ function sizesIn(text: string): string[] {
 }
 
 function setCountsIn(text: string): string[] {
-  return uniq(captures(text, SET_COUNT_RE).map((value) => `${value}個セット`));
+  return scanStructured(text).setCounts;
 }
 
 /**
@@ -195,44 +229,6 @@ export function extractVariantTokens(variant: string): VariantTokens {
   };
 }
 
-/**
- * 「構造化表記らしいのに解析できなかった」箇所があるかを見る。
- *
- * 数字で始まる連なり（数字・小数点・スラッシュ）の直後に単位（L / mAh / 個セット）が
- * 来ていれば、それは容量やセット数を書こうとしている箇所である。
- * その数値部分が正しい形（`\d+(.\d+)?` と、容量なら `/` 区切り）でなければ、
- * **書いてあるのに読めなかった**ということなので、variant 全体を一致させない。
- *
- * 「読めなかった」と「その種類の表記が元から無い」を区別するのが目的。
- * 後者（色だけの variant など）はここで false になり、従来どおり扱う。
- *
- * 現行データの `35L / 01 ブラックヘアライン` の `01` は直後に単位が無いので
- * 候補にならない。2 桁カラーコードを不正扱いしない。
- */
-const CAPACITY_L_CANDIDATE = /\d[\d./]*\s*L(?![a-zA-Z])/g;
-const CAPACITY_MAH_CANDIDATE = /\d[\d./]*\s*mAh(?![a-zA-Z])/gi;
-const SET_COUNT_CANDIDATE = /\d[\d./]*個セット/g;
-
-/** 容量として妥当な数値部分（`18/24` のような拡張表記を含む）。 */
-const VALID_CAPACITY_NUMBER = /^\d+(?:\.\d+)?(?:\s*\/\s*\d+(?:\.\d+)?)*$/;
-/** セット数として妥当な数値部分。 */
-const VALID_SET_COUNT_NUMBER = /^\d+$/;
-
-function hasUnparsableStructuredToken(normalizedVariant: string): boolean {
-  const checks: readonly { pattern: RegExp; unit: RegExp; valid: RegExp }[] = [
-    { pattern: CAPACITY_L_CANDIDATE, unit: /\s*L$/i, valid: VALID_CAPACITY_NUMBER },
-    { pattern: CAPACITY_MAH_CANDIDATE, unit: /\s*mAh$/i, valid: VALID_CAPACITY_NUMBER },
-    { pattern: SET_COUNT_CANDIDATE, unit: /個セット$/, valid: VALID_SET_COUNT_NUMBER },
-  ];
-  for (const { pattern, unit, valid } of checks) {
-    for (const match of normalizedVariant.matchAll(pattern)) {
-      const numberPart = match[0].replace(unit, '');
-      if (!valid.test(numberPart)) return true;
-    }
-  }
-  return false;
-}
-
 /** 表示用ラベルの並び。現行データの variant 表記に合わせる。 */
 function labelOf(tokens: VariantTokens): string {
   return [...tokens.sizes, ...tokens.capacities, ...tokens.colors, ...tokens.setCounts].join(' / ');
@@ -283,7 +279,7 @@ export function verifyVariant(variant: string, listingText: string): VariantVerd
     all.length > 0 &&
     missing.length === 0 &&
     conflicting.length === 0 &&
-    !hasUnparsableStructuredToken(normalizeVariantText(variant));
+    !scanStructured(normalizeVariantText(variant)).malformed;
 
   return {
     matched,

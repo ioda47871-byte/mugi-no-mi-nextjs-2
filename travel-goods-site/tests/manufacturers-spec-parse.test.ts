@@ -285,3 +285,55 @@ describe('寸法単位の後ろに未対応文字が続く場合を拒否する'
     expect(parseLabeledSizeMm('W35×H55×D25（梱包サイズは80cm）')).toBeNull();
   });
 });
+
+describe('数値全体を 1 つの文法としてカンマ検査する', () => {
+  it('小数部にカンマがあれば null', () => {
+    expect(parseWeightG('1.2,345g')).toBeNull();
+    expect(parseCapacityL('12.3,000L')).toBeNull();
+    expect(parseCapacityMah('12,000.0,001mAh')).toBeNull();
+    expect(parseWatt('6.5,000W')).toBeNull();
+    expect(parseLabeledSizeMm('W1.2,345×H55×D25mm')).toBeNull();
+  });
+
+  it('許可する形は読める', () => {
+    expect(parseWeightG('1250g')).toBe(1250);
+    expect(parseWeightG('1,250g')).toBe(1250);
+    expect(parseCapacityL('1250.5L')).toBe(1250.5);
+    expect(parseCapacityL('1,250.5L')).toBe(1250.5);
+    expect(parseCapacityMah('1,000,000mAh')).toBe(1000000);
+  });
+
+  it('区切りとして成立しない形はすべて null', () => {
+    expect(parseWeightG('1,2,5,0g')).toBeNull();
+    expect(parseWeightG('12,50g')).toBeNull();
+    expect(parseCapacityL('1,2,5,0L')).toBeNull();
+    expect(parseCapacityMah('12,50mAh')).toBeNull();
+    expect(parseWatt('1,2,5,0W')).toBeNull();
+  });
+
+  it('不正な文字を削除して別の正常値を作らない', () => {
+    // 1.2,345 を 1.2345 にして 1 へ丸めない
+    expect(parseWeightG('1.2,345g')).toBeNull();
+    // 12.3,000 を 12.3000 にしない
+    expect(parseCapacityL('12.3,000L')).toBeNull();
+  });
+});
+
+describe('寸法単位後のスラッシュを注記開始にしない', () => {
+  it('cm/㎝ と cm/mm は null', () => {
+    expect(parseLabeledSizeMm('W35×H55×D25cm/㎝')).toBeNull();
+    expect(parseLabeledSizeMm('W35×H55×D25cm/mm')).toBeNull();
+    expect(parseLabeledSizeMm('W35×H55×D25cm/25cm')).toBeNull();
+  });
+
+  it('受理する形式は維持する', () => {
+    expect(parseLabeledSizeMm('W35×H55×D25cm')).toEqual([350, 550, 250]);
+    expect(parseLabeledSizeMm('W35cm×H55cm×D25cm')).toEqual([350, 550, 250]);
+    expect(parseLabeledSizeMm('W35×H55×D25cm（キャスター含む）')).toEqual([350, 550, 250]);
+    expect(parseLabeledSizeMm('W35×H55×D25cm ※実測値')).toEqual([350, 550, 250]);
+  });
+
+  it('複数セットの拒否も維持する', () => {
+    expect(parseLabeledSizeMm('W35×H55×D25cm / W40×H60×D30cm')).toBeNull();
+  });
+});
