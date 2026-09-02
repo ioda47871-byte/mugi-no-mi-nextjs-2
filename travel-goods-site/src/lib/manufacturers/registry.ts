@@ -3,7 +3,7 @@
  *
  * 実装計画: docs/superpowers/plans/2026-09-02-travel-goods-automation-foundation.md Task 6
  */
-import { ACE_HOST, firstKnownSourceUrl, resolveAceUrl } from './ace';
+import { aceAdapter, firstKnownSourceUrl, protecaAdapter, worldTravelerAdapter } from './ace';
 import type {
   ExtractionResult,
   ManufacturerAdapter,
@@ -39,7 +39,7 @@ export function normalizeBrand(brand: string): ManufacturerId | null {
   return BRAND_MAP[brand.trim()] ?? null;
 }
 
-/** 段階0 のスタブ。仕様抽出は Task 7・8 で実装する。 */
+/** ELECOM / Anker の仕様抽出は Task 8 で実装する。ここでは取得できたことにしない。 */
 const stubExtract = (): ExtractionResult => ({ ok: false, reason: 'no-spec-table' });
 const stubRangeHash = (): string | null => null;
 
@@ -51,23 +51,6 @@ const RECALL_TERMS = [
   '無償交換のお知らせ',
   '販売終了のお知らせ',
 ] as const;
-
-function aceLikeAdapter(manufacturerId: ManufacturerId): ManufacturerAdapter {
-  const allowedHosts = [ACE_HOST] as const;
-  return {
-    manufacturerId,
-    allowedHosts,
-    findProductUrl(model, variant, knownSources) {
-      const known = firstKnownSourceUrl(knownSources, allowedHosts);
-      if (known !== null) return { ok: true, url: known, basis: 'existing-source' };
-      return resolveAceUrl(model, variant);
-    },
-    extract: stubExtract,
-    extractedRangeHash: stubRangeHash,
-    recallTerms: RECALL_TERMS,
-    requiredFields: ['weightG', 'outerSizeMm', 'capacityL'],
-  };
-}
 
 const ELECOM_HOST = 'www.elecom.co.jp';
 /** ELECOM の model は英数字とハイフンだけで 6 文字以上。それ以外は導かない。 */
@@ -116,9 +99,9 @@ const ankerAdapter: ManufacturerAdapter = {
 };
 
 const ADAPTERS: Readonly<Record<ManufacturerId, ManufacturerAdapter>> = {
-  ace: aceLikeAdapter('ace'),
-  proteca: aceLikeAdapter('proteca'),
-  'world-traveler': aceLikeAdapter('world-traveler'),
+  ace: aceAdapter,
+  proteca: protecaAdapter,
+  'world-traveler': worldTravelerAdapter,
   elecom: elecomAdapter,
   anker: ankerAdapter,
 };
