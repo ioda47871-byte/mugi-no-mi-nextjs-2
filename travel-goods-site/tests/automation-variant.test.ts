@@ -127,6 +127,53 @@ describe('販売ページ文言との照合', () => {
   });
 });
 
+describe('色名をマーケティング文言から拾わない', () => {
+  it('ブラックフライデーを色として扱わない', () => {
+    const v = verifyVariant('30L / ブラック', '旅行リュック 30L ブラックフライデー特価');
+    expect(v.matched).toBe(false);
+    expect(v.missing).toContain('ブラック');
+    expect(v.matchedVariantLabel).toBeNull();
+  });
+
+  it('ホワイトニングを色として扱わない', () => {
+    const v = verifyVariant('30L / ホワイト', 'ポーチ 30L ホワイトニング効果');
+    expect(v.matched).toBe(false);
+    expect(v.conflicting).not.toContain('ホワイト');
+  });
+
+  it('ブラックヘアラインをブラックとして扱わない', () => {
+    const v = verifyVariant('35L / ブラック', 'スーツケース 35L ブラックヘアライン');
+    expect(v.matched).toBe(false);
+  });
+
+  it('「カラー：ブラック」はブラックとして扱う', () => {
+    const v = verifyVariant('30L / ブラック', '旅行リュック 30L カラー：ブラック');
+    expect(v.matched).toBe(true);
+  });
+
+  it('区切り記号で並んだ 2 色を両方抽出し、対象外はconflictingにする', () => {
+    const v = verifyVariant('30L / ブラック', '旅行リュック 30L ブラック / ホワイト');
+    expect(v.conflicting).toContain('ホワイト');
+    expect(v.matched).toBe(false);
+  });
+
+  it('読点で並んだ 2 色も両方抽出する', () => {
+    const v = verifyVariant('30L / ブラック', '旅行リュック 30L ブラック、ホワイト');
+    expect(v.conflicting).toContain('ホワイト');
+  });
+
+  it('既存の正常な商品名は引き続き一致する', () => {
+    expect(verifyVariant('30L / ブラック', '旅行リュック 30L ブラック 大容量').matched).toBe(true);
+    expect(verifyVariant('35L / 01 ブラックヘアライン', 'スーツケース 35L 01 ブラックヘアライン').matched).toBe(true);
+    expect(verifyVariant('10000mAh / ブラック', 'モバイルバッテリー 10000mAh ブラック').matched).toBe(true);
+  });
+
+  it('カタカナが直前に続く場合も色として拾わない', () => {
+    const v = verifyVariant('30L / ネイビー', 'リュック 30L ミッドナイトネイビー');
+    expect(v.matched).toBe(false);
+  });
+});
+
 describe('除外語の検出', () => {
   it('中古・訳ありを検出する', () => {
     expect(hasExcludedTerm('【中古】スーツケース')).toBe(true);

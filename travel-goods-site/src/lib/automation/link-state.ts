@@ -46,18 +46,28 @@ export function nextLinkState(
   const base = { ...previous, signals };
 
   // 観測そのものが成立しなかった日。商品の状態を何も知らないので、
-  // どのカウンタも動かさず状態も進めない。API 障害が何日続いても同じ。
+  // どのカウンタも lastHealthyAt も動かさない。API 障害が何日続いても同じ。
+  //
+  // **確定済みの制限状態は解除しない。** 「観測できなかった」は
+  // 「以前確定した異常が解消した」を意味しないので、hidden / replace /
+  // manual-hold はそのまま据え置く。緩和するのは healthy だけ。
   if (signals.observationStatus === 'unavailable') {
-    return { ...base, state: 'uncertain' };
+    return { ...base, state: previous.state === 'healthy' ? 'uncertain' : previous.state };
   }
 
   // ここから先は「API は正常に応答した」日。
   // itemCode が見つからない日を数える。availability が null でも数える
   // （商品が消えていれば在庫情報も返らないため、null は不在の裏付けにこそなる）。
   const consecutiveFailures = signals.itemCodeAlive ? 0 : previous.consecutiveFailures + 1;
-  // 在庫切れは itemCode が生きている日だけ数える。不在の日と混ぜない。
-  const consecutiveOutOfStock =
-    signals.itemCodeAlive && signals.availability === 0 ? previous.consecutiveOutOfStock + 1 : 0;
+
+  // itemCode はあるが在庫情報だけ取れなかった日は、在庫の判断材料が無い。
+  // 在庫が戻った証拠は無いので連続在庫切れ日数を 0 へ戻さず、据え置く。
+  const stockUnknown = signals.itemCodeAlive && signals.availability === null;
+  const consecutiveOutOfStock = stockUnknown
+    ? previous.consecutiveOutOfStock
+    : signals.itemCodeAlive && signals.availability === 0
+      ? previous.consecutiveOutOfStock + 1
+      : 0;
 
   const state = decideState(signals, consecutiveFailures, consecutiveOutOfStock);
   const lastHealthyAt =
@@ -86,7 +96,12 @@ function decideState(
   if (signals.identifierMatch === 'none' || !signals.variantMatch) return 'uncertain';
 
   if (!signals.itemCodeAlive) return 'uncertain';
-  // 在庫切れの間も、しきい値に達するまでは表示を維持する。
+
+  // healthy にするのは在庫が「ある」と確認できたときだけ。
+  // availability === null は在庫の判断材料が無いので healthy にしない。
+  if (signals.availability === null) return 'uncertain';
+
+  // 在庫切れ（availability === 0）の間も、しきい値に達するまでは表示を維持する。
   return 'healthy';
 }
 

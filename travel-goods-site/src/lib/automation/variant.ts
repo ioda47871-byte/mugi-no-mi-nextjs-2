@@ -100,7 +100,22 @@ function setCountsIn(text: string): string[] {
 }
 
 /**
- * 長い色名から順に消し込む。
+ * 色名の前後がカタカナなら、より長い語の一部なので色として拾わない。
+ *
+ * 辞書の色名はすべてカタカナなので、境界として見るべきはカタカナだけでよい。
+ * 「ブラックフライデー」「ホワイトニング」「ミッドナイトネイビー」はここで落ちる。
+ * 中黒（・, U+30FB）は語の区切りとして使われるため、境界として扱う。
+ * 空白・記号・ひらがな・漢字・英数字・文字列の端はすべて境界。
+ *
+ * 判定できない書き方は一致させない（false-negative 側へ倒す）。
+ */
+function isColorBoundary(char: string | undefined): boolean {
+  if (char === undefined) return true; // 文字列の端
+  return !/[\u30A1-\u30FA\u30FC-\u30FF]/.test(char);
+}
+
+/**
+ * 長い色名から順に、境界で区切られた出現だけを取り出して消し込む。
  * 「ブラックヘアライン」を先に取り除くので「ブラック」を二重に拾わないし、
  * 販売ページ側に同じ規則を使えば「ブラック」で「ブラックヘアライン」に一致しない。
  */
@@ -108,9 +123,18 @@ function colorsIn(text: string): string[] {
   const colors: string[] = [];
   let remaining = text;
   for (const color of COLOR_NAMES) {
-    if (remaining.includes(color)) {
-      colors.push(color);
-      remaining = remaining.split(color).join(' ');
+    let index = remaining.indexOf(color);
+    while (index !== -1) {
+      const before = remaining[index - 1];
+      const after = remaining[index + color.length];
+      if (isColorBoundary(before) && isColorBoundary(after)) {
+        colors.push(color);
+        // 消し込んだ跡は境界文字にして、短い色名を二重に拾わせない
+        remaining =
+          remaining.slice(0, index) + ' '.repeat(color.length) + remaining.slice(index + color.length);
+        break;
+      }
+      index = remaining.indexOf(color, index + 1);
     }
   }
   return uniq(colors);

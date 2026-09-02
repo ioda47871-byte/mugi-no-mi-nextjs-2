@@ -66,6 +66,11 @@ describe('ELECOM の仕様抽出', () => {
   it('capacityL を必須にする', () => {
     expect(elecomAdapter.requiredFields).toContain('capacityL');
   });
+
+  it('換算後に 0 へ丸まる質量で ok: true にしない', () => {
+    const broken = elecomHtml.replace('<dd>約1,250g</dd>', '<dd>0.1g</dd>');
+    expect(elecomAdapter.extract(broken)).toEqual({ ok: false, reason: 'unit-unparseable' });
+  });
 });
 
 describe('Anker の仕様抽出', () => {
@@ -139,6 +144,11 @@ describe('Anker の仕様抽出', () => {
   it('表が無ければ no-spec-table', () => {
     expect(ankerAdapter.extract('<html><body><p>準備中</p></body></html>'))
       .toEqual({ ok: false, reason: 'no-spec-table' });
+  });
+
+  it('換算後に 0 へ丸まる重量で ok: true にしない', () => {
+    const broken = ankerHtml.replace('<td>約360g</td>', '<td>0.2g</td>');
+    expect(ankerAdapter.extract(broken)).toEqual({ ok: false, reason: 'unit-unparseable' });
   });
 });
 

@@ -62,3 +62,45 @@ describe('寸法パーサは 1 つでも不正なら全体を null にする', (
     expect(parseLabeledSizeMm('W35×H55×D25')).toBeNull();
   });
 });
+
+describe('換算・丸めの後も正で有限であることを検査する', () => {
+  it('丸めて 0 になる重量を採らない', () => {
+    expect(parseWeightG('0.0001kg')).toBeNull();
+    expect(parseWeightG('0.1g')).toBeNull();
+    expect(parseWeightG('0.4g')).toBeNull();
+  });
+
+  it('丸めて 1 以上になる重量は採る', () => {
+    expect(parseWeightG('0.5g')).toBe(1);
+    expect(parseWeightG('0.001kg')).toBe(1);
+  });
+
+  it('丸めて 0 になる寸法を採らない', () => {
+    expect(parseLabeledSizeMm('W0.01×H55×D25cm')).toBeNull();
+    expect(parseLabeledSizeMm('W0.1×H55×D25mm')).toBeNull();
+    expect(parseLabeledSizeMm('W35×H0.04×D25mm')).toBeNull();
+  });
+
+  it('換算後に Infinity になる巨大値を採らない', () => {
+    // 1e307 相当。入力自体は有限だが ×1000 で Infinity になる
+    const huge = `1${'0'.repeat(307)}`;
+    expect(Number.isFinite(Number(huge))).toBe(true);
+    expect(parseWeightG(`${huge}kg`)).toBeNull();
+  });
+
+  it('換算後に Infinity になる巨大な寸法を採らない', () => {
+    const huge = `1${'0'.repeat(308)}`;
+    expect(parseLabeledSizeMm(`W${huge}×H55×D25cm`)).toBeNull();
+  });
+
+  it('通常の値は従来どおり成功する', () => {
+    expect(parseWeightG('2.9kg')).toBe(2900);
+    expect(parseWeightG('約1,250g')).toBe(1250);
+    expect(parseWeightG('360g')).toBe(360);
+    expect(parseLabeledSizeMm('W35×H55×D25cm')).toEqual([350, 550, 250]);
+    expect(parseLabeledSizeMm('約W320×D200×H510mm')).toEqual([320, 510, 200]);
+    expect(parseCapacityL('約30L')).toBe(30);
+    expect(parseCapacityMah('12000mAh')).toBe(12000);
+    expect(parseWatt('最大65W')).toBe(65);
+  });
+});

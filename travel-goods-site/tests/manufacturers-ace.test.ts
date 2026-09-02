@@ -75,6 +75,21 @@ describe('ACE 系の仕様抽出', () => {
     }
   });
 
+  it('換算後に 0 へ丸まる値で ok: true にしない', () => {
+    for (const bad of ['<td>0.0001kg</td>', '<td>0.1g</td>']) {
+      const broken = html.replace('<td>2.9kg</td>', bad);
+      expect(aceAdapter.extract(broken)).toEqual({ ok: false, reason: 'unit-unparseable' });
+    }
+  });
+
+  it('換算後に 0 へ丸まる外寸で ok: true にしない', () => {
+    const broken = html.replace(
+      '<td>W35×H55×D25cm（ハンドル・キャスターを含む）</td>',
+      '<td>W0.01×H55×D25cm（ハンドル・キャスターを含む）</td>',
+    );
+    expect(aceAdapter.extract(broken)).toEqual({ ok: false, reason: 'unit-unparseable' });
+  });
+
   it('外寸の 1 要素が不正なら寸法全体を採らない', () => {
     const broken = html.replace(
       '<td>W35×H55×D25cm（ハンドル・キャスターを含む）</td>',

@@ -165,6 +165,77 @@ describe('リンク状態機械', () => {
   });
 });
 
+describe('itemCode はあるが在庫を取得できない日', () => {
+  /** API は答えた。商品も見つかった。しかし在庫情報だけ取れなかった。 */
+  const stockUnknown: LinkSignals = makeLinkSignals({
+    observationStatus: 'ok',
+    itemCodeAlive: true,
+    availability: null,
+    identifierMatch: 'strong',
+    variantMatch: true,
+  });
+
+  it('healthy にしない（healthy は availability === 1 のときだけ）', () => {
+    const next = nextLinkState(makeLinkHealthEntry(), stockUnknown, '2026-09-02');
+    expect(next.state).toBe('uncertain');
+  });
+
+  it('itemCode の存在は確認できたので連続失敗日数は 0', () => {
+    const prev = makeLinkHealthEntry({ consecutiveFailures: 2 });
+    expect(nextLinkState(prev, stockUnknown).consecutiveFailures).toBe(0);
+  });
+
+  it('在庫が戻った証拠は無いので連続在庫切れ日数を 0 へ戻さない', () => {
+    const after10 = advance(makeLinkHealthEntry(), outOfStock, 10);
+    expect(after10.consecutiveOutOfStock).toBe(10);
+    const next = nextLinkState(after10, stockUnknown);
+    expect(next.consecutiveOutOfStock).toBe(10);
+    expect(next.state).not.toBe('healthy');
+  });
+
+  it('lastHealthyAt を更新しない', () => {
+    const prev = makeLinkHealthEntry({ lastHealthyAt: '2026-09-01' });
+    expect(nextLinkState(prev, stockUnknown, '2026-09-02').lastHealthyAt).toBe('2026-09-01');
+  });
+});
+
+describe('観測不能日は確定済みの制限状態を解除しない', () => {
+  it('healthy だけが uncertain へ落ちる', () => {
+    const prev = makeLinkHealthEntry({ state: 'healthy' });
+    expect(nextLinkState(prev, apiError).state).toBe('uncertain');
+  });
+
+  it.each(['uncertain', 'hidden', 'replace', 'manual-hold'] as const)(
+    '%s は API 障害で緩和されない',
+    (state) => {
+      const prev = makeLinkHealthEntry({ state, consecutiveFailures: 5, consecutiveOutOfStock: 3 });
+      const next = nextLinkState(prev, apiError, '2026-09-02');
+      expect(next.state).toBe(state);
+      expect(next.consecutiveFailures).toBe(5);
+      expect(next.consecutiveOutOfStock).toBe(3);
+      expect(next.lastHealthyAt).toBe(prev.lastHealthyAt);
+    },
+  );
+
+  it('hidden まで進んだリンクは API 障害が続いても hidden のまま', () => {
+    const hidden = advance(makeLinkHealthEntry(), gone, 3);
+    expect(hidden.state).toBe('hidden');
+    expect(advance(hidden, apiError, 30).state).toBe('hidden');
+  });
+
+  it('replace まで進んだリンクは API 障害で交換対象から外れない', () => {
+    const replace = advance(makeLinkHealthEntry(), gone, 7);
+    expect(replace.state).toBe('replace');
+    expect(advance(replace, apiError, 10).state).toBe('replace');
+  });
+
+  it('manual-hold は API 障害で自動復帰しない', () => {
+    const held = nextLinkState(makeLinkHealthEntry(), makeLinkSignals({ affiliateTargetChanged: true }));
+    expect(held.state).toBe('manual-hold');
+    expect(advance(held, apiError, 5).state).toBe('manual-hold');
+  });
+});
+
 describe('代替リンクへの交換', () => {
   it('目視確認済みリンクは replace でも自動交換しない', () => {
     const link = makeMerchantLink({ status: 'verified', verificationMethod: 'visual' });

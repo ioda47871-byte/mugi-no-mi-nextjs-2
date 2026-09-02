@@ -1114,6 +1114,7 @@ feat(travel-goods-site): 日次予算の判定と繰越キューを追加
 - [ ] `verifyVariant('30L / ブラック', '旅行リュック 30L ブラック 大容量')` が `matched: true` を返す失敗テストを書く（3 分）
 - [ ] `verifyVariant('30L / ブラック', '旅行リュック 30L/40L 選べる2サイズ ブラック')` が `matched: false` かつ `conflicting` に `'40L'` を含む失敗テストを書く（4 分）
 - [ ] 色が出てこない場合に `missing` に色が入る失敗テストを書く（3 分）
+- [ ] 「ブラックフライデー」「ホワイトニング」を色として拾わない失敗テストを書く（4 分）
 - [ ] `hasExcludedTerm('【中古】スーツケース')` が `true` を返す失敗テストを書く（2 分）
 - [ ] `matched: false` のとき `matchedVariantLabel` が `null` である失敗テストを書く（2 分）
 - [ ] テストを実行し失敗を確認する（1 分）
@@ -1160,7 +1161,11 @@ Error: Failed to load url ../src/lib/automation/variant
 ### 最小実装
 
 色は既知の色名辞書（`ブラック` `ホワイト` `ネイビー` `シルバー` `ガンメタリック` `ターコイズ` `ブルーグリーン` など、
-現行 23 商品の `variant` に実在する語）との照合。容量は `/(\d+(?:\.\d+)?)L/g`、
+現行 23 商品の `variant` に実在する語）との照合。
+**substring では拾わない。** 色名の直前・直後がカタカナ（長音符を含み、中黒は除く）なら
+より長い語の一部なので色として扱わない。これで「ブラックフライデー」「ホワイトニング」
+「ミッドナイトネイビー」を色指定と誤認しない。販売ページ側にも同じ規則を使う。
+判定できない書き方は一致させない（false-negative 側へ倒す）。容量は `/(\d+(?:\.\d+)?)L/g`、
 サイズは `/\b(S|M|L|XL|2XL)サイズ\b/g`、セット数は `/(\d+)個セット/g`。
 照合は `normalizeForMatch` を通した文字列同士で行う。
 
@@ -1509,6 +1514,9 @@ Error: Failed to load url ../src/lib/manufacturers/ace
 **数値は `[\d.]+` で読まない。** `.`・`1.2.3`・`0` を通してしまい、`Number()` が
 `NaN` や `0` を返しても成功扱いになる。`\d+(?:\.\d+)?` に完全一致させ、
 `Number.isFinite(value)` かつ `value > 0` を確かめる共通の厳密パーサを使う。
+**入力の検査だけでは足りない。** `0.0001kg`（×1000 → 丸めて 0）、
+`W0.01cm`（×10 → 丸めて 0）、`1e307kg`（×1000 → `Infinity`）はいずれも
+入力は正の有限値なので、**換算・丸めの後の最終値にも同じ検査を通す**。
 W/H/D のどれか 1 つでも不正なら**寸法全体を `null`** にし、
 `mm` と `cm` が混在した表記は尺度を決められないので推定せず `null` にする。
 `W35×H55×D25cm` は `/W([\d.]+)×H([\d.]+)×D([\d.]+)cm/` で取り、**登録順（幅・高さ・奥行）のまま**返す。
@@ -2075,16 +2083,24 @@ S と A の必要条件を設計書 5.5 どおり 1 つずつ明示的に要求�
 `availability === null` だけで両方を表すと、単純に判定順を入れ替えたときに
 API 障害を商品消失として数えてしまう。そこで `observationStatus` を先に見る。
 
-| 入力 | 次の状態 |
-|---|---|
-| `observationStatus === 'unavailable'`（API 障害） | `uncertain`。**全カウンタを据え置く**。何日続いても `hidden`/`replace` にしない |
-| `observationStatus === 'ok'` かつ `!itemCodeAlive` | `consecutiveFailures` を +1（`availability` が `null` でも数える） |
-| 上の連続が 3 日 | `hidden` |
-| 上の連続が 7 日 | `replace` |
-| `observationStatus === 'ok'` かつ `itemCodeAlive && availability === 0` | 表示維持。`consecutiveOutOfStock` を +1。14 日で `hidden` |
-| `affiliateTargetChanged === true` | **`manual-hold`**。`consecutiveFailures` を増やさず `lastHealthyAt` も更新しない。自動交換もしない |
-| `identifierMatch === 'weak' && !variantMatch` | `manual-hold` |
-| `itemCodeAlive && availability === 1 && identifierMatch !== 'none' && variantMatch` かつ遷移先が変わっていない | `healthy`。`consecutiveFailures = 0` |
+| 入力 | 次の状態 | カウンタ | `lastHealthyAt` |
+|---|---|---|---|
+| `observationStatus === 'unavailable'`（API 障害） | 前日が `healthy` なら `uncertain`。**それ以外は前日の状態を維持**（`uncertain`/`hidden`/`replace`/`manual-hold`） | **全カウンタ据え置き** | 更新しない |
+| `observationStatus === 'ok'` かつ `!itemCodeAlive` | `consecutiveFailures` を +1（`availability` が `null` でも数える） | `consecutiveOutOfStock` は 0 | 更新しない |
+| 上の連続が 3 日 | `hidden` | — | 更新しない |
+| 上の連続が 7 日 | `replace` | — | 更新しない |
+| `observationStatus === 'ok'` かつ `itemCodeAlive && availability === 0` | 表示維持。14 日で `hidden` | `consecutiveOutOfStock` を +1、`consecutiveFailures` は 0 | 更新しない |
+| `observationStatus === 'ok'` かつ `itemCodeAlive && availability === null` | **`uncertain`**（在庫の判断材料が無いので `healthy` にしない） | `consecutiveFailures` は 0（itemCode の存在は確認できた）。**`consecutiveOutOfStock` は据え置く**（在庫が戻った証拠が無いので 0 へ戻さない） | 更新しない |
+| `affiliateTargetChanged === true` | **`manual-hold`**。自動交換もしない | `consecutiveFailures` を増やさない | 更新しない |
+| `identifierMatch === 'weak' && !variantMatch` | `manual-hold` | — | 更新しない |
+| `itemCodeAlive && availability === 1 && identifierMatch !== 'none' && variantMatch` かつ遷移先が変わっていない | `healthy` | `consecutiveFailures = 0`、`consecutiveOutOfStock = 0` | 更新する |
+
+**観測不能日に確定済みの制限状態を解除しない。** 「観測できなかった」は
+「以前確定した異常が解消した」を意味しない。`hidden` / `replace` / `manual-hold` は
+API 障害が何日続いても据え置き、緩和するのは `healthy` → `uncertain` だけ。
+
+**`healthy` にするのは `availability === 1` を確認できたときだけ。**
+`availability === null`（在庫情報だけ取れなかった）は `uncertain` にする。
 
 **`affiliateTargetChanged` は保存するだけにしない。** 紹介URLの `pc` 遷移先が
 変わったリンクは別商品へ飛びうるので、他の信号が正常でも `healthy` にしない。
@@ -2107,6 +2123,8 @@ API 障害を商品消失として数えてしまう。そこで `observationSta
 - [ ] `healthy` の入力で `consecutiveFailures` が 0 にリセットされる失敗テストを書く（3 分）
 - [ ] `observationStatus === 'unavailable'` が 30 日続いても全カウンタが据え置かれる失敗テストを書く（4 分）
 - [ ] `observationStatus === 'ok'` かつ `!itemCodeAlive` なら `availability` が `null` でも数える失敗テストを書く（4 分）
+- [ ] `itemCodeAlive` かつ `availability === null` で `healthy` にせず、`consecutiveOutOfStock` を据え置く失敗テストを書く（4 分）
+- [ ] `hidden` / `replace` / `manual-hold` が API 障害で解除されない失敗テストを書く（4 分）
 - [ ] `!itemCodeAlive` を 3 日連続で与えると 3 日目に `hidden` になる失敗テストを書く（4 分）
 - [ ] `affiliateTargetChanged` が `true` なら `healthy` にせず `manual-hold` にする失敗テストを書く（4 分）
 - [ ] 遷移先が変わっても連続失敗日数を増やさず `lastHealthyAt` を更新しない失敗テストを書く（3 分）
@@ -2253,8 +2271,9 @@ Error: Failed to load url ../src/lib/automation/link-state
 
 ### 最小実装
 
-`nextLinkState` は `signals.observationStatus === 'unavailable'` を最初に判定して
-`uncertain` を返し、**全カウンタを据え置く**。それ以外（API は正常に応答した日）は
+`nextLinkState` は `signals.observationStatus === 'unavailable'` を最初に判定し、
+**全カウンタと `lastHealthyAt` を据え置いたまま**、前日が `healthy` のときだけ
+`uncertain` へ落とす（それ以外は前日の状態をそのまま返す）。それ以外（API は正常に応答した日）は
 `itemCodeAlive` の連続不在日数と `consecutiveOutOfStock` を更新してから、
 しきい値と比較して状態を決める。`availability === null` だけでは
 `uncertain` に落とさない（商品が消えていれば在庫情報も返らないため）。

@@ -22,9 +22,20 @@ const NUMBER_SOURCE = '\\d+(?:\\.\\d+)?';
  */
 export function parsePositiveNumber(raw: string): number | null {
   if (!new RegExp(`^${NUMBER_SOURCE}$`).test(raw)) return null;
-  const value = Number(raw);
-  if (!Number.isFinite(value) || value <= 0) return null;
-  return value;
+  return finitePositive(Number(raw));
+}
+
+/**
+ * 有限かつ正でなければ null。
+ *
+ * **換算と丸めの後にも必ず通す。** 入力の検査だけでは足りない。
+ *   0.0001kg → ×1000 → 0.1 → Math.round → 0
+ *   W0.01cm  → ×10   → 0.1 → Math.round → 0
+ *   1e307kg  → ×1000 → Infinity
+ * いずれも入力は正の有限値だが、結果は使えない値になる。
+ */
+function finitePositive(value: number): number | null {
+  return Number.isFinite(value) && value > 0 ? value : null;
 }
 
 /** 「約」「,」を落とし、前後の空白を取る。 */
@@ -39,12 +50,12 @@ function parseWithUnit(raw: string, unit: string, flags = ''): number | null {
   return captured === undefined ? null : parsePositiveNumber(captured);
 }
 
-/** 「約1,250g」「2.9kg」。kg は g へ換算する。 */
+/** 「約1,250g」「2.9kg」。kg は g へ換算する。換算・丸めの後も正で有限であることを確かめる。 */
 export function parseWeightG(raw: string): number | null {
   const kg = parseWithUnit(raw, 'kg');
-  if (kg !== null) return Math.round(kg * 1000);
+  if (kg !== null) return finitePositive(Math.round(kg * 1000));
   const g = parseWithUnit(raw, 'g');
-  if (g !== null) return Math.round(g);
+  if (g !== null) return finitePositive(Math.round(g));
   return null;
 }
 
@@ -73,7 +84,8 @@ export function parseLabeledSizeMm(raw: string): [number, number, number] | null
     // 「W1.2.3」のように余分な小数点が続く形を弾く
     if (new RegExp(`${label}${captured.replace('.', '\\.')}\\.`).test(text)) return null;
     const value = parsePositiveNumber(captured);
-    return value === null ? null : Math.round(value * scale);
+    // 換算・丸めの後も正で有限であること（0.01cm → 0、巨大値 → Infinity を弾く）
+    return value === null ? null : finitePositive(Math.round(value * scale));
   };
 
   const w = pick('W');
