@@ -102,6 +102,34 @@ describe('Anker の仕様抽出', () => {
     expect(ankerAdapter.requiredFields).toContain('weightG');
   });
 
+  it('容量行があるのに単位を読めなければ黙って捨てず失敗を返す', () => {
+    const broken = ankerHtml.replace('<td>12000mAh</td>', '<td>十二アンペア</td>');
+    expect(ankerAdapter.extract(broken)).toEqual({ ok: false, reason: 'unit-unparseable' });
+  });
+
+  it('最大出力行があるのに単位を読めなければ黙って捨てず失敗を返す', () => {
+    const broken = ankerHtml.replace('<td>最大65W</td>', '<td>高出力</td>');
+    expect(ankerAdapter.extract(broken)).toEqual({ ok: false, reason: 'unit-unparseable' });
+  });
+
+  it('行そのものが無ければ公表なしとして省略する（失敗にしない）', () => {
+    const withoutCapacity = ankerHtml.replace(/<tr>\s*<th>容量[\s\S]*?<\/tr>/, '');
+    const result = ankerAdapter.extract(withoutCapacity);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.spec.specs.capacityMah).toBeUndefined();
+    expect(result.spec.specs.maxOutputW).toBe(65);
+  });
+
+  it('最大出力の行そのものが無くても成功する', () => {
+    const withoutOutput = ankerHtml.replace(/<tr>\s*<th>最大出力[\s\S]*?<\/tr>/, '');
+    const result = ankerAdapter.extract(withoutOutput);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.spec.specs.maxOutputW).toBeUndefined();
+    expect(result.spec.specs.capacityMah).toBe(12000);
+  });
+
   it('重量が欠けたら推定せず失敗を返す', () => {
     const withoutWeight = ankerHtml.replace(/<tr>\s*<th>重量[\s\S]*?<\/tr>/, '');
     expect(ankerAdapter.extract(withoutWeight))

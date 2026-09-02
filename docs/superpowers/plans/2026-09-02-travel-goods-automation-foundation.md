@@ -645,8 +645,10 @@ export type BudgetFile = {
 };
 
 export type LinkSignals = {
+  /** その日の観測が成立したか。'unavailable' は API 障害であり、商品の状態を意味しない。 */
+  observationStatus: 'ok' | 'unavailable';
   itemCodeAlive: boolean;
-  availability: 0 | 1 | null;      // null = 取得できなかった
+  availability: 0 | 1 | null;      // null = 在庫情報を取れなかった
   affiliateTargetChanged: boolean;
   httpStatus: number | null;       // 規約確認が済むまで常に null
   identifierMatch: 'strong' | 'weak' | 'none';
@@ -1504,6 +1506,11 @@ Error: Failed to load url ../src/lib/manufacturers/ace
 
 `<table class="spec">` の `<tr>` を走査し、`<th>` のラベル（`本体重量` / `外寸` / `容量`）で分岐する。
 `kg` → `g` は `Math.round(value * 1000)`、`cm` → `mm` は `Math.round(value * 10)`。
+**数値は `[\d.]+` で読まない。** `.`・`1.2.3`・`0` を通してしまい、`Number()` が
+`NaN` や `0` を返しても成功扱いになる。`\d+(?:\.\d+)?` に完全一致させ、
+`Number.isFinite(value)` かつ `value > 0` を確かめる共通の厳密パーサを使う。
+W/H/D のどれか 1 つでも不正なら**寸法全体を `null`** にし、
+`mm` と `cm` が混在した表記は尺度を決められないので推定せず `null` にする。
 `W35×H55×D25cm` は `/W([\d.]+)×H([\d.]+)×D([\d.]+)cm/` で取り、**登録順（幅・高さ・奥行）のまま**返す。
 `extractedRangeHash` は `html.match(/<table class="spec">[\s\S]*?<\/table>/)?.[0]` に
 `crypto.createHash('sha256')` を適用する。
@@ -1665,6 +1672,11 @@ ELECOM は定義リスト（`<dt>` / `<dd>`）、Anker は表を走査する。
 `1,090g` のカンマ除去、`約W300×D160×H480mm` の接頭辞除去を行う。
 `requiredFields` をアダプターごとに定数として持ち、`extract` がそれを見て
 `required-field-missing` を返すか決める。
+
+任意項目（Anker の `capacityMah` / `maxOutputW`）は次のように扱う。
+**行そのものが無い**なら公表なしとして `specs` に作らない（`ratedWh` がこれ）。
+**行はあるが単位を読めない**なら黙って捨てず `{ ok: false, reason: 'unit-unparseable' }`
+を返す。捨てると「公表されていない」と「読めなかった」が区別できなくなる。
 
 > **注記**: 現行 ELECOM の 4 出典は `automatedFetch: 'unverified'` である。
 > アダプターは実装するが、**Global Constraints 4 により段階0 では取得対象にならない**。
@@ -2059,18 +2071,33 @@ S と A の必要条件を設計書 5.5 どおり 1 つずつ明示的に要求�
 
 ### 仕様（設計書 8.3・8.4 に対応）
 
+**「API が応答しなかった」と「API は答えたが商品が無い」を別の軸で持つ。**
+`availability === null` だけで両方を表すと、単純に判定順を入れ替えたときに
+API 障害を商品消失として数えてしまう。そこで `observationStatus` を先に見る。
+
 | 入力 | 次の状態 |
 |---|---|
-| `itemCodeAlive && availability === 1 && identifierMatch !== 'none' && variantMatch` | `healthy`。`consecutiveFailures = 0` |
-| `availability === null`（API エラー・判定材料不足） | `uncertain`。**`consecutiveFailures` を増やさない** |
-| `itemCodeAlive && availability === 0` | 表示維持。`consecutiveOutOfStock` を +1。14 日で `hidden` |
-| `!itemCodeAlive` が 3 日連続 | `hidden` |
-| `!itemCodeAlive` が 7 日連続 | `replace` |
+| `observationStatus === 'unavailable'`（API 障害） | `uncertain`。**全カウンタを据え置く**。何日続いても `hidden`/`replace` にしない |
+| `observationStatus === 'ok'` かつ `!itemCodeAlive` | `consecutiveFailures` を +1（`availability` が `null` でも数える） |
+| 上の連続が 3 日 | `hidden` |
+| 上の連続が 7 日 | `replace` |
+| `observationStatus === 'ok'` かつ `itemCodeAlive && availability === 0` | 表示維持。`consecutiveOutOfStock` を +1。14 日で `hidden` |
+| `affiliateTargetChanged === true` | **`manual-hold`**。`consecutiveFailures` を増やさず `lastHealthyAt` も更新しない。自動交換もしない |
 | `identifierMatch === 'weak' && !variantMatch` | `manual-hold` |
+| `itemCodeAlive && availability === 1 && identifierMatch !== 'none' && variantMatch` かつ遷移先が変わっていない | `healthy`。`consecutiveFailures = 0` |
 
-`decideReplacement`:
+**`affiliateTargetChanged` は保存するだけにしない。** 紹介URLの `pc` 遷移先が
+変わったリンクは別商品へ飛びうるので、他の信号が正常でも `healthy` にしない。
+ただし商品が消えたわけではないので、連続失敗日数は増やさず自動交換にも進めない。
 
-- `isHumanVerifiedLink(link)` が `true` → `state === 'replace'` でも `{ action: 'pr-only', reason: 'human-verified' }`
+**`itemCode` の不在は `manual-hold` より優先する。** 消えたリンクは
+遷移先の変化や識別子の弱さに関わらず `hidden` → `replace` へ進む。
+
+`decideReplacement` — **状態を先に見る**:
+
+- `state !== 'replace'` → **必ず** `{ action: 'hold', reason: ... }`
+  （目視確認済みかどうかを先に見ると、正常なリンクまで PR へ出てしまう）
+- `state === 'replace'` かつ `isHumanVerifiedLink(link)` → `{ action: 'pr-only', reason: 'human-verified' }`
 - `state === 'replace'` かつ `candidateTier === 'S'` → `{ action: 'replace-now' }`
 - `state === 'replace'` かつ `candidateTier === 'A'` → `{ action: 'replace-after-recheck' }`
 - それ以外 → `{ action: 'hold', reason: ... }`
@@ -2078,18 +2105,23 @@ S と A の必要条件を設計書 5.5 どおり 1 つずつ明示的に要求�
 ### ステップ
 
 - [ ] `healthy` の入力で `consecutiveFailures` が 0 にリセットされる失敗テストを書く（3 分）
-- [ ] `availability === null` のとき `uncertain` になり `consecutiveFailures` が**増えない**失敗テストを書く（4 分）
+- [ ] `observationStatus === 'unavailable'` が 30 日続いても全カウンタが据え置かれる失敗テストを書く（4 分）
+- [ ] `observationStatus === 'ok'` かつ `!itemCodeAlive` なら `availability` が `null` でも数える失敗テストを書く（4 分）
 - [ ] `!itemCodeAlive` を 3 日連続で与えると 3 日目に `hidden` になる失敗テストを書く（4 分）
+- [ ] `affiliateTargetChanged` が `true` なら `healthy` にせず `manual-hold` にする失敗テストを書く（4 分）
+- [ ] 遷移先が変わっても連続失敗日数を増やさず `lastHealthyAt` を更新しない失敗テストを書く（3 分）
 - [ ] 7 日連続で `replace` になる失敗テストを書く（3 分）
 - [ ] `availability === 0` を 13 日続けても `hidden` にならず、14 日目に `hidden` になる失敗テストを書く（4 分）
 - [ ] `identifierMatch: 'weak'` かつ `variantMatch: false` で `manual-hold` になる失敗テストを書く（3 分）
 - [ ] `verified`+`visual` のリンクは `replace` でも `pr-only` になる失敗テストを書く（4 分）
+- [ ] `verified`+`visual` でも `replace` 以外の 4 状態はすべて `hold` になる失敗テストを書く（3 分）
 - [ ] `replace` + 候補 S で `replace-now`、候補 A で `replace-after-recheck` になる失敗テストを書く（4 分）
 - [ ] テストを実行し失敗を確認する（1 分）
-- [ ] `LINK_THRESHOLDS` と `uncertain` の判定（連続日数を増やさない）を実装する（4 分）
+- [ ] `LINK_THRESHOLDS` と `observationStatus === 'unavailable'` の据え置きを実装する（4 分）
+- [ ] `affiliateTargetChanged` を状態判定へ結線する（3 分）
 - [ ] `itemCodeAlive` の連続不在日数から `hidden` / `replace` を決める（5 分）
 - [ ] `consecutiveOutOfStock` と `manual-hold` を実装する（4 分）
-- [ ] `decideReplacement`（目視確認済みの保護を含む）を実装する（4 分）
+- [ ] `decideReplacement`（状態を先に見てから目視確認済みの保護）を実装する（4 分）
 - [ ] テストが成功することを確認する（1 分）
 
 ### 最初に失敗するテスト
@@ -2221,9 +2253,12 @@ Error: Failed to load url ../src/lib/automation/link-state
 
 ### 最小実装
 
-`nextLinkState` は `signals.availability === null` を最初に判定して `uncertain` を返し、
-`consecutiveFailures` を据え置く。それ以外は `itemCodeAlive` の連続不在日数と
-`consecutiveOutOfStock` を更新してから、しきい値と比較して状態を決める。
+`nextLinkState` は `signals.observationStatus === 'unavailable'` を最初に判定して
+`uncertain` を返し、**全カウンタを据え置く**。それ以外（API は正常に応答した日）は
+`itemCodeAlive` の連続不在日数と `consecutiveOutOfStock` を更新してから、
+しきい値と比較して状態を決める。`availability === null` だけでは
+`uncertain` に落とさない（商品が消えていれば在庫情報も返らないため）。
+`decideReplacement` は `state !== 'replace'` を最初に判定して `hold` を返す。
 
 ### 成功確認コマンド
 

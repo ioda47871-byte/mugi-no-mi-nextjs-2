@@ -106,8 +106,17 @@ export type BudgetFile = {
 export const LINK_STATES = ['healthy', 'uncertain', 'hidden', 'replace', 'manual-hold'] as const;
 export type LinkState = (typeof LINK_STATES)[number];
 
+export const OBSERVATION_STATUSES = ['ok', 'unavailable'] as const;
+export type ObservationStatus = (typeof OBSERVATION_STATUSES)[number];
+
 export const linkSignalsSchema = z
   .object({
+    /**
+     * その日の観測そのものが成立したか。
+     * 'unavailable' は「API が応答しなかった」であり、商品の状態を何も意味しない。
+     * itemCodeAlive === false（商品が見つからない）とは別の軸として持つ。
+     */
+    observationStatus: z.enum(OBSERVATION_STATUSES),
     itemCodeAlive: z.boolean(),
     /** null = 取得できなかった */
     availability: z.union([z.literal(0), z.literal(1)]).nullable(),
@@ -140,6 +149,7 @@ export const linkHealthFileSchema = z
   .strict();
 
 export type LinkSignals = {
+  observationStatus: ObservationStatus;
   itemCodeAlive: boolean;
   availability: 0 | 1 | null;
   affiliateTargetChanged: boolean;

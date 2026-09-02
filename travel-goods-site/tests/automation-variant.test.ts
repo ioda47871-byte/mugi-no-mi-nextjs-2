@@ -96,6 +96,30 @@ describe('販売ページ文言との照合', () => {
     expect(v.matched).toBe(true);
   });
 
+  it('色を部分一致で通さない（ブラック ≠ ブラックヘアライン）', () => {
+    const v = verifyVariant('35L / ブラック', 'スーツケース 35L ブラックヘアライン');
+    expect(v.matched).toBe(false);
+    expect(v.matchedVariantLabel).toBeNull();
+  });
+
+  it('色を部分一致で通さない（ネイビー ≠ ダークネイビー）', () => {
+    const v = verifyVariant('30L / ネイビー', 'リュック 30L ダークネイビー');
+    expect(v.matched).toBe(false);
+    expect(v.matchedVariantLabel).toBeNull();
+  });
+
+  it('同じ色名どうしは一致する（ブラックヘアライン同士）', () => {
+    const v = verifyVariant('35L / 01 ブラックヘアライン', 'スーツケース 35L 01 ブラックヘアライン');
+    expect(v.matched).toBe(true);
+  });
+
+  it('別の色が併記された選択式ページを一致扱いしない', () => {
+    const v = verifyVariant('30L / ブラック', 'リュック 30L ブラック ホワイト 2色から選べる');
+    expect(v.matched).toBe(false);
+    expect(v.conflicting).toContain('ホワイト');
+    expect(v.matchedVariantLabel).toBeNull();
+  });
+
   it('拡張式は両方の容量が出てくれば一致し、片方だけを矛盾にしない', () => {
     const v = verifyVariant('18/24L / 01 ブラック', 'スーツケース 18L/24L 拡張 01 ブラック');
     expect(v.conflicting).toEqual([]);

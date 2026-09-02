@@ -66,6 +66,23 @@ describe('ACE 系の仕様抽出', () => {
     expect(aceAdapter.extract(broken)).toEqual({ ok: false, reason: 'unit-unparseable' });
   });
 
+  it('不正な数値で ok: true にしない', () => {
+    for (const bad of ['<td>.kg</td>', '<td>1.2.3kg</td>', '<td>0kg</td>']) {
+      const broken = html.replace('<td>2.9kg</td>', bad);
+      const result = aceAdapter.extract(broken);
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.reason).toBe('unit-unparseable');
+    }
+  });
+
+  it('外寸の 1 要素が不正なら寸法全体を採らない', () => {
+    const broken = html.replace(
+      '<td>W35×H55×D25cm（ハンドル・キャスターを含む）</td>',
+      '<td>W.×H55×D25cm（ハンドル・キャスターを含む）</td>',
+    );
+    expect(aceAdapter.extract(broken)).toEqual({ ok: false, reason: 'unit-unparseable' });
+  });
+
   it('スペック表の外側が変わってもハッシュは変わらない', () => {
     const changed = html.replace('</body>', '<p>キャンペーン中</p></body>');
     expect(aceAdapter.extractedRangeHash(changed)).toBe(aceAdapter.extractedRangeHash(html));

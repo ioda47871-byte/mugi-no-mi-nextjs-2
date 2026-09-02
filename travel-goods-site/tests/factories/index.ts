@@ -254,6 +254,7 @@ export function makeTierInput(over: Partial<TierInput> = {}): TierInput {
 
 export function makeLinkSignals(over: Partial<LinkSignals> = {}): LinkSignals {
   return {
+    observationStatus: 'ok',
     itemCodeAlive: true,
     availability: 1,
     affiliateTargetChanged: false,

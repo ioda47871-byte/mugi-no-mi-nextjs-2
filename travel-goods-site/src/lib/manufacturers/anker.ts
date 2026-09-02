@@ -47,17 +47,27 @@ export function extractAnkerSpec(html: string): ExtractionResult {
     return { ok: false, reason: 'unit-unparseable' };
   }
 
-  // 公表されていない項目は作らない。読めた値だけを入れる。
+  // 任意項目の扱い:
+  //   行そのものが無い → 公表なし。specs に作らない（ratedWh がこれに当たる）。
+  //   行はあるが読めない → 黙って捨てず unit-unparseable にする。
+  //     捨てると「公表されていない」と「読めなかった」が区別できなくなる。
   const specs: Record<string, string | number | boolean> = {};
-  const rawCapacityMah = rows.get('容量');
-  if (rawCapacityMah !== undefined) {
-    const capacityMah = parseCapacityMah(rawCapacityMah);
-    if (capacityMah !== null) specs.capacityMah = capacityMah;
-  }
-  const rawMaxOutput = rows.get('最大出力');
-  if (rawMaxOutput !== undefined) {
-    const maxOutputW = parseWatt(rawMaxOutput);
-    if (maxOutputW !== null) specs.maxOutputW = maxOutputW;
+
+  const optionalRows: readonly {
+    label: string;
+    key: string;
+    parse: (raw: string) => number | null;
+  }[] = [
+    { label: '容量', key: 'capacityMah', parse: parseCapacityMah },
+    { label: '最大出力', key: 'maxOutputW', parse: parseWatt },
+  ];
+
+  for (const { label, key, parse } of optionalRows) {
+    const raw = rows.get(label);
+    if (raw === undefined) continue;
+    const value = parse(raw);
+    if (value === null) return { ok: false, reason: 'unit-unparseable' };
+    specs[key] = value;
   }
 
   return {

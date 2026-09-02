@@ -99,18 +99,26 @@ function setCountsIn(text: string): string[] {
   return uniq(captures(text, SET_COUNT_RE).map((value) => `${value}個セット`));
 }
 
-export function extractVariantTokens(variant: string): VariantTokens {
+/**
+ * 長い色名から順に消し込む。
+ * 「ブラックヘアライン」を先に取り除くので「ブラック」を二重に拾わないし、
+ * 販売ページ側に同じ規則を使えば「ブラック」で「ブラックヘアライン」に一致しない。
+ */
+function colorsIn(text: string): string[] {
   const colors: string[] = [];
-  // 長い色名から順に消し込み、部分一致で短い色名を二重に拾わない
-  let remaining = variant;
+  let remaining = text;
   for (const color of COLOR_NAMES) {
     if (remaining.includes(color)) {
       colors.push(color);
       remaining = remaining.split(color).join(' ');
     }
   }
+  return uniq(colors);
+}
+
+export function extractVariantTokens(variant: string): VariantTokens {
   return {
-    colors: uniq(colors),
+    colors: colorsIn(variant),
     sizes: sizesIn(variant),
     capacities: capacitiesIn(variant),
     setCounts: setCountsIn(variant),
@@ -127,13 +135,23 @@ export function verifyVariant(variant: string, listingText: string): VariantVerd
   const all = [...tokens.sizes, ...tokens.capacities, ...tokens.colors, ...tokens.setCounts];
   const haystack = normalizeForMatch(listingText);
 
-  const missing = all.filter((token) => !haystack.includes(normalizeForMatch(token)));
+  // 販売ページ側も同じ規則でトークン化する。
+  // 色を substring で照合すると「ブラック」が「ブラックヘアライン」に一致してしまう。
+  const listingColors = new Set(colorsIn(listingText).map(normalizeForMatch));
 
-  // 販売ページ側に現れる、対象と異なる容量・サイズ・セット数
+  const missing = all.filter((token) => {
+    const normalized = normalizeForMatch(token);
+    if (tokens.colors.includes(token)) return !listingColors.has(normalized);
+    return !haystack.includes(normalized);
+  });
+
+  // 販売ページ側に現れる、対象と異なる色・容量・サイズ・セット数
+  const ownColors = new Set(tokens.colors.map(normalizeForMatch));
   const ownCapacities = new Set(tokens.capacities.map(normalizeForMatch));
   const ownSizes = new Set(tokens.sizes.map(normalizeForMatch));
   const ownSetCounts = new Set(tokens.setCounts.map(normalizeForMatch));
   const conflicting = [
+    ...colorsIn(listingText).filter((v) => !ownColors.has(normalizeForMatch(v))),
     ...capacitiesIn(listingText).filter((v) => !ownCapacities.has(normalizeForMatch(v))),
     ...sizesIn(listingText).filter((v) => !ownSizes.has(normalizeForMatch(v))),
     ...setCountsIn(listingText).filter((v) => !ownSetCounts.has(normalizeForMatch(v))),

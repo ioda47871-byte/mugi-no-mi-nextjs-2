@@ -109,6 +109,7 @@ describe('automation 状態ファイルのスキーマ', () => {
       merchant: 'rakuten',
       externalProductId: 'testshop:test-item-001',
       signals: {
+        observationStatus: 'ok',
         itemCodeAlive: true,
         availability: 1,
         affiliateTargetChanged: false,
@@ -133,6 +134,7 @@ describe('automation 状態ファイルのスキーマ', () => {
       merchant: 'rakuten',
       externalProductId: 'testshop:test-item-001',
       signals: {
+        observationStatus: 'unavailable',
         itemCodeAlive: true,
         availability: null,
         affiliateTargetChanged: false,
@@ -148,11 +150,35 @@ describe('automation 状態ファイルのスキーマ', () => {
     expect(linkHealthFileSchema.safeParse({ version: 1, entries: [entry] }).success).toBe(true);
   });
 
+  it('observationStatus が無い signals を拒否する（観測の成否を省略させない）', () => {
+    const entry = {
+      productId: 'p1', merchant: 'rakuten', externalProductId: 'shop:i1',
+      signals: {
+        itemCodeAlive: true, availability: 1, affiliateTargetChanged: false,
+        httpStatus: null, identifierMatch: 'strong', variantMatch: true,
+      },
+      consecutiveFailures: 0, consecutiveOutOfStock: 0, lastHealthyAt: null, state: 'healthy',
+    };
+    expect(linkHealthFileSchema.safeParse({ version: 1, entries: [entry] }).success).toBe(false);
+  });
+
+  it('observationStatus は ok / unavailable だけを受ける', () => {
+    const entry = {
+      productId: 'p1', merchant: 'rakuten', externalProductId: 'shop:i1',
+      signals: {
+        observationStatus: 'partial', itemCodeAlive: true, availability: 1,
+        affiliateTargetChanged: false, httpStatus: null, identifierMatch: 'strong', variantMatch: true,
+      },
+      consecutiveFailures: 0, consecutiveOutOfStock: 0, lastHealthyAt: null, state: 'healthy',
+    };
+    expect(linkHealthFileSchema.safeParse({ version: 1, entries: [entry] }).success).toBe(false);
+  });
+
   it('availability は 0 / 1 / null だけを受ける', () => {
     const base = {
       productId: 'p1', merchant: 'rakuten', externalProductId: 'shop:i1',
       signals: {
-        itemCodeAlive: true, availability: 2, affiliateTargetChanged: false,
+        observationStatus: 'ok', itemCodeAlive: true, availability: 2, affiliateTargetChanged: false,
         httpStatus: null, identifierMatch: 'weak', variantMatch: true,
       },
       consecutiveFailures: 0, consecutiveOutOfStock: 0, lastHealthyAt: null, state: 'healthy',
@@ -187,6 +213,7 @@ describe('状態ファイルの読み書き（安定シリアライズ）', () =
       merchant: 'rakuten',
       externalProductId: `shop:${productId}`,
       signals: {
+        observationStatus: 'ok',
         itemCodeAlive: true,
         availability: 1,
         affiliateTargetChanged: false,

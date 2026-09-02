@@ -5,9 +5,23 @@ import type { LinkHealthEntry, LinkSignals } from '../src/lib/automation/state/s
 import { makeLinkHealthEntry, makeLinkSignals, makeMerchantLink } from './factories';
 
 const healthy: LinkSignals = makeLinkSignals();
-const gone: LinkSignals = makeLinkSignals({ itemCodeAlive: false, availability: 0, identifierMatch: 'none', variantMatch: false });
+/** API は正常に応答し、そのうえで itemCode が見つからない。availability も取れない。 */
+const gone: LinkSignals = makeLinkSignals({
+  observationStatus: 'ok',
+  itemCodeAlive: false,
+  availability: null,
+  identifierMatch: 'none',
+  variantMatch: false,
+});
 const outOfStock: LinkSignals = makeLinkSignals({ availability: 0 });
-const apiError: LinkSignals = makeLinkSignals({ itemCodeAlive: false, availability: null, identifierMatch: 'none', variantMatch: false });
+/** API 自体が応答しない。商品が消えたのかどうかは判断できない。 */
+const apiError: LinkSignals = makeLinkSignals({
+  observationStatus: 'unavailable',
+  itemCodeAlive: false,
+  availability: null,
+  identifierMatch: 'none',
+  variantMatch: false,
+});
 
 /** signals を n 日連続で与えたあとの状態を返す。 */
 function advance(start: LinkHealthEntry, signals: LinkSignals, days: number): LinkHealthEntry {
@@ -36,10 +50,40 @@ describe('リンク状態機械', () => {
     expect(next.consecutiveFailures).toBe(2);
   });
 
-  it('API エラーが何日続いても hidden や replace にしない（判定材料がないため）', () => {
+  it('API 障害が 30 日続いても hidden や replace にしない（判定材料がないため）', () => {
     const start = makeLinkHealthEntry();
-    expect(advance(start, apiError, 30).state).toBe('uncertain');
-    expect(advance(start, apiError, 30).consecutiveFailures).toBe(0);
+    const after30 = advance(start, apiError, 30);
+    expect(after30.state).toBe('uncertain');
+    expect(after30.consecutiveFailures).toBe(0);
+    expect(after30.consecutiveOutOfStock).toBe(0);
+  });
+
+  it('API 障害では在庫切れ日数も据え置く', () => {
+    const prev = makeLinkHealthEntry({ consecutiveOutOfStock: 5, state: 'healthy' });
+    const next = nextLinkState(prev, apiError);
+    expect(next.consecutiveOutOfStock).toBe(5);
+    expect(next.consecutiveFailures).toBe(0);
+    expect(next.state).toBe('uncertain');
+  });
+
+  it('API が正常なら availability が null でも itemCode 不在を数える', () => {
+    const start = makeLinkHealthEntry();
+    expect(advance(start, gone, 1).consecutiveFailures).toBe(1);
+    expect(advance(start, gone, 7).consecutiveFailures).toBe(7);
+  });
+
+  it('API 障害のあと正常応答で itemCode 不在なら、そこから数え始める', () => {
+    const afterOutage = advance(makeLinkHealthEntry(), apiError, 10);
+    expect(afterOutage.consecutiveFailures).toBe(0);
+    expect(advance(afterOutage, gone, 3).state).toBe('hidden');
+  });
+
+  it('itemCode が戻れば連続失敗日数が 0 に戻る', () => {
+    const after5 = advance(makeLinkHealthEntry(), gone, 5);
+    expect(after5.consecutiveFailures).toBe(5);
+    const recovered = nextLinkState(after5, healthy);
+    expect(recovered.consecutiveFailures).toBe(0);
+    expect(recovered.state).toBe('healthy');
   });
 
   it('itemCode 不在が 3 日続くと hidden、7 日で replace', () => {
@@ -87,6 +131,34 @@ describe('リンク状態機械', () => {
     expect(nextLinkState(prev, gone, '2026-09-02').lastHealthyAt).toBe('2026-09-01');
   });
 
+  it('紹介URLの遷移先が変わったら healthy にしない', () => {
+    const changed = makeLinkSignals({ affiliateTargetChanged: true });
+    const next = nextLinkState(makeLinkHealthEntry(), changed, '2026-09-02');
+    expect(next.state).toBe('manual-hold');
+  });
+
+  it('遷移先が変わった日は連続失敗日数を増やさず lastHealthyAt も更新しない', () => {
+    const prev = makeLinkHealthEntry({ consecutiveFailures: 0, lastHealthyAt: '2026-09-01' });
+    const next = nextLinkState(prev, makeLinkSignals({ affiliateTargetChanged: true }), '2026-09-02');
+    expect(next.consecutiveFailures).toBe(0);
+    expect(next.lastHealthyAt).toBe('2026-09-01');
+  });
+
+  it('遷移先が変わり続けても hidden や replace へ進めない（自動交換しない）', () => {
+    const changed = makeLinkSignals({ affiliateTargetChanged: true });
+    const after30 = advance(makeLinkHealthEntry(), changed, 30);
+    expect(after30.state).toBe('manual-hold');
+    expect(after30.consecutiveFailures).toBe(0);
+  });
+
+  it('itemCode が消えていれば遷移先の変化より不在を優先する', () => {
+    const goneAndChanged = makeLinkSignals({
+      observationStatus: 'ok', itemCodeAlive: false, availability: null,
+      identifierMatch: 'none', variantMatch: false, affiliateTargetChanged: true,
+    });
+    expect(advance(makeLinkHealthEntry(), goneAndChanged, 7).state).toBe('replace');
+  });
+
   it('signals をそのまま記録する（判定と信号を混ぜない）', () => {
     const next = nextLinkState(makeLinkHealthEntry(), outOfStock);
     expect(next.signals).toEqual(outOfStock);
@@ -98,6 +170,16 @@ describe('代替リンクへの交換', () => {
     const link = makeMerchantLink({ status: 'verified', verificationMethod: 'visual' });
     for (const tier of ['S', 'A', 'B'] as const) {
       expect(decideReplacement(link, 'replace', tier)).toEqual({ action: 'pr-only', reason: 'human-verified' });
+    }
+  });
+
+  it('目視確認済みリンクでも replace 以外は hold（正常なリンクを PR へ出さない）', () => {
+    const link = makeMerchantLink({ status: 'verified', verificationMethod: 'visual' });
+    for (const state of ['healthy', 'uncertain', 'hidden', 'manual-hold'] as const) {
+      for (const tier of ['S', 'A', 'B'] as const) {
+        const decision = decideReplacement(link, state, tier);
+        expect(decision.action).toBe('hold');
+      }
     }
   });
 

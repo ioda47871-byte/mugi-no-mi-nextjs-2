@@ -45,13 +45,17 @@ export function nextLinkState(
 ): LinkHealthEntry {
   const base = { ...previous, signals };
 
-  // 判定材料が無い日。連続日数を増やさず、状態も進めない。
-  if (signals.availability === null) {
+  // 観測そのものが成立しなかった日。商品の状態を何も知らないので、
+  // どのカウンタも動かさず状態も進めない。API 障害が何日続いても同じ。
+  if (signals.observationStatus === 'unavailable') {
     return { ...base, state: 'uncertain' };
   }
 
-  // itemCode が消えている日を数える。在庫切れとは別に数える。
+  // ここから先は「API は正常に応答した」日。
+  // itemCode が見つからない日を数える。availability が null でも数える
+  // （商品が消えていれば在庫情報も返らないため、null は不在の裏付けにこそなる）。
   const consecutiveFailures = signals.itemCodeAlive ? 0 : previous.consecutiveFailures + 1;
+  // 在庫切れは itemCode が生きている日だけ数える。不在の日と混ぜない。
   const consecutiveOutOfStock =
     signals.itemCodeAlive && signals.availability === 0 ? previous.consecutiveOutOfStock + 1 : 0;
 
@@ -67,10 +71,15 @@ function decideState(
   consecutiveFailures: number,
   consecutiveOutOfStock: number,
 ): LinkState {
-  // 消えたリンクを最優先で扱う。manual-hold で足を止めない。
+  // 消えたリンクを最優先で扱う。manual-hold や遷移先の変化で足を止めない。
   if (consecutiveFailures >= LINK_THRESHOLDS.replaceDays) return 'replace';
   if (consecutiveFailures >= LINK_THRESHOLDS.hiddenDays) return 'hidden';
   if (consecutiveOutOfStock >= LINK_THRESHOLDS.outOfStockDays) return 'hidden';
+
+  // 紹介URLの pc 遷移先が変わった。別商品へ飛ぶ可能性があるので CTA を正常扱いしない。
+  // 連続失敗日数は増やさない（商品が消えたわけではない）ため、
+  // ここから hidden / replace へ自動的に進むこともない。人の確認へ回す。
+  if (signals.affiliateTargetChanged) return 'manual-hold';
 
   // 同一商品と断定できない組み合わせは、人の確認へ回す。
   if (signals.identifierMatch === 'weak' && !signals.variantMatch) return 'manual-hold';
@@ -92,8 +101,11 @@ export function decideReplacement(
   state: LinkState,
   candidateTier: Tier,
 ): ReplacementDecision {
-  if (isHumanVerifiedLink(link)) return { action: 'pr-only', reason: 'human-verified' };
+  // まず状態を見る。replace に達していないリンクは、目視確認済みかどうかに関わらず
+  // 何もしない。ここで human-verified を先に見ると、正常なリンクまで PR へ出てしまう。
   if (state !== 'replace') return { action: 'hold', reason: `state-not-replace:${state}` };
+  // replace に達したうえで、人が目視で確認したリンクなら自動交換しない。
+  if (isHumanVerifiedLink(link)) return { action: 'pr-only', reason: 'human-verified' };
   if (candidateTier === 'S') return { action: 'replace-now' };
   if (candidateTier === 'A') return { action: 'replace-after-recheck' };
   return { action: 'hold', reason: 'candidate-tier-b' };
