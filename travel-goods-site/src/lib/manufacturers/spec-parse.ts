@@ -72,11 +72,30 @@ function clean(raw: string): string | null {
   return text.replace(/,/g, '');
 }
 
-/** 単位付きの値を、単位に完全一致させてから厳密パースする。 */
-function parseWithUnit(raw: string, unit: string, flags = ''): number | null {
-  const text = clean(raw);
+/**
+ * 単位付きの値の読み取り。
+ *
+ * `prefix`（`最大` など）は**入力全体の先頭に 1 回だけ**認める接頭辞として扱う。
+ * `replace(/最大/g,'')` のような全置換は、壊れた表記を正常値へ「直して」しまう。
+ *   `6最大5W`      → 65W  （書いていない値を作る）
+ *   `最大最大65W`  → 65W  （重複を黙って許す）
+ *   `65W最大`      → 65W  （後置の語を無視する）
+ * 「約」と同じ規則で、先頭の 1 回だけ剥がし、残りに現れたら null に倒す。
+ */
+type UnitOptions = { flags?: string; prefix?: string };
+
+function stripLeadingPrefix(text: string, prefix: string | undefined): string | null {
+  if (prefix === undefined) return text;
+  const stripped = text.startsWith(prefix) ? text.slice(prefix.length).trim() : text;
+  return stripped.includes(prefix) ? null : stripped;
+}
+
+function parseWithUnit(raw: string, unit: string, options: UnitOptions = {}): number | null {
+  const cleaned = clean(raw);
+  if (cleaned === null) return null;
+  const text = stripLeadingPrefix(cleaned, options.prefix);
   if (text === null) return null;
-  const match = new RegExp(`^(${NUMBER_SOURCE})\\s*${unit}$`, flags).exec(text);
+  const match = new RegExp(`^(${NUMBER_SOURCE})\\s*${unit}$`, options.flags ?? '').exec(text);
   const captured = match?.[1];
   return captured === undefined ? null : parsePositiveNumber(captured);
 }
@@ -123,11 +142,26 @@ const SIZE_UNIT = '(mm|cm)';
  * `(?![0-9A-Za-z])` だけでは Unicode の単位記号や日本語が通ってしまい、
  * `cm²` `cmセンチ` `cm㎝` を受理してしまう。
  *
- * `/` は注記の開始として認めない。`cm/㎝` `cm/mm` `cm/25cm` のように
- * スラッシュの後へ別の単位や寸法が続く表記は、注記ではなく曖昧・混在であり、
+ * `/` `、` `,` `。` は注記の開始として認めない。`cm/㎝` `cm、mm` `cm。mm` のように
+ * 区切りの後へ別の単位や寸法が続く表記は、注記ではなく曖昧・混在であり、
  * 先頭側だけを採用すると書かれていない解釈を選んでしまう。曖昧なら null に倒す。
+ *
+ * ここを通っただけでは足りない。境界は 1 文字しか見ないので、
+ * `W35×H55×D25cm mm` のように空白の後へ単位が続く形を止められない。
+ * **寸法表記の後ろに残った文字列も `SIZE_NOTE` で必ず検証する。**
  */
-const SIZE_END = '(?=$|[\\s（(［\\[【※、,。])';
+const SIZE_END = '(?=$|[\\s（(［\\[【※])';
+
+/**
+ * 寸法表記の後ろに残ってよい文字列。
+ *
+ * 認めるのは「空白」「対応の取れた括弧の注記」「`※` で始まる注記」だけ。
+ * 括弧の中身は注記なので読まない（`（梱包サイズは80cm）` の 80cm を借りない）。
+ * それ以外が残っていれば、単位・数値・別寸法の可能性があるので曖昧として null に倒す。
+ *   `cm mm` `cm ㎝` `cm インチ` `cm 25cm` はここで落ちる。
+ */
+const SIZE_NOTE =
+  /^(?:\s|（[^（）]*）|\([^()]*\)|［[^［］]*］|\[[^\[\]]*\]|【[^【】]*】)*(?:※[\s\S]*)?$/;
 
 /** A: 末尾に単位が 1 つ。 */
 const SIZE_TRAILING_UNIT = new RegExp(
@@ -161,6 +195,8 @@ export function parseLabeledSizeMm(raw: string): [number, number, number] | null
   if (parsed === null) return null;
 
   const { entries, unit } = parsed;
+  // 寸法表記の後ろに、注記として認められない文字列が残っていれば曖昧
+  if (!SIZE_NOTE.test(parsed.rest)) return null;
   // ラベルは W・H・D がちょうど 1 つずつ
   const labels = entries.map((entry) => entry.label);
   if (new Set(labels).size !== 3) return null;
@@ -184,7 +220,7 @@ export function parseLabeledSizeMm(raw: string): [number, number, number] | null
 }
 
 type SizeEntry = { label: string; raw: string };
-type SizeMatch = { entries: SizeEntry[]; unit: 'mm' | 'cm' };
+type SizeMatch = { entries: SizeEntry[]; unit: 'mm' | 'cm'; rest: string };
 
 function asUnit(value: string | undefined): 'mm' | 'cm' | null {
   return value === 'mm' || value === 'cm' ? value : null;
@@ -208,6 +244,7 @@ function matchTrailingUnit(text: string): SizeMatch | null {
       { label: l3, raw: n3 },
     ],
     unit,
+    rest: text.slice(m.index + m[0].length),
   };
 }
 
@@ -231,6 +268,7 @@ function matchEachUnit(text: string): SizeMatch | null {
       { label: l3, raw: n3 },
     ],
     unit,
+    rest: text.slice(m.index + m[0].length),
   };
 }
 
@@ -241,12 +279,12 @@ export function parseCapacityL(raw: string): number | null {
 
 /** 「12000mAh」。 */
 export function parseCapacityMah(raw: string): number | null {
-  return parseWithUnit(raw, 'mAh', 'i');
+  return parseWithUnit(raw, 'mAh', { flags: 'i' });
 }
 
-/** 「最大65W」。 */
+/** 「最大65W」「65W」。「最大」は先頭に 1 回だけ。 */
 export function parseWatt(raw: string): number | null {
-  return parseWithUnit(raw.replace(/最大/g, ''), 'W');
+  return parseWithUnit(raw, 'W', { prefix: '最大' });
 }
 
 /** `<dl>` の `<dt>`/`<dd>` を対にして読む。 */

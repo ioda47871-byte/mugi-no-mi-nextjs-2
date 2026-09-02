@@ -4,6 +4,7 @@ import {
   EXCLUDED_LISTING_TERMS,
   extractVariantTokens,
   hasExcludedTerm,
+  scanVariant,
   verifyVariant,
 } from '../src/lib/automation/variant';
 
@@ -471,5 +472,119 @@ describe('除外語の検出', () => {
 
   it('除外語が無ければ false', () => {
     expect(hasExcludedTerm('新品 スーツケース 35L ブラック')).toBe(false);
+  });
+});
+
+describe('variant 解析結果は absent / valid / malformed を区別する', () => {
+  it('その種類の表記が無ければ absent', () => {
+    expect(scanVariant('ブラック').presence).toBe('absent');
+    expect(scanVariant('01 ブラック').presence).toBe('absent');
+    expect(scanVariant('').presence).toBe('absent');
+  });
+
+  it('厳密な文法で解析できれば valid', () => {
+    expect(scanVariant('30L / ブラック').presence).toBe('valid');
+    expect(scanVariant('35L / 01 ブラックヘアライン').presence).toBe('valid');
+    expect(scanVariant('18/24L / 01 ブラック').presence).toBe('valid');
+    expect(scanVariant('10000mAh / ブラック').presence).toBe('valid');
+    expect(scanVariant('3個セット / ブラック').presence).toBe('valid');
+    expect(scanVariant('Lサイズ 16L / 03 ダークネイビー').presence).toBe('valid');
+  });
+
+  it('構造化表記らしいのに解析できなければ malformed', () => {
+    expect(scanVariant('30.5.6L / ブラック').presence).toBe('malformed');
+    expect(scanVariant('1.2.3mAh / ブラック').presence).toBe('malformed');
+    expect(scanVariant('1.3個セット / ブラック').presence).toBe('malformed');
+    expect(scanVariant('18 / / 24L / ブラック').presence).toBe('malformed');
+  });
+
+  it('malformed ならトークンを 1 つも作らない', () => {
+    const scan = scanVariant('18 / / 24L');
+    expect(scan.presence).toBe('malformed');
+    expect(scan.capacities).toEqual([]);
+    expect(scan.setCounts).toEqual([]);
+  });
+});
+
+describe('listing 側の解析結果も評価する', () => {
+  it('listing に解析不能な容量があれば一致にしない', () => {
+    const v = verifyVariant('30L / ブラック', '30L 40.5.6L ブラック');
+    expect(v.matched).toBe(false);
+    expect(v.matchedVariantLabel).toBeNull();
+  });
+
+  it('listing の壊れた拡張容量を無視しない', () => {
+    const v = verifyVariant('18L / ブラック', '18L 24//30L ブラック');
+    expect(v.matched).toBe(false);
+    expect(v.matchedVariantLabel).toBeNull();
+  });
+
+  it('listing 側の malformed は presence に出る', () => {
+    expect(scanVariant('30L 40.5.6L ブラック').presence).toBe('malformed');
+    expect(scanVariant('18L 24//30L ブラック').presence).toBe('malformed');
+  });
+
+  it('target・listing とも valid なら従来どおり一致する', () => {
+    expect(verifyVariant('30L / ブラック', '30L 40L ブラック').matched).toBe(false); // 40L は矛盾
+    expect(verifyVariant('30L / ブラック', 'リュック 30L ブラック').matched).toBe(true);
+  });
+});
+
+describe('境界から除外した構造化表記を「不存在」として扱わない', () => {
+  it('単位の後ろが英数字の target は malformed', () => {
+    for (const variant of ['30L2 / ブラック', '10000mAh2 / ブラック', '3個セット2 / ブラック']) {
+      expect(scanVariant(variant).presence).toBe('malformed');
+      const v = verifyVariant(variant, 'ブラック');
+      expect(v.matched).toBe(false);
+      expect(v.matchedVariantLabel).toBeNull();
+    }
+  });
+
+  it('数値の前が英数字の target は malformed', () => {
+    for (const variant of ['A30L / ブラック', 'A10000mAh / ブラック', 'A3個セット / ブラック']) {
+      expect(scanVariant(variant).presence).toBe('malformed');
+      const v = verifyVariant(variant, 'ブラック');
+      expect(v.matched).toBe(false);
+      expect(v.matchedVariantLabel).toBeNull();
+    }
+  });
+
+  it('現行データの表記は absent または valid のまま', () => {
+    expect(scanVariant('35L / 01 ブラックヘアライン').presence).toBe('valid');
+    expect(scanVariant('18/24L / 01 ブラック').presence).toBe('valid');
+    expect(scanVariant('ブラック').presence).toBe('absent');
+    expect(scanVariant('01 ブラック').presence).toBe('absent');
+    expect(verifyVariant('35L / 01 ブラックヘアライン', '商品 35L 01 ブラックヘアライン').matched)
+      .toBe(true);
+    expect(verifyVariant('18/24L / 01 ブラック', '商品 18/24L 01 ブラック').matched).toBe(true);
+    expect(verifyVariant('ブラック', 'ポーチ ブラック').matched).toBe(true);
+  });
+});
+
+describe('数値式・範囲らしい表記の一部分だけを採用しない', () => {
+  it('30＋5L から 5L を切り出さない', () => {
+    expect(verifyVariant('5L / ブラック', '30＋5L ブラック').matched).toBe(false);
+  });
+
+  it('演算・範囲記号が数字に連続すれば malformed', () => {
+    for (const text of ['30＋5L', '30+5L', '30-5L', '30−5L', '30〜35L', '30～35L', '30から35L']) {
+      const scan = scanVariant(text);
+      expect(scan.presence).toBe('malformed');
+      expect(scan.capacities).toEqual([]);
+    }
+  });
+
+  it('セット数・mAh でも同じ', () => {
+    expect(scanVariant('3＋2個セット').setCounts).toEqual([]);
+    expect(scanVariant('3＋2個セット').presence).toBe('malformed');
+    expect(scanVariant('10000〜20000mAh').capacities).toEqual([]);
+    expect(scanVariant('10000〜20000mAh').presence).toBe('malformed');
+  });
+
+  it('単なる区切りとしての記号は従来どおり読む', () => {
+    expect(scanVariant('商品名 - 30L').capacities).toEqual(['30L']);
+    expect(scanVariant('商品名 - 30L').presence).toBe('valid');
+    expect(scanVariant('18/24L').capacities).toEqual(['18L', '24L']);
+    expect(verifyVariant('30L / ブラック', 'リュック - 30L ブラック').matched).toBe(true);
   });
 });

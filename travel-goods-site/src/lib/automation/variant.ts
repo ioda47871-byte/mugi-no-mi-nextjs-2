@@ -73,24 +73,44 @@ function normalizeVariantText(value: string): string {
 }
 
 /**
- * 容量・mAh・セット数の**唯一の字句解析**。
+ * 容量・mAh・セット数・サイズの**唯一の字句解析**。
  *
  * 抽出と「解析できなかった箇所の検出」で別々の正規表現を持たない。
- * 1 回の走査で、読めたトークンと「書いてあるのに読めなかった」印の両方を返す。
+ * 左から 1 回だけ走査し、読めたトークンと解析状態を同時に返す。
+ * 呼び出し側は target・listing の**両方**でこの結果を評価する。
  *
- * 境界:
- *   - 数値の直前が ASCII 英数字なら候補にしない（型番 `A30L` から容量を作らない）
- *   - 単位の直後が ASCII 英数字なら候補にしない（`30L2` `10000mAh2` `3個セット2`）
- *   - 日本語の説明文に隣接する正常なトークン（`大容量30L大型`）は拾う
+ * 解析状態は 3 つを区別する。
+ *   - `absent`:    その種類の表記が元から無い（色だけの variant など）
+ *   - `valid`:     厳密な文法で解析できた
+ *   - `malformed`: 単位・容量・セット数らしい表記があるのに解析できない
+ * 「抽出対象ではない」と「不正な構造化表記」を混同しないための区別で、
+ * `malformed` は色が一致していても variant 全体を不一致にする。
  *
- * 妥当性:
- *   - 候補として拾った数値部分**全体**を単位ごとの文法で検査する
- *   - 一部分だけを採用しない。`18 / / 24L` から `24L` を切り出さない
- *   - 検査に落ちたら malformed とし、呼び出し側が variant 全体を不一致にする
+ * 走査の規則:
+ *   1. サイズ（`2XL|XL|S|M|L` ＋ `サイズ`）を先に読む。前が ASCII 英数字なら
+ *      独立したサイズではないので採らない（`LLサイズ` `XSサイズ` `2Mサイズ`）。
+ *   2. 単位（`L` / `MAH` / `個セット`）を見つけたら、その直前の連なりを 2 通りに測る。
+ *      - **region**: ASCII 英数字を含む広い連なり。数字が 1 つも無ければ、
+ *        単位に見える文字は別の語の一部（`BLACK` の `L`）なので候補にしない。
+ *      - **number**: 数字と区切り・演算記号だけの連なり。ここから数値を取り出す。
+ *   3. 数値の直前、または単位の直後が ASCII 英数字なら **malformed**。
+ *      `A30L` `30L2` `500ML` は型番や別単位の一部であって容量ではない。
+ *   4. 取り出した数値**全体**を単位ごとの文法で検査する。一部分だけを採らない。
+ *      `18 / / 24L` から `24L` を、`30＋5L` から `5L` を切り出さない。
  *
- * 対象と販売ページの両方が同じ走査を通るので、判定は常に fail-closed 側へ倒れる。
+ * 連なりの探索は直前に読み終えた位置（`consumedEnd`）より前へは戻らない。
+ * これにより `30L / 40L` の 2 つ目が 1 つ目を巻き込まない。
  */
-const STRUCTURED_CANDIDATE = /(?<![0-9A-Za-z])(\d[\d.\s/]*?)(L|mAh|個セット)(?![0-9A-Za-z])/gi;
+
+/** 数値の連なりを構成しうる文字。数字・小数点・区切り・演算/範囲記号。 */
+const NUMBER_CHAR = /[0-9.,\s/+＋\-−–—~〜～ーから]/;
+/**
+ * NUMBER_CHAR に ASCII 英字を加えたもの。「構造化表記らしさ」だけを見る。
+ * ここに数字が無ければ、単位に見える文字は語の一部であって単位ではない。
+ */
+const REGION_CHAR = /[0-9A-Za-z.,\s/+＋\-−–—~〜～ーから]/;
+const ASCII_ALNUM = /[0-9A-Za-z]/;
+const DIGIT = /[0-9]/;
 
 /** 容量(L)。`18/24` のような拡張表記だけを許す。 */
 const VALID_CAPACITY_L = /^\d+(?:\.\d+)?(?:\s*\/\s*\d+(?:\.\d+)?)*$/;
@@ -99,81 +119,122 @@ const VALID_CAPACITY_MAH = /^\d+(?:\.\d+)?$/;
 /** セット数。小数も区切りも許さない。 */
 const VALID_SET_COUNT = /^\d+$/;
 
+/** 長いものから見る。`2XL` を `XL` に縮めない。 */
+const SIZE_LABELS: readonly string[] = ['2XL', 'XL', 'S', 'M', 'L'];
+const SIZE_SUFFIX = 'サイズ';
+
+type UnitKind = 'capacityL' | 'capacityMah' | 'setCount';
+/** 正規化後（大文字化後）の綴りで持つ。 */
+const UNITS: readonly { text: string; kind: UnitKind }[] = [
+  { text: 'MAH', kind: 'capacityMah' },
+  { text: '個セット', kind: 'setCount' },
+  { text: 'L', kind: 'capacityL' },
+];
+
+export type VariantPresence = 'absent' | 'valid' | 'malformed';
+
 type StructuredScan = {
+  sizes: string[];
   capacities: string[];
   setCounts: string[];
-  /** 構造化表記らしい箇所があるのに、文法検査に落ちたものがあるか。 */
-  malformed: boolean;
+  presence: VariantPresence;
 };
 
-function scanStructured(normalized: string): StructuredScan {
+/** 文字が undefined（文字列の端）なら常に false。端は境界として扱う。 */
+function charIs(pattern: RegExp, char: string | undefined): boolean {
+  return char !== undefined && pattern.test(char);
+}
+
+function sizeLabelAt(text: string, index: number): string | null {
+  for (const label of SIZE_LABELS) {
+    if (text.startsWith(`${label}${SIZE_SUFFIX}`, index)) return label;
+  }
+  return null;
+}
+
+function unitAt(text: string, index: number): { text: string; kind: UnitKind } | null {
+  for (const unit of UNITS) {
+    if (text.startsWith(unit.text, index)) return unit;
+  }
+  return null;
+}
+
+function isValidNumber(kind: UnitKind, numberPart: string): boolean {
+  if (kind === 'capacityL') return VALID_CAPACITY_L.test(numberPart);
+  if (kind === 'capacityMah') return VALID_CAPACITY_MAH.test(numberPart);
+  return VALID_SET_COUNT.test(numberPart);
+}
+
+function scanStructured(text: string): StructuredScan {
+  const sizes: string[] = [];
   const capacities: string[] = [];
   const setCounts: string[] = [];
   let malformed = false;
+  // 直前に読み終えた位置。連なりの探索はここより前へ戻らない。
+  let consumedEnd = 0;
+  let index = 0;
 
-  for (const match of normalized.matchAll(STRUCTURED_CANDIDATE)) {
-    const numberPart = (match[1] ?? '').trim();
-    const unit = (match[2] ?? '').toLowerCase();
+  while (index < text.length) {
+    const label = sizeLabelAt(text, index);
+    if (label !== null && !charIs(ASCII_ALNUM, text[index - 1])) {
+      sizes.push(`${label}${SIZE_SUFFIX}`);
+      index += label.length + SIZE_SUFFIX.length;
+      consumedEnd = index;
+      continue;
+    }
 
-    if (unit === 'l') {
-      if (!VALID_CAPACITY_L.test(numberPart)) {
-        malformed = true;
-        continue;
-      }
+    const unit = unitAt(text, index);
+    if (unit === null) {
+      index += 1;
+      continue;
+    }
+    const unitEnd = index + unit.text.length;
+
+    let regionStart = index;
+    while (regionStart > consumedEnd && charIs(REGION_CHAR, text[regionStart - 1])) regionStart -= 1;
+    if (!DIGIT.test(text.slice(regionStart, index))) {
+      // 数字が無い。単位に見える文字は別の語の一部（`BLACK` の `L`）。
+      index = unitEnd;
+      consumedEnd = unitEnd;
+      continue;
+    }
+
+    let numberStart = index;
+    while (numberStart > consumedEnd && charIs(NUMBER_CHAR, text[numberStart - 1])) numberStart -= 1;
+    // 先頭の区切り（`商品名 - 30L` の `- `）は数値の一部ではない
+    while (numberStart < index && !charIs(DIGIT, text[numberStart])) numberStart += 1;
+
+    const numberPart = text.slice(numberStart, index).trim();
+    const attachedBefore = charIs(ASCII_ALNUM, text[numberStart - 1]);
+    const attachedAfter = charIs(ASCII_ALNUM, text[unitEnd]);
+
+    if (numberPart === '' || attachedBefore || attachedAfter || !isValidNumber(unit.kind, numberPart)) {
+      malformed = true;
+    } else if (unit.kind === 'capacityL') {
       // 「18/24L」は 18L と 24L の 2 つに分ける
       for (const part of numberPart.split('/')) capacities.push(`${part.trim()}L`);
-    } else if (unit === 'mah') {
-      if (!VALID_CAPACITY_MAH.test(numberPart)) {
-        malformed = true;
-        continue;
-      }
+    } else if (unit.kind === 'capacityMah') {
       capacities.push(`${numberPart}mAh`);
     } else {
-      if (!VALID_SET_COUNT.test(numberPart)) {
-        malformed = true;
-        continue;
-      }
       setCounts.push(`${numberPart}個セット`);
     }
+
+    index = unitEnd;
+    consumedEnd = unitEnd;
   }
 
-  return { capacities: uniq(capacities), setCounts: uniq(setCounts), malformed };
+  const found = sizes.length + capacities.length + setCounts.length;
+  const presence: VariantPresence = malformed ? 'malformed' : found > 0 ? 'valid' : 'absent';
+  return {
+    sizes: uniq(sizes),
+    capacities: uniq(capacities),
+    setCounts: uniq(setCounts),
+    presence,
+  };
 }
-
-/**
- * S/M/L/XL/2XL のサイズ表記。長いものを先に見る。
- *
- * 前が英数字なら独立したサイズ表記ではないので拾わない。
- * `(?<![0-9A-Za-z])` により `LLサイズ`・`XSサイズ`・`2Mサイズ`・`SLサイズ` を弾く
- * （`2XL` は選択肢の先頭に置いてあるので `2XLサイズ` としてまとまって一致する）。
- * 後ろは必ず「サイズ」なので、英数字が続く心配はない。
- */
-const SIZE_RE = /(?<![0-9A-Za-z])(2XL|XL|S|M|L)サイズ/g;
 
 function uniq(values: string[]): string[] {
   return [...new Set(values)];
-}
-
-/** 1 つ目のキャプチャだけを取り出す。取れなければその一致は捨てる（推測しない）。 */
-function captures(text: string, pattern: RegExp): string[] {
-  const found: string[] = [];
-  for (const match of text.matchAll(pattern)) {
-    const captured = match[1];
-    if (captured !== undefined) found.push(captured);
-  }
-  return found;
-}
-
-function capacitiesIn(text: string): string[] {
-  return scanStructured(text).capacities;
-}
-
-function sizesIn(text: string): string[] {
-  return uniq(captures(text, SIZE_RE).map((value) => `${value}サイズ`));
-}
-
-function setCountsIn(text: string): string[] {
-  return scanStructured(text).setCounts;
 }
 
 /**
@@ -217,16 +278,30 @@ function colorsIn(text: string): string[] {
   return uniq(colors);
 }
 
-export function extractVariantTokens(variant: string): VariantTokens {
+/**
+ * variant 文字列を 1 回だけ走査した結果。
+ *
+ * `presence` は構造化表記（サイズ・容量・セット数）の解析状態で、
+ * target 側と listing 側の**どちらも** `malformed` でないことを一致の条件にする。
+ */
+export type VariantScan = VariantTokens & { presence: VariantPresence };
+
+export function scanVariant(text: string): VariantScan {
   // 色は表記ゆれを潰すと辞書に当たらなくなるので生文字列から取り出す。
   // それ以外は意味を保つ正規化を通してから取り出す（全角で境界を迂回させない）。
-  const normalized = normalizeVariantText(variant);
+  const structured = scanStructured(normalizeVariantText(text));
   return {
-    colors: colorsIn(variant),
-    sizes: sizesIn(normalized),
-    capacities: capacitiesIn(normalized),
-    setCounts: setCountsIn(normalized),
+    colors: colorsIn(text),
+    sizes: structured.sizes,
+    capacities: structured.capacities,
+    setCounts: structured.setCounts,
+    presence: structured.presence,
   };
+}
+
+export function extractVariantTokens(variant: string): VariantTokens {
+  const { colors, sizes, capacities, setCounts } = scanVariant(variant);
+  return { colors, sizes, capacities, setCounts };
 }
 
 /** 表示用ラベルの並び。現行データの variant 表記に合わせる。 */
@@ -235,8 +310,10 @@ function labelOf(tokens: VariantTokens): string {
 }
 
 export function verifyVariant(variant: string, listingText: string): VariantVerdict {
-  const tokens = extractVariantTokens(variant);
-  const all = [...tokens.sizes, ...tokens.capacities, ...tokens.colors, ...tokens.setCounts];
+  // target・listing とも走査は 1 回だけ。結果を共有して評価する。
+  const target = scanVariant(variant);
+  const listing = scanVariant(listingText);
+  const all = [...target.sizes, ...target.capacities, ...target.colors, ...target.setCounts];
   // 販売ページ側も対象と**同じトークン化経路**を通してから突き合わせる。
   // substring で照合すると「ブラック」が「ブラックヘアライン」に、
   // 「Lサイズ」が「LLサイズ」に一致してしまう。
@@ -244,48 +321,51 @@ export function verifyVariant(variant: string, listingText: string): VariantVerd
   // サイズ・容量・セット数のトークンは canonical 表現（30.5L / 2XLサイズ / 3個セット）に
   // 揃うので、そのまま文字列として比較する。ここで normalizeForMatch を通すと
   // 30.5L が 305L になり、意味の違う容量を同一視してしまう。
-  const normalizedListing = normalizeVariantText(listingText);
-  const listingColors = new Set(colorsIn(listingText).map(normalizeForMatch));
-  const listingSizes = new Set(sizesIn(normalizedListing));
-  const listingCapacities = new Set(capacitiesIn(normalizedListing));
-  const listingSetCounts = new Set(setCountsIn(normalizedListing));
+  const listingColors = new Set(listing.colors.map(normalizeForMatch));
+  const listingSizes = new Set(listing.sizes);
+  const listingCapacities = new Set(listing.capacities);
+  const listingSetCounts = new Set(listing.setCounts);
 
   const notIn = (found: ReadonlySet<string>) => (token: string) => !found.has(token);
 
   const missing = [
-    ...tokens.sizes.filter(notIn(listingSizes)),
-    ...tokens.capacities.filter(notIn(listingCapacities)),
+    ...target.sizes.filter(notIn(listingSizes)),
+    ...target.capacities.filter(notIn(listingCapacities)),
     // 色だけは表記ゆれを潰した形で突き合わせる（ダークネイビー → ダクネイビ）
-    ...tokens.colors.filter((token) => !listingColors.has(normalizeForMatch(token))),
-    ...tokens.setCounts.filter(notIn(listingSetCounts)),
+    ...target.colors.filter((token) => !listingColors.has(normalizeForMatch(token))),
+    ...target.setCounts.filter(notIn(listingSetCounts)),
   ];
 
   // 販売ページ側に現れる、対象と異なる色・容量・サイズ・セット数
-  const ownColors = new Set(tokens.colors.map(normalizeForMatch));
-  const ownCapacities = new Set(tokens.capacities);
-  const ownSizes = new Set(tokens.sizes);
-  const ownSetCounts = new Set(tokens.setCounts);
+  const ownColors = new Set(target.colors.map(normalizeForMatch));
+  const ownCapacities = new Set(target.capacities);
+  const ownSizes = new Set(target.sizes);
+  const ownSetCounts = new Set(target.setCounts);
   const conflicting = [
-    ...colorsIn(listingText).filter((v) => !ownColors.has(normalizeForMatch(v))),
-    ...capacitiesIn(normalizedListing).filter((v) => !ownCapacities.has(v)),
-    ...sizesIn(normalizedListing).filter((v) => !ownSizes.has(v)),
-    ...setCountsIn(normalizedListing).filter((v) => !ownSetCounts.has(v)),
+    ...listing.colors.filter((v) => !ownColors.has(normalizeForMatch(v))),
+    ...listing.capacities.filter((v) => !ownCapacities.has(v)),
+    ...listing.sizes.filter((v) => !ownSizes.has(v)),
+    ...listing.setCounts.filter((v) => !ownSetCounts.has(v)),
   ];
 
-  // トークンが 1 つも取れなければ、何にでも一致してしまうので一致にしない。
-  // 構造化表記が書いてあるのに読めなかった variant も一致にしない
-  // （色だけが一致して別容量の商品にリンクするのを防ぐ）。
+  // 一致にしてよいのは次をすべて満たすときだけ。
+  //   - target に解析不能な構造化表記が無い
+  //   - listing にも解析不能な構造化表記が無い
+  //   - 必須トークンがすべて一致する
+  //   - 販売ページ側に矛盾する表記が無い
+  //   - 有効な variant トークンが少なくとも 1 つある（空 variant で通さない）
   const matched =
     all.length > 0 &&
     missing.length === 0 &&
     conflicting.length === 0 &&
-    !scanStructured(normalizeVariantText(variant)).malformed;
+    target.presence !== 'malformed' &&
+    listing.presence !== 'malformed';
 
   return {
     matched,
     missing,
     conflicting,
-    matchedVariantLabel: matched ? labelOf(tokens) : null,
+    matchedVariantLabel: matched ? labelOf(target) : null,
   };
 }
 
