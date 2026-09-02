@@ -171,3 +171,47 @@ describe('寸法の不明単位・部分単位を受理しない', () => {
     expect(parseLabeledSizeMm('W35×H55×D25cm（梱包サイズは80cm）')).toEqual([350, 550, 250]);
   });
 });
+
+describe('日本語・Unicode の寸法単位を単位なしとして受理しない', () => {
+  it('日本語の単位を無視してグループ末尾の単位を適用しない', () => {
+    expect(parseLabeledSizeMm('W35インチ×H55×D25cm')).toBeNull();
+    expect(parseLabeledSizeMm('W35センチ×H55×D25cm')).toBeNull();
+    expect(parseLabeledSizeMm('W35ミリ×H55×D25cm')).toBeNull();
+  });
+
+  it('Unicode の単位記号も拒否する', () => {
+    expect(parseLabeledSizeMm('W35㎝×H55×D25cm')).toBeNull();
+    expect(parseLabeledSizeMm('W35㎜×H55×D25cm')).toBeNull();
+    expect(parseLabeledSizeMm('W35㌢×H55×D25cm')).toBeNull();
+  });
+
+  it('数値の直後に許可されない文字があれば拒否する', () => {
+    expect(parseLabeledSizeMm('W35"×H55×D25cm')).toBeNull();
+    expect(parseLabeledSizeMm('W35\u2033×H55×D25cm')).toBeNull();
+    expect(parseLabeledSizeMm('W35%×H55×D25cm')).toBeNull();
+  });
+
+  it('日本語単位が末尾ラベルに付いていても拒否する', () => {
+    expect(parseLabeledSizeMm('W35×H55×D25センチ')).toBeNull();
+    expect(parseLabeledSizeMm('W35×H55×D25㎝')).toBeNull();
+  });
+
+  it('受理する 2 形式は維持する', () => {
+    expect(parseLabeledSizeMm('W35×H55×D25cm')).toEqual([350, 550, 250]);
+    expect(parseLabeledSizeMm('W35cm×H55cm×D25cm')).toEqual([350, 550, 250]);
+    expect(parseLabeledSizeMm('W320×D200×H510mm')).toEqual([320, 510, 200]);
+    expect(parseLabeledSizeMm('W350mm×H550mm×D250mm')).toEqual([350, 550, 250]);
+    expect(parseLabeledSizeMm('約W320×D200×H510mm')).toEqual([320, 510, 200]);
+    expect(parseLabeledSizeMm('W35×H55×D25cm（ハンドル・キャスターを含む）')).toEqual([350, 550, 250]);
+  });
+
+  it('既存の拒否条件を維持する', () => {
+    expect(parseLabeledSizeMm('W35in×H55×D25cm')).toBeNull();       // 不明単位
+    expect(parseLabeledSizeMm('W35cm×H550mm×D25cm')).toBeNull();    // 混在
+    expect(parseLabeledSizeMm('W35cm×H55×D25')).toBeNull();         // 部分単位
+    expect(parseLabeledSizeMm('W35×H55×D25cm2')).toBeNull();        // cm2
+    expect(parseLabeledSizeMm('W35×H55×D25')).toBeNull();           // 単位なし
+    expect(parseLabeledSizeMm('W35×H55×D25（梱包サイズは80cm）')).toBeNull(); // 単位を借りない
+    expect(parseLabeledSizeMm('W35×H55×D25cm / W40×H60×D30cm')).toBeNull();  // 複数セット
+  });
+});

@@ -166,6 +166,52 @@ describe('容量の意味を壊してから照合しない', () => {
   });
 });
 
+describe('不正な数値トークンの途中から切り出さない', () => {
+  it('30.5.6L は 5.6L に一致しない', () => {
+    expect(verifyVariant('5.6L / ブラック', '30.5.6L ブラック').matched).toBe(false);
+  });
+
+  it('1.2.3mAh は 2.3mAh に一致しない', () => {
+    expect(verifyVariant('2.3mAh / ブラック', '1.2.3mAh ブラック').matched).toBe(false);
+  });
+
+  it('1.3個セット は 3個セット に一致しない', () => {
+    expect(verifyVariant('3個セット / ブラック', '1.3個セット ブラック').matched).toBe(false);
+  });
+
+  it('不正な数値列からはトークンを 1 つも取り出さない', () => {
+    expect(extractVariantTokens('30.5.6L').capacities).toEqual([]);
+    expect(extractVariantTokens('1.2.3mAh').capacities).toEqual([]);
+    expect(extractVariantTokens('1.3個セット').setCounts).toEqual([]);
+    expect(extractVariantTokens('30.5.6L 1.2.3mAh 1.3個セット')).toEqual({
+      colors: [], sizes: [], capacities: [], setCounts: [],
+    });
+  });
+
+  it('正常な 5.6L / 2.3mAh / 3個セット は従来どおり一致する', () => {
+    expect(verifyVariant('5.6L / ブラック', 'ポーチ 5.6L ブラック').matched).toBe(true);
+    expect(verifyVariant('2.3mAh / ブラック', 'バッテリー 2.3mAh ブラック').matched).toBe(true);
+    expect(verifyVariant('3個セット / ブラック', '圧縮袋 3個セット ブラック').matched).toBe(true);
+  });
+
+  it('数字が直前に続く容量を切り出さない', () => {
+    expect(extractVariantTokens('130L').capacities).toEqual(['130L']);
+    expect(verifyVariant('30L / ブラック', 'リュック 130L ブラック').matched).toBe(false);
+  });
+
+  it('target と listing の両方で同じ規則を使う', () => {
+    // どちら側でも 30.5.6L からは容量トークンを取り出さない
+    expect(extractVariantTokens('30.5.6L / ブラック').capacities).toEqual([]);
+    const v = verifyVariant('30.5.6L / ブラック', 'ポーチ 30.5.6L ブラック');
+    expect(v.missing).toEqual([]);
+    expect(v.conflicting).toEqual([]);
+  });
+
+  it('拡張容量の途中に不正な数値があれば取り出さない', () => {
+    expect(extractVariantTokens('18/24.5.6L').capacities).toEqual([]);
+  });
+});
+
 describe('全角文字でサイズ境界を迂回させない', () => {
   it('２XLサイズ を XLサイズ に縮めない', () => {
     expect(extractVariantTokens('２XLサイズ').sizes).toEqual(['2XLサイズ']);

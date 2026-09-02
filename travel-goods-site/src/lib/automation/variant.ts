@@ -72,10 +72,29 @@ function normalizeVariantText(value: string): string {
     .toUpperCase();
 }
 
+/**
+ * 数値トークンの前側の境界。
+ *
+ * **不正な数値列の途中からトークンを切り出さない。**
+ * この境界が無いと `30.5.6L` の中の `5.6L`、`1.2.3mAh` の中の `2.3mAh`、
+ * `1.3個セット` の中の `3個セット` を拾ってしまい、
+ * 別物の容量・セット数に一致してしまう。
+ * 直前が数字または小数点なら、その数値列はより長い（そして解釈できない）
+ * 数値の一部なので、トークンとして採らない。
+ * 対象と販売ページの両方が同じ規則を通るので、判定は常に fail-closed 側へ倒れる。
+ */
+const NUMBER_START = '(?<![\\d.])';
+
 /** 「18/24L」のように / でつながった容量も 1 つずつに分ける。 */
-const CAPACITY_L_RE = /(\d+(?:\.\d+)?(?:\s*\/\s*\d+(?:\.\d+)?)*)\s*L(?![a-zA-Z])/g;
+const CAPACITY_L_RE = new RegExp(
+  `${NUMBER_START}(\\d+(?:\\.\\d+)?(?:\\s*\\/\\s*\\d+(?:\\.\\d+)?)*)\\s*L(?![a-zA-Z])`,
+  'g',
+);
 /** モバイルバッテリーの容量。 */
-const CAPACITY_MAH_RE = /(\d+(?:\.\d+)?)\s*mAh/gi;
+const CAPACITY_MAH_RE = new RegExp(
+  `${NUMBER_START}(\\d+(?:\\.\\d+)?)\\s*mAh(?![a-zA-Z])`,
+  'gi',
+);
 /**
  * S/M/L/XL/2XL のサイズ表記。長いものを先に見る。
  *
@@ -85,7 +104,7 @@ const CAPACITY_MAH_RE = /(\d+(?:\.\d+)?)\s*mAh/gi;
  * 後ろは必ず「サイズ」なので、英数字が続く心配はない。
  */
 const SIZE_RE = /(?<![0-9A-Za-z])(2XL|XL|S|M|L)サイズ/g;
-const SET_COUNT_RE = /(\d+)個セット/g;
+const SET_COUNT_RE = new RegExp(`${NUMBER_START}(\\d+)個セット`, 'g');
 
 function uniq(values: string[]): string[] {
   return [...new Set(values)];

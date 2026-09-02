@@ -65,87 +65,127 @@ export function parseWeightG(raw: string): number | null {
  * **W・H・D のラベルで読む**（並び順に依存しない）。
  * 返す配列は登録データと同じ [幅, 高さ, 奥行]。
  *
- * 受理するのは次の 2 つだけ。
- *   A. グループ全体の単位が最後のラベルに 1 つ付く（`W35×H55×D25cm`）
+ * ラベルを 1 つずつ拾うのではなく、**受理できる寸法表記の全体を文法として検証する**。
+ * 個別に拾うと、数値の直後にある未対応の文字（`インチ` `センチ` `㎝` `"` など）を
+ * 読み飛ばして「単位なし」と誤判定し、離れた場所の `cm` を全要素へ適用してしまう。
+ *
+ * 受理するのは次の 2 形式だけ。
+ *   A. グループ全体の単位が最後に 1 つ付く（`W35×H55×D25cm`）
  *   B. 3 要素すべてに同じ単位が直接付く（`W35cm×H55cm×D25cm`）
  *
  * 次はすべて null に倒す。
- *   - `in` `kg` `m` `cm2` など未対応・不明な単位が付く
+ *   - 数値の直後が区切り（`×`）・単位（`mm`/`cm`）・終端以外
+ *     （`in` `kg` `インチ` `センチ` `㎝` `"` `%` など未対応・不明な単位を含む）
  *   - 一部だけに単位が付き、それがグループ末尾ではない（`W35cm×H55×D25`）
  *   - `mm` と `cm` の混在
  *   - 単位が 1 つも無い（`W35×H55×D25（梱包サイズは80cm）` の 80cm を借りない）
- *   - 同じラベルが複数（寸法セットが複数あって組を決められない）
- *   - 範囲表記や余分な小数点が続く（`W35〜40` `W1.2.3`）
+ *   - 単位の直後に英数字が続く（`cm2` `mmX`）
+ *   - W/H/D の組が 1 つでない（寸法セットが複数、ラベル欠落、範囲表記）
  */
+const SIZE_LABEL = '[WHD]';
+const SIZE_SEPARATOR = '\\s*[×xX]\\s*';
+const SIZE_UNIT = '(mm|cm)';
+/** 単位の直後に英数字が続く形（cm2・mmX）を拒否する。 */
+const SIZE_TAIL = '(?![0-9A-Za-z])';
+
+/** A: 末尾に単位が 1 つ。 */
+const SIZE_TRAILING_UNIT = new RegExp(
+  `(${SIZE_LABEL})(${NUMBER_SOURCE})${SIZE_SEPARATOR}` +
+    `(${SIZE_LABEL})(${NUMBER_SOURCE})${SIZE_SEPARATOR}` +
+    `(${SIZE_LABEL})(${NUMBER_SOURCE})\\s*${SIZE_UNIT}${SIZE_TAIL}`,
+);
+
+/** B: 3 要素すべてに単位。 */
+const SIZE_EACH_UNIT = new RegExp(
+  `(${SIZE_LABEL})(${NUMBER_SOURCE})\\s*${SIZE_UNIT}${SIZE_TAIL}${SIZE_SEPARATOR}` +
+    `(${SIZE_LABEL})(${NUMBER_SOURCE})\\s*${SIZE_UNIT}${SIZE_TAIL}${SIZE_SEPARATOR}` +
+    `(${SIZE_LABEL})(${NUMBER_SOURCE})\\s*${SIZE_UNIT}${SIZE_TAIL}`,
+);
+
+/** 文字列中の「ラベル＋数字」の出現数。3 でなければ組を決められない。 */
+const SIZE_LABEL_OCCURRENCE = /[WHD]\d/g;
+
 export function parseLabeledSizeMm(raw: string): [number, number, number] | null {
   const text = clean(raw);
 
-  type Picked = { value: number; unit: 'mm' | 'cm' | null; at: number };
+  // 寸法セットが複数ある、ラベルが欠けている、といった曖昧な入力を先に落とす
+  if ([...text.matchAll(SIZE_LABEL_OCCURRENCE)].length !== 3) return null;
 
-  /**
-   * ラベルの直後の数値と、その数値に直接続く単位を取り出す。
-   * ラベルが複数回現れたら曖昧なので null。
-   */
-  const pick = (label: 'W' | 'H' | 'D'): Picked | null => {
-    // 数値の直後に続く英数字の連なりをそのまま捕まえ、単位として妥当かを別に判定する
-    const matches = [...text.matchAll(new RegExp(`${label}(${NUMBER_SOURCE})([0-9A-Za-z]*)`, 'g'))];
-    if (matches.length !== 1) return null; // 0 件＝無い、2 件以上＝曖昧
-    const match = matches[0];
-    if (match === undefined) return null;
-    const captured = match[1];
-    const suffix = match[2] ?? '';
-    if (captured === undefined) return null;
+  const parsed = matchTrailingUnit(text) ?? matchEachUnit(text);
+  if (parsed === null) return null;
 
-    // 単位は mm / cm のみ。in・kg・cm2・mmX などは不明な単位として拒否する
-    let unit: 'mm' | 'cm' | null;
-    if (suffix === '') unit = null;
-    else if (suffix === 'mm' || suffix === 'cm') unit = suffix;
-    else return null;
-
-    // 範囲表記や余分な小数点が続く形を拒否する（W35〜40、W1.2.3）
-    const rest = text.slice(match.index + match[0].length);
-    if (/^[.〜～~\u2010-\u2015-]/.test(rest)) return null;
-
-    const value = parsePositiveNumber(captured);
-    if (value === null) return null;
-    return { value, unit, at: match.index };
-  };
-
-  const w = pick('W');
-  const h = pick('H');
-  const d = pick('D');
-  if (w === null || h === null || d === null) return null;
-
-  const picked = [w, h, d];
-  const withUnit = picked.filter((p) => p.unit !== null);
-
-  let unit: 'mm' | 'cm';
-  if (withUnit.length === 3) {
-    // B: 3 要素すべてに単位。混在は拒否する
-    const first = withUnit[0]?.unit;
-    if (first === undefined || first === null) return null;
-    if (withUnit.some((p) => p.unit !== first)) return null;
-    unit = first;
-  } else if (withUnit.length === 1) {
-    // A: グループ末尾のラベルにだけ単位が付く形だけを認める
-    const only = withUnit[0];
-    if (only === undefined || only.unit === null) return null;
-    const lastAt = Math.max(...picked.map((p) => p.at));
-    if (only.at !== lastAt) return null;
-    unit = only.unit;
-  } else {
-    // 0 件＝単位なし、2 件＝部分的にしか付いていない
-    return null;
-  }
+  const { entries, unit } = parsed;
+  // ラベルは W・H・D がちょうど 1 つずつ
+  const labels = entries.map((entry) => entry.label);
+  if (new Set(labels).size !== 3) return null;
 
   const scale = unit === 'cm' ? 10 : 1;
-  // 換算・丸めの後も正で有限であること（0.01cm → 0、巨大値 → Infinity を弾く）
-  const toMm = (value: number): number | null => finitePositive(Math.round(value * scale));
-  const mmW = toMm(w.value);
-  const mmH = toMm(h.value);
-  const mmD = toMm(d.value);
-  if (mmW === null || mmH === null || mmD === null) return null;
-  return [mmW, mmH, mmD];
+  const byLabel = new Map<string, number>();
+  for (const entry of entries) {
+    const value = parsePositiveNumber(entry.raw);
+    if (value === null) return null;
+    // 換算・丸めの後も正で有限であること（0.01cm → 0、巨大値 → Infinity を弾く）
+    const mm = finitePositive(Math.round(value * scale));
+    if (mm === null) return null;
+    byLabel.set(entry.label, mm);
+  }
+
+  const w = byLabel.get('W');
+  const h = byLabel.get('H');
+  const d = byLabel.get('D');
+  if (w === undefined || h === undefined || d === undefined) return null;
+  return [w, h, d];
+}
+
+type SizeEntry = { label: string; raw: string };
+type SizeMatch = { entries: SizeEntry[]; unit: 'mm' | 'cm' };
+
+function asUnit(value: string | undefined): 'mm' | 'cm' | null {
+  return value === 'mm' || value === 'cm' ? value : null;
+}
+
+function matchTrailingUnit(text: string): SizeMatch | null {
+  const m = SIZE_TRAILING_UNIT.exec(text);
+  if (m === null) return null;
+  const [, l1, n1, l2, n2, l3, n3, rawUnit] = m;
+  const unit = asUnit(rawUnit);
+  if (
+    l1 === undefined || n1 === undefined || l2 === undefined || n2 === undefined ||
+    l3 === undefined || n3 === undefined || unit === null
+  ) {
+    return null;
+  }
+  return {
+    entries: [
+      { label: l1, raw: n1 },
+      { label: l2, raw: n2 },
+      { label: l3, raw: n3 },
+    ],
+    unit,
+  };
+}
+
+function matchEachUnit(text: string): SizeMatch | null {
+  const m = SIZE_EACH_UNIT.exec(text);
+  if (m === null) return null;
+  const [, l1, n1, u1, l2, n2, u2, l3, n3, u3] = m;
+  const unit = asUnit(u1);
+  if (
+    l1 === undefined || n1 === undefined || l2 === undefined || n2 === undefined ||
+    l3 === undefined || n3 === undefined || unit === null
+  ) {
+    return null;
+  }
+  // 単位が混在していたら尺度を決められない
+  if (asUnit(u2) !== unit || asUnit(u3) !== unit) return null;
+  return {
+    entries: [
+      { label: l1, raw: n1 },
+      { label: l2, raw: n2 },
+      { label: l3, raw: n3 },
+    ],
+    unit,
+  };
 }
 
 /** 「約30L」「35L」。 */
