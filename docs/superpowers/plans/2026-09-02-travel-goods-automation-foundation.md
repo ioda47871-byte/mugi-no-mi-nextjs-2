@@ -950,7 +950,6 @@ ACE・PROTECA・World Traveler は `store.ace.jp` を共有するが、
 - [ ] テストを実行し失敗を確認する（1 分）
 - [ ] `types.ts` に契約の型を書く（4 分）
 - [ ] `BRAND_MAP` と `normalizeBrand` を実装する（4 分）
-- [ ] `OFFICIAL_FETCH_POLICIES` と `isOfficialFetchApproved` を実装する（3 分）
 - [ ] 5 アダプターのスタブ（`extract` は `{ ok: false, reason: 'no-spec-table' }`）と `adapterFor` を実装する（5 分）
 - [ ] テストが成功することを確認する（1 分）
 
@@ -2185,12 +2184,12 @@ feat(travel-goods-site): カテゴリ拡張の判定を追加
   - `resolve-official.ts`
     - `export type OfficialFetchPolicy = { manufacturerId: ManufacturerId; approved: boolean; approvedNote: string | null }`
     - `export const OFFICIAL_FETCH_POLICIES: readonly OfficialFetchPolicy[]`（**段階0 は全件 `approved: false`**）
-    - `export function isOfficialFetchApproved(id: ManufacturerId | null): boolean`
+    - `export function isOfficialFetchApproved(id: ManufacturerId | null, policies?: readonly OfficialFetchPolicy[]): boolean`（`policies` の既定は `OFFICIAL_FETCH_POLICIES`）
     - `export function factSourceIds(product: Product): string[]`（**その商品の Facts が参照する `sourceId` だけ**）
-    - `export type ResolveTarget = { brand: string; model: string; variant: string; factSourceIds: readonly string[] }`
-    - `export function resolveOfficialUrl(target: ResolveTarget, sources: readonly Source[], policies?: readonly OfficialFetchPolicy[]): UrlResolution`（`policies` の既定は `OFFICIAL_FETCH_POLICIES`）
-    - `export function targetFromProduct(product: Product): ResolveTarget`
-    - `export function targetFromDraft(draft: CandidateDraft): ResolveTarget | null`（`model` か `variantLabel` が `null` なら `null`）
+    - `export type ResolveTarget = { manufacturerId: ManufacturerId | null; model: string; variant: string; factSourceIds: readonly string[] }`
+    - `export function resolveOfficialUrl(target: ResolveTarget, sources: readonly Source[], policies?: readonly OfficialFetchPolicy[]): UrlResolution`（`policies` の既定は `OFFICIAL_FETCH_POLICIES`。**受け取った `policies` を `isOfficialFetchApproved` へそのまま渡す**）
+    - `export function targetFromFields(fields: { manufacturerId: ManufacturerId | null; model: string | null; variant: string | null; factSourceIds?: readonly string[] }): ResolveTarget | null`（`model` か `variant` が `null` か空白のみなら `null`）
+    - `export function targetFromProduct(product: Product): ResolveTarget`（内部で `normalizeBrand(product.brand)` と `factSourceIds(product)` を通して `targetFromFields` を呼ぶ）
   - `fetch-official.ts`
     - `export type OfficialFetchOutcome = { status: 'ok'; html: string } | { status: 'robots-denied' | 'http-blocked' | 'failed'; httpStatus: number | null }`
     - `export type OfficialFetcher = (url: string) => Promise<OfficialFetchOutcome>`
@@ -2202,6 +2201,12 @@ feat(travel-goods-site): カテゴリ拡張の判定を追加
     - `export function createRecallChecker(deps: { fetchPage: OfficialFetcher; sources: readonly RecallSource[] }): RecallChecker`
     - `export const phase0RecallChecker: RecallChecker`（**常に `'unavailable'`**）
     - `export const RECALL_TERMS: readonly string[]`
+
+> **Task 15 の型に依存しない。**
+> `resolve-official.ts` は `CandidateDraft` を import しない。
+> 新商品用の `targetFromDraft(draft)` は **Task 15 の `candidate.ts`** に置き、
+> 内部で `targetFromFields` を呼ぶ。これで Task 13 は Task 15 より先に
+> 単独で実装・テスト・コミットでき、循環 import も生じない。
 
 ### 仕様
 
@@ -2230,8 +2235,16 @@ export const OFFICIAL_FETCH_POLICIES: readonly OfficialFetchPolicy[] = [
   { manufacturerId: 'anker',          approved: false, approvedNote: null },
 ];
 
-export function isOfficialFetchApproved(id: ManufacturerId | null): boolean {
-  return OFFICIAL_FETCH_POLICIES.some((p) => p.manufacturerId === id && p.approved);
+/**
+ * このメーカーの商品ページを自動取得してよいか。
+ * `policies` を受け取れるようにして、テストが承認済みの状態を注入できるようにする。
+ * **グローバルの `OFFICIAL_FETCH_POLICIES` を直接見ない。**
+ */
+export function isOfficialFetchApproved(
+  id: ManufacturerId | null,
+  policies: readonly OfficialFetchPolicy[] = OFFICIAL_FETCH_POLICIES,
+): boolean {
+  return policies.some((p) => p.manufacturerId === id && p.approved);
 }
 ```
 
@@ -2240,16 +2253,72 @@ export function isOfficialFetchApproved(id: ManufacturerId | null): boolean {
 カタログ全体の `Source` から任意に選ばない。同じホストの無関係な `Source` が
 先頭にあっても選ばない。**承認されていないメーカーは、既存 Source があっても無くても解決しない。**
 
-1. `normalizeBrand(product.brand)` が `null` なら `{ ok: false, reason: 'manufacturer-unknown' }`。
-2. **`isOfficialFetchApproved(manufacturerId)` が `false` なら
+1. `target.manufacturerId` が `null` なら `{ ok: false, reason: 'manufacturer-unknown' }`。
+2. **`isOfficialFetchApproved(target.manufacturerId, policies)` が `false` なら
    `{ ok: false, reason: 'fetch-not-approved' }`。ここで打ち切る。**
-3. `factSourceIds(product)` で、`weightG` / `outerSizeMm` / `bodySizeMm` / `capacityL` /
+   **必ず引数で受け取った `policies` を渡す**（グローバルを直接見ると、テストが
+   承認済みポリシーを注入しても必ず未承認扱いになり、以降の分岐を一度も検査できない）。
+3. `target.factSourceIds` を使う。`targetFromProduct` はこれを `factSourceIds(product)` で作り、
+   `weightG` / `outerSizeMm` / `bodySizeMm` / `capacityL` /
    `alternateMeasurements[].sizeMm` / `alternateMeasurements[].capacityL` / `specs[*]` の
-   `sourceId` を重複なく集める。
+   `sourceId` を重複なく集める。新商品（`targetFromFields` の既定）は空配列。
 4. その ID の `Source` だけを取り出し、**`automatedFetch === 'allowed'`** のものに絞る。
 5. 残ったものの先頭（`sources` の登録順）を `{ ok: true, basis: 'existing-source' }` で返す。
-6. 0 件のときだけ、アダプターの `findProductUrl(model, variant, [])` を使う（`basis: 'deterministic-rule'`）。
+6. 0 件のときだけ、`adapterFor(target.manufacturerId).findProductUrl(target.model, target.variant, [])`
+   を使う（`basis: 'deterministic-rule'`）。
 7. それも失敗なら `{ ok: false, reason: 'no-existing-source' }`。
+
+```ts
+export type ResolveTarget = {
+  manufacturerId: ManufacturerId | null;
+  model: string;
+  variant: string;
+  factSourceIds: readonly string[];
+};
+
+/** Product が無くても作れる。model か variant が無ければ作らない。 */
+export function targetFromFields(fields: {
+  manufacturerId: ManufacturerId | null;
+  model: string | null;
+  variant: string | null;
+  factSourceIds?: readonly string[];
+}): ResolveTarget | null {
+  const model = (fields.model ?? '').trim();
+  const variant = (fields.variant ?? '').trim();
+  if (model === '' || variant === '') return null;
+  return {
+    manufacturerId: fields.manufacturerId,
+    model,
+    variant,
+    factSourceIds: fields.factSourceIds ?? [],
+  };
+}
+
+export function targetFromProduct(product: Product): ResolveTarget {
+  const target = targetFromFields({
+    manufacturerId: normalizeBrand(product.brand),
+    model: product.model,
+    variant: product.variant,
+    factSourceIds: factSourceIds(product),
+  });
+  // Product は productSchema で model / variant が非空であることを保証済み。
+  if (target === null) throw new Error(`Product ${product.id} に model か variant がありません`);
+  return target;
+}
+
+export function resolveOfficialUrl(
+  target: ResolveTarget,
+  sources: readonly Source[],
+  policies: readonly OfficialFetchPolicy[] = OFFICIAL_FETCH_POLICIES,
+): UrlResolution {
+  if (target.manufacturerId === null) return { ok: false, reason: 'manufacturer-unknown' };
+  // 受け取った policies をそのまま渡す。ここでグローバルを参照しない。
+  if (!isOfficialFetchApproved(target.manufacturerId, policies)) {
+    return { ok: false, reason: 'fetch-not-approved' };
+  }
+  // 手順 3〜7
+}
+```
 
 **手順 2 により、段階0 ではどのメーカーも公式 URL が解決せず、
 `officialFetchStatus` は `'failed'`（分類 `fetch-not-approved`）になり、全商品が B 判定になる。**
@@ -2325,7 +2394,8 @@ export const RECALL_SOURCES: readonly RecallSource[] = [
 - [ ] `OFFICIAL_FETCH_POLICIES` が段階0 で全件未承認である失敗テストを書く（3 分）
 - [ ] **未承認なら既存 Source があっても決定的規則へもフォールバックしない**失敗テストを書く（5 分）
 - [ ] `resolveOfficialUrl` が**無関係な同一ホストの Source を選ばない**失敗テストを書く（5 分）
-- [ ] `targetFromDraft` が Product なしで作れ、`model`/`variantLabel` が `null` なら `null` を返す失敗テストを書く（4 分）
+- [ ] **承認済みポリシーを引数で注入すると `isOfficialFetchApproved` が `true` を返す**失敗テストを書く（3 分）
+- [ ] `targetFromFields` が Product なしで作れ、`model`/`variant` が `null` か空白なら `null` を返す失敗テストを書く（4 分）
 - [ ] `automatedFetch !== 'allowed'` の Source を候補にしない失敗テストを書く（4 分）
 - [ ] Facts が Source を参照していないとき、アダプターの規則にフォールバックする失敗テストを書く（4 分）
 - [ ] `createOfficialFetcher` が許可ホスト外の URL を取得せず `'failed'` を返す失敗テストを書く（4 分）
@@ -2337,8 +2407,9 @@ export const RECALL_SOURCES: readonly RecallSource[] = [
 - [ ] 承認済みでも取得失敗なら `'unavailable'` を返す失敗テストを書く（3 分）
 - [ ] テストを実行し失敗を確認する（1 分）
 - [ ] `factSourceIds` を実装する（3 分）
-- [ ] `OFFICIAL_FETCH_POLICIES` を参照する `resolveOfficialUrl` と `ResolveTarget` を実装する（5 分）
-- [ ] `targetFromProduct` / `targetFromDraft` を実装する（3 分）
+- [ ] `OFFICIAL_FETCH_POLICIES` と、`policies` を引数で受ける `isOfficialFetchApproved` を実装する（3 分）
+- [ ] `policies` を `isOfficialFetchApproved` へ渡す `resolveOfficialUrl` と `ResolveTarget` を実装する（5 分）
+- [ ] `targetFromFields` / `targetFromProduct` を実装する（3 分）
 - [ ] `createOfficialFetcher`（許可ホスト検査・間隔・timeout）を実装する（5 分）
 - [ ] `RECALL_SOURCES` と `RecallCoverage` を書く（3 分）
 - [ ] `createRecallChecker`（coverage による `clear` / `unavailable` の分岐）を実装する（5 分）
@@ -2355,14 +2426,21 @@ import {
   factSourceIds,
   isOfficialFetchApproved,
   resolveOfficialUrl,
-  targetFromDraft,
+  targetFromFields,
   targetFromProduct,
 } from '../src/lib/automation/sync/resolve-official';
+import type { OfficialFetchPolicy } from '../src/lib/automation/sync/resolve-official';
 import { createOfficialFetcher } from '../src/lib/automation/sync/fetch-official';
 import { makeFact, makeProduct, makeSource } from './factories';
 
-/** 段階0 は全メーカー未承認なので、解決経路のテストでは承認済みとして扱う。 */
-const approvedAce = [{ manufacturerId: 'ace' as const, approved: true, approvedNote: 'テスト用' }];
+/**
+ * 段階0 は全メーカー未承認なので、解決経路のテストでは承認済みポリシーを注入する。
+ * `isOfficialFetchApproved` も `resolveOfficialUrl` も、
+ * グローバルではなく**渡された `policies`** を見なければならない。
+ */
+const approvedAce: readonly OfficialFetchPolicy[] = [
+  { manufacturerId: 'ace', approved: true, approvedNote: 'テスト用' },
+];
 
 const ownSource = makeSource({
   id: 'src-own',
@@ -2387,6 +2465,12 @@ describe('取得ポリシー', () => {
     for (const id of ['ace', 'proteca', 'world-traveler', 'elecom', 'anker'] as const) {
       expect(isOfficialFetchApproved(id)).toBe(false);
     }
+  });
+
+  it('承認済みポリシーを注入すればそれを見る（グローバルを直接見ない）', () => {
+    expect(isOfficialFetchApproved('ace', approvedAce)).toBe(true);
+    expect(isOfficialFetchApproved('elecom', approvedAce)).toBe(false);
+    expect(isOfficialFetchApproved(null, approvedAce)).toBe(false);
   });
 
   it('未承認なら既存 Source があっても解決しない（承認を回避できない）', () => {
@@ -2428,16 +2512,11 @@ describe('公式 Source の解決（承認済みメーカー）', () => {
       .toEqual({ ok: false, reason: 'manufacturer-unknown' });
   });
 
-  it('新商品は Product なしで ResolveTarget を作れる', () => {
-    const target = targetFromDraft({
-      itemCode: 'testshop:test-item-001',
+  it('Product が無くても ResolveTarget を作れる', () => {
+    const target = targetFromFields({
       manufacturerId: 'ace',
       model: '06936',
-      variantLabel: '35L / 01 ブラックヘアライン',
-      category: 'suitcases',
-      janFromListing: null,
-      affiliateItemPageUrl: null,
-      excludedTerm: 'clean',
+      variant: '35L / 01 ブラックヘアライン',
     });
     expect(target).not.toBeNull();
     if (target === null) return;
@@ -2447,12 +2526,10 @@ describe('公式 Source の解決（承認済みメーカー）', () => {
     });
   });
 
-  it('model か variantLabel が null なら ResolveTarget を作らない', () => {
-    expect(targetFromDraft({
-      itemCode: 'testshop:x', manufacturerId: 'ace', model: null,
-      variantLabel: '35L / ブラック', category: 'suitcases',
-      janFromListing: null, affiliateItemPageUrl: null, excludedTerm: 'clean',
-    })).toBeNull();
+  it('model か variant が無ければ ResolveTarget を作らない', () => {
+    expect(targetFromFields({ manufacturerId: 'ace', model: null, variant: '35L / ブラック' })).toBeNull();
+    expect(targetFromFields({ manufacturerId: 'ace', model: '06936', variant: null })).toBeNull();
+    expect(targetFromFields({ manufacturerId: 'ace', model: '06936', variant: '   ' })).toBeNull();
   });
 });
 
@@ -2783,16 +2860,20 @@ TierInput と LinkSignals を組み立てて判定するだけで、書き込み
 
 ### Consumes / Produces
 
-- Consumes: `RakutenItem`、`normalizeBrand` / `adapterFor`、`verifyVariant` / `extractVariantTokens` / `hasExcludedTerm`、`resolveOfficialUrl` / `targetFromDraft` / `isOfficialFetchApproved`（Task 13）、`RecallChecker`（Task 13）、`decideTier`（Task 9）、`CATEGORIES`
+- Consumes: `RakutenItem`、`normalizeBrand` / `adapterFor`、`verifyVariant` / `extractVariantTokens` / `hasExcludedTerm`、`resolveOfficialUrl` / `targetFromFields` / `isOfficialFetchApproved` / `ResolveTarget`（Task 13）、`RecallChecker`（Task 13）、`decideTier`（Task 9）、`CATEGORIES`
 
 > **`resolveOfficialUrl` は `Product` ではなく `ResolveTarget` を取る**（Task 13）。
 > 新商品にはまだ `Product` が無いため、`targetFromDraft(draft)` で
-> `{ brand, model, variant, factSourceIds: [] }` を作って渡す。
+> `{ manufacturerId, model, variant, factSourceIds: [] }` を作って渡す。
+> **`targetFromDraft` はこの Task 15 の `candidate.ts` に置く。**
+> Task 13 は `CandidateDraft` を知らないままでよく、依存は `candidate.ts` → `resolve-official.ts` の
+> 一方向だけになる。
 > `model` か `variantLabel` が `null` なら `targetFromDraft` は `null` を返し、
 > `evaluateCandidate` は `officialFetchStatus: 'failed'` として扱う。
 - Produces:
   - `export type CandidateDraft = { itemCode: string; manufacturerId: ManufacturerId | null; model: string | null; variantLabel: string | null; category: Category | null; janFromListing: string | null; affiliateItemPageUrl: string | null; excludedTerm: ExcludedTermState }`
   - `export function buildCandidateFromRakutenItem(item: RakutenItem, known: readonly Product[]): CandidateDraft`
+  - `export function targetFromDraft(draft: CandidateDraft): ResolveTarget | null`（**Task 13 の `targetFromFields` を呼ぶだけ**。`model` か `variantLabel` が `null` なら `null`）
   - `export type CandidateEvaluation = { draft: CandidateDraft; tier: Tier; blockers: BlockerCode[]; spec: ExtractedSpec | null; officialUrl: string | null; officialRangeHash: string | null }`
   - `export async function evaluateCandidate(draft: CandidateDraft, catalog: Catalog, deps: PipelineDeps): Promise<CandidateEvaluation>`
     （内部で `targetFromDraft(draft)` を作って `resolveOfficialUrl(target, catalog.sources)` を呼ぶ。**Product を先に作らない**）
@@ -2812,7 +2893,8 @@ RakutenItem
   ▼
 CandidateDraft            … brand / model / variant / category / JAN / 紹介URL を抽出
   │  evaluateCandidate(draft, catalog, deps)
-  ▼                        … targetFromDraft(draft) → resolveOfficialUrl(target, sources)
+  ▼                        … targetFromDraft(draft)（= targetFromFields）
+                             → resolveOfficialUrl(target, sources)
                              → 取得 → 抽出 → リコール確認 → decideTier
                              **Product は作らない。ResolveTarget を渡す**
 CandidateEvaluation
@@ -2897,6 +2979,24 @@ export function buildProductId(manufacturerId: ManufacturerId, model: string, va
   ただし `promoteCandidate` は `model` と `variantLabel` が非 `null` であることを要求するため、
   実際にはそこまで縮まない。
 
+#### `targetFromDraft` — Task 13 の `targetFromFields` に委譲する
+
+```ts
+import { targetFromFields, type ResolveTarget } from './resolve-official';
+
+/** 候補から公式URL解決の入力を作る。Product を先に作らない。 */
+export function targetFromDraft(draft: CandidateDraft): ResolveTarget | null {
+  return targetFromFields({
+    manufacturerId: draft.manufacturerId,
+    model: draft.model,
+    variant: draft.variantLabel,
+    // 新商品にはまだ Fact が無いので参照 Source も無い
+  });
+}
+```
+
+`resolve-official.ts` は `candidate.ts` を import しない。**依存は一方向だけ。**
+
 #### 新商品の重複判定キー
 
 **一意キーは `manufacturerId + model + 正規化 variant` とする。**
@@ -2947,6 +3047,7 @@ export function candidateKeyOfProduct(product: Product): string | null {
 - [ ] **色違いで ID が衝突しない**失敗テストを書く（4 分）
 - [ ] 日本語だけの variant でも衝突しない失敗テストを書く（3 分）
 - [ ] Unicode の表記違い（`３５Ｌ` / `ﾌﾞﾗｯｸ`）が同じ ID になる失敗テストを書く（4 分）
+- [ ] `targetFromDraft` が draft から `ResolveTarget` を作り、`model`/`variantLabel` が `null` なら `null` を返す失敗テストを書く（4 分）
 - [ ] `candidateKey` が正規化して一致し、色違いでは一致しない失敗テストを書く（4 分）
 - [ ] `candidateKeyOfProduct` が既存商品から同じキーを作る失敗テストを書く（3 分）
 - [ ] `promoteCandidate` が B 判定で `null` を返す失敗テストを書く（3 分）
@@ -2959,6 +3060,7 @@ export function candidateKeyOfProduct(product: Product): string | null {
 - [ ] 型番抽出（該当 1 つのときだけ採用）を実装する（4 分）
 - [ ] `CATEGORY_LISTING_KEYWORDS` とカテゴリ判定を実装する（4 分）
 - [ ] `variantLabel` と `janFromListing` の抽出を実装する（4 分）
+- [ ] `targetFromDraft`（`targetFromFields` への委譲）を実装する（2 分）
 - [ ] `productIdHash` / `buildProductId` / `candidateKey` / `candidateKeyOfProduct` を実装する（5 分）
 - [ ] `evaluateCandidate`（`targetFromDraft` → `resolveOfficialUrl` → 取得 → 抽出 → `decideTier`）を実装する（5 分）
 - [ ] `promoteCandidate` の 5 条件を実装する（5 分）
@@ -2978,7 +3080,9 @@ import {
   evaluateCandidate,
   productIdHash,
   promoteCandidate,
+  targetFromDraft,
 } from '../src/lib/automation/sync/candidate';
+import type { CandidateDraft } from '../src/lib/automation/sync/candidate';
 import { productSchema } from '../src/lib/catalog/schema';
 import { makeCatalog, makePipelineDeps, makeProduct, makeRakutenItem } from './factories';
 
@@ -3065,6 +3169,34 @@ describe('商品 ID と重複キー', () => {
 
   it('brand を正規化できない商品はキーを作らない', () => {
     expect(candidateKeyOfProduct(makeProduct({ brand: 'サンプルブランド' }))).toBeNull();
+  });
+});
+
+describe('候補から ResolveTarget を作る', () => {
+  const draft: CandidateDraft = {
+    itemCode: 'testshop:test-item-001',
+    manufacturerId: 'ace',
+    model: '06936',
+    variantLabel: '35L / 01 ブラックヘアライン',
+    category: 'suitcases',
+    janFromListing: null,
+    affiliateItemPageUrl: null,
+    excludedTerm: 'clean',
+  };
+
+  it('Product を作らずに ResolveTarget を作れる', () => {
+    const target = targetFromDraft(draft);
+    expect(target).toEqual({
+      manufacturerId: 'ace',
+      model: '06936',
+      variant: '35L / 01 ブラックヘアライン',
+      factSourceIds: [],
+    });
+  });
+
+  it('model か variantLabel が null なら作らない', () => {
+    expect(targetFromDraft({ ...draft, model: null })).toBeNull();
+    expect(targetFromDraft({ ...draft, variantLabel: null })).toBeNull();
   });
 });
 
@@ -3169,7 +3301,8 @@ Product を作らず null を返す。呼び出し側が queue に残す。
   - `export function isAutoRegistered(product: Product, sources: readonly Source[]): boolean`
   - `export function registeredProductsThisWeek(products: readonly Product[], sources: readonly Source[], today: string): number`
   - `export function remainingProductsThisWeek(products: readonly Product[], sources: readonly Source[], today: string): number`
-  - `export type WritePlan = { publishProduct: boolean; writeProductAsReview: boolean; writeSource: boolean; writeMerchantLink: boolean; replaceMerchantLink: boolean; updateLinkHealth: boolean; queue: QueueEntry[] }`
+  - `export type WritePlan = { publishProduct: boolean; writeProductAsReview: boolean; productStatus: 'published' | 'review' | null; writeSource: boolean; writeMerchantLink: boolean; replaceMerchantLink: boolean; updateLinkHealth: boolean; queue: QueueEntry[] }`
+  - `export function productStatusOf(plan: Pick<WritePlan, 'publishProduct' | 'writeProductAsReview'>): 'published' | 'review' | null`
   - `export function buildWritePlan(input: WritePlanInput): WritePlan`
   - `export type WritePlanInput = { switches: Switches; tier: Tier; recheck: RecheckState; replacement: ReplacementDecision; isNewProduct: boolean; remainingThisWeek: number; today: string; targetId: string }`
 
@@ -3229,7 +3362,7 @@ export function remainingProductsThisWeek(
 export function buildWritePlan(input: WritePlanInput): WritePlan {
   const { switches: sw, tier, recheck, replacement, isNewProduct, remainingThisWeek } = input;
   const empty: WritePlan = {
-    publishProduct: false, writeProductAsReview: false, writeSource: false,
+    publishProduct: false, writeProductAsReview: false, productStatus: null, writeSource: false,
     writeMerchantLink: false, replaceMerchantLink: false, updateLinkHealth: false, queue: [],
   };
   if (!sw.automationEnabled) return empty;
@@ -3239,15 +3372,59 @@ export function buildWritePlan(input: WritePlanInput): WritePlan {
 
 | 条件 | `WritePlan` の値 |
 |---|---|
-| `automationEnabled === false` | すべて `false`、`queue` も空 |
-| `isNewProduct && !sw.autoDiscoverProducts` | すべて `false`、`queue` も空（探索自体を行わない） |
-| `tier === 'B'` | 書き込みなし。`queue` に `kind: 'candidate'` |
-| `tier === 'A'` かつ `recheck !== 'matched-previous-day'` | 書き込みなし。`queue` に `kind: 'tier-a-recheck'` |
-| `allowsTier(sw.autoPublishProducts, tier) === false` | `publishProduct: false`。`queue` に `kind: 'candidate'` |
-| `isNewProduct && remainingThisWeek <= 0` | 書き込みなし。`queue` に `kind: 'candidate'` |
-| 上記をすべて通過 | `publishProduct: true`, `writeSource: true`, `writeMerchantLink: true` |
+| `automationEnabled === false` | すべて `false`、`productStatus: null`、`queue` も空 |
+| `isNewProduct && !sw.autoDiscoverProducts` | すべて `false`、`productStatus: null`、`queue` も空（探索自体を行わない） |
+| `tier === 'B'` | 書き込みなし。`productStatus: null`。`queue` に `kind: 'candidate'` |
+| `tier === 'A'` かつ `recheck !== 'matched-previous-day'` | 書き込みなし。`productStatus: null`。`queue` に `kind: 'tier-a-recheck'` |
+| `isNewProduct && remainingThisWeek <= 0` | 書き込みなし。`productStatus: null`。`queue` に `kind: 'candidate'` |
+| `allowsTier(sw.autoPublishProducts, tier) === false` | `publishProduct: false`, **`writeProductAsReview: true`, `productStatus: 'review'`, `writeSource: true`**, `writeMerchantLink: false`。`queue` に `kind: 'candidate'` |
+| 上記をすべて通過 | `publishProduct: true`, **`productStatus: 'published'`**, `writeSource: true`, `writeMerchantLink: true` |
 | `sw.autoAuditLinks === false` | `updateLinkHealth: false` |
 | `sw.autoReplaceLinks === false` | `replaceMerchantLink: false`（`replacement` の結果は `queue` に記録） |
+
+**週上限の判定を `allowsTier` より先に置く。** 上限を超えた新商品は
+`review` でも保存しない（週 3 件は「自動登録の件数」の上限であり、公開件数の上限ではない）。
+
+#### 保存する `status` を計画に持たせる
+
+**`promoteCandidate` が返す `Product` は必ず `status: 'review'` である**（Task 15）。
+`publishProduct: true` を返すだけでは、保存されるデータは `review` のままになる。
+そこで `WritePlan` に**保存時の `status` そのもの**を持たせ、
+`applyWritePlans`（Task 17）が**その値で上書きしてから書く**。
+
+```ts
+/** publishProduct / writeProductAsReview から保存時の status を決める。両立しない。 */
+export function productStatusOf(
+  plan: Pick<WritePlan, 'publishProduct' | 'writeProductAsReview'>,
+): 'published' | 'review' | null {
+  if (plan.publishProduct) return 'published';
+  if (plan.writeProductAsReview) return 'review';
+  return null;
+}
+```
+
+不変条件（テストで検査する）:
+
+- `publishProduct` と `writeProductAsReview` が**同時に `true` にならない**。
+- `productStatus === 'published'` ⟺ `publishProduct === true`。
+- `productStatus === 'review'` ⟺ `writeProductAsReview === true`。
+- `productStatus === null` のとき、**Product ファイルを一切書かない**。
+- `productStatus !== null` のとき、必ず `writeSource: true`
+  （Fact の `sourceId` が参照する Source を同時に書かないと `inspectCatalog` が落ちる）。
+
+| Tier と公開スイッチ | `publishProduct` | `writeProductAsReview` | `productStatus` | 最終保存 |
+|---|---|---|---|---|
+| S、`AUTO_PUBLISH_PRODUCTS=S` または `S,A` | `true` | `false` | `'published'` | `status: 'published'` |
+| A（再確認済み）、`AUTO_PUBLISH_PRODUCTS=S,A` | `true` | `false` | `'published'` | `status: 'published'` |
+| S または再確認済み A だが**公開対象外**（`off`、`S` の下の A） | `false` | **`true`** | `'review'` | `status: 'review'`（人が公開する） |
+| A（再確認前） | `false` | `false` | `null` | 保存しない（`queue` の `tier-a-recheck`） |
+| B | `false` | `false` | `null` | 保存しない（`promoteCandidate` が `null`） |
+| `AUTOMATION_ENABLED=false` / `AUTO_DISCOVER_PRODUCTS=false` / 週上限超過 | `false` | `false` | `null` | 保存しない |
+
+> **`off` と B の違い。** `off` は「根拠は揃っているが、公開を人が握っている」状態なので
+> `review` で保存して人が公開できるようにする（記事側の `articleStatusFor` と同じ考え方）。
+> B は「根拠が足りない」状態で、そもそも `promoteCandidate` が `Product` を返さないため
+> 保存する対象が存在しない。**根拠不足のものを `review` でデータへ入れない。**
 
 ### ステップ
 
@@ -3260,14 +3437,16 @@ export function buildWritePlan(input: WritePlanInput): WritePlan {
 - [ ] **B/A 候補（Product を作らなかったもの）を公開件数に数えない**失敗テストを書く（4 分）
 - [ ] `automationEnabled === false` ですべて `false` になる失敗テストを書く（3 分）
 - [ ] 7 スイッチそれぞれを落とすと対応する書き込みが `false` になる **table-driven test** を書く（8 分）
-- [ ] `AUTO_PUBLISH_PRODUCTS=S` で A が `queue` に回る失敗テストを書く（4 分）
+- [ ] `AUTO_PUBLISH_PRODUCTS=S` で A が `productStatus: 'review'` になる失敗テストを書く（4 分）
+- [ ] `AUTO_PUBLISH_PRODUCTS=off` で S も `productStatus: 'review'` になる失敗テストを書く（3 分）
+- [ ] `publishProduct` と `writeProductAsReview` が同時に `true` にならない不変条件テストを書く（3 分）
 - [ ] `AUTO_PUBLISH_PRODUCTS=S,A` でも**再確認前の A** は公開しない失敗テストを書く（4 分）
 - [ ] 週上限を超えた新商品が `queue` に残る失敗テストを書く（4 分）
 - [ ] テストを実行し失敗を確認する（1 分）
 - [ ] `jstWeekStart` と `isAutoRegistered` を実装する（4 分）
 - [ ] `registeredProductsThisWeek` / `remainingProductsThisWeek`（3 引数）を実装する（4 分）
 - [ ] `buildWritePlan` の `automationEnabled` と `isNewProduct` の分岐を実装する（4 分）
-- [ ] Tier と `recheck` と `allowsTier` の分岐を実装する（5 分）
+- [ ] Tier と `recheck` と `allowsTier` の分岐、および `productStatusOf` を実装する（5 分）
 - [ ] 週上限と `autoAuditLinks` / `autoReplaceLinks` の分岐を実装する（4 分）
 - [ ] テストが成功することを確認する（1 分）
 
@@ -3280,6 +3459,7 @@ import {
   PRODUCTS_PER_WEEK,
   buildWritePlan,
   jstWeekStart,
+  productStatusOf,
   registeredProductsThisWeek,
   remainingProductsThisWeek,
   type WritePlanInput,
@@ -3377,7 +3557,7 @@ describe('停止スイッチの結線', () => {
   it('AUTOMATION_ENABLED=false ではすべて書かない', () => {
     const plan = buildWritePlan(planInput({ switches: readSwitches({}) }));
     expect(plan).toEqual({
-      publishProduct: false, writeProductAsReview: false, writeSource: false,
+      publishProduct: false, writeProductAsReview: false, productStatus: null, writeSource: false,
       writeMerchantLink: false, replaceMerchantLink: false, updateLinkHealth: false, queue: [],
     });
   });
@@ -3397,11 +3577,14 @@ describe('停止スイッチの結線', () => {
       },
     },
     {
-      name: 'AUTO_PUBLISH_PRODUCTS=off は S も A も公開しない',
-      env: { AUTOMATION_ENABLED: 'true', AUTO_PUBLISH_PRODUCTS: 'off' },
+      name: 'AUTO_PUBLISH_PRODUCTS=off は S も A も公開せず review で保存する',
+      env: { AUTOMATION_ENABLED: 'true', AUTO_DISCOVER_PRODUCTS: 'true', AUTO_PUBLISH_PRODUCTS: 'off' },
       over: {},
       check: (p) => {
         expect(p.publishProduct).toBe(false);
+        expect(p.writeProductAsReview).toBe(true);
+        expect(p.productStatus).toBe('review');
+        expect(p.writeSource).toBe(true);
         expect(p.queue.map((q) => q.kind)).toContain('candidate');
       },
     },
@@ -3423,30 +3606,73 @@ describe('停止スイッチの結線', () => {
     check(buildWritePlan(planInput({ switches: readSwitches(env), ...over })));
   });
 
-  it('AUTO_PUBLISH_PRODUCTS=S では A を公開せず再確認キューへ', () => {
-    const sw = readSwitches({ AUTOMATION_ENABLED: 'true', AUTO_PUBLISH_PRODUCTS: 'S' });
+  it('AUTO_PUBLISH_PRODUCTS=S では A を公開せず review で保存する', () => {
+    const sw = readSwitches({
+      AUTOMATION_ENABLED: 'true', AUTO_DISCOVER_PRODUCTS: 'true', AUTO_PUBLISH_PRODUCTS: 'S',
+    });
     const plan = buildWritePlan(planInput({ switches: sw, tier: 'A' }));
     expect(plan.publishProduct).toBe(false);
+    expect(plan.productStatus).toBe('review');
     expect(plan.queue.map((q) => q.kind)).toContain('candidate');
   });
 
-  it('AUTO_PUBLISH_PRODUCTS=S,A でも再確認前の A は公開しない', () => {
+  it('AUTO_PUBLISH_PRODUCTS=S,A でも再確認前の A は公開も保存もしない', () => {
     const plan = buildWritePlan(planInput({ tier: 'A', recheck: 'not-yet' }));
     expect(plan.publishProduct).toBe(false);
+    expect(plan.writeProductAsReview).toBe(false);
+    expect(plan.productStatus).toBeNull();
     expect(plan.queue.map((q) => q.kind)).toContain('tier-a-recheck');
   });
 
-  it('B 判定は候補キューに残すだけ', () => {
+  it('S 判定かつ公開許可なら productStatus は published', () => {
+    const plan = buildWritePlan(planInput({ tier: 'S' }));
+    expect(plan.publishProduct).toBe(true);
+    expect(plan.writeProductAsReview).toBe(false);
+    expect(plan.productStatus).toBe('published');
+    expect(plan.writeSource).toBe(true);
+  });
+
+  it('B 判定は候補キューに残すだけで保存しない', () => {
     const plan = buildWritePlan(planInput({ tier: 'B' }));
     expect(plan.publishProduct).toBe(false);
     expect(plan.writeProductAsReview).toBe(false);
+    expect(plan.productStatus).toBeNull();
     expect(plan.queue.map((q) => q.kind)).toEqual(['candidate']);
   });
 
-  it('週上限を超えた新商品はキューに残す', () => {
+  it('週上限を超えた新商品は review でも保存しない', () => {
     const plan = buildWritePlan(planInput({ isNewProduct: true, remainingThisWeek: 0 }));
     expect(plan.publishProduct).toBe(false);
+    expect(plan.writeProductAsReview).toBe(false);
+    expect(plan.productStatus).toBeNull();
     expect(plan.queue.map((q) => q.kind)).toContain('candidate');
+  });
+
+  it('publishProduct と writeProductAsReview は同時に true にならない', () => {
+    const combos: WritePlanInput[] = [
+      planInput({ tier: 'S' }),
+      planInput({ tier: 'A' }),
+      planInput({ tier: 'A', recheck: 'not-yet' }),
+      planInput({ tier: 'B' }),
+      planInput({
+        switches: readSwitches({
+          AUTOMATION_ENABLED: 'true', AUTO_DISCOVER_PRODUCTS: 'true', AUTO_PUBLISH_PRODUCTS: 'off',
+        }),
+      }),
+      planInput({
+        switches: readSwitches({
+          AUTOMATION_ENABLED: 'true', AUTO_DISCOVER_PRODUCTS: 'true', AUTO_PUBLISH_PRODUCTS: 'S',
+        }),
+        tier: 'A',
+      }),
+      planInput({ isNewProduct: true, remainingThisWeek: 0 }),
+    ];
+    for (const input of combos) {
+      const plan = buildWritePlan(input);
+      expect(plan.publishProduct && plan.writeProductAsReview).toBe(false);
+      expect(plan.productStatus).toBe(productStatusOf(plan));
+      if (plan.productStatus !== null) expect(plan.writeSource).toBe(true);
+    }
   });
 });
 ```
@@ -3506,6 +3732,7 @@ feat(travel-goods-site): 書き込み計画を作る純関数を追加
 
 7 つの停止スイッチと週 3 件の上限を、書き込み計画そのものに結線する。
 「書いてから消す」のではなく、計画の段階で false にする。
+保存時の status を productStatus として計画に持たせ、公開の決定箇所を 1 つにする。
 週の件数は JST 月曜始まりで自動登録済みの商品から数え、
 人が登録した商品と、Product を作らなかった B/A 候補は数えない。
 ```
@@ -3524,15 +3751,20 @@ feat(travel-goods-site): 書き込み計画を作る純関数を追加
 | 変更 | `travel-goods-site/package.json`（`automation:sync` を追加） |
 | 作成 | `travel-goods-site/tests/automation-sync-gate.test.ts` |
 | 作成 | `travel-goods-site/tests/automation-sync-cli.test.ts` |
+| 作成 | `travel-goods-site/tests/automation-apply-status.test.ts` |
 
 ### Consumes / Produces
 
 - Consumes: Task 13〜16 のすべて、`readBudget` / `readQueue` / `readLinkHealth` / `writeIfChanged` / `serialize*`（Task 2・3）、`canSpend` / `spend` / `enqueue` / `dequeue`（Task 4）、`readSwitches`（計画3 Task 1）、`inspectCatalog`（既存）
 - Produces:
-  - `apply.ts`: `export function applyWritePlans(datasetDir: string, plans: readonly AppliedChange[]): { written: string[]; skipped: string[] }`
+  - `apply.ts`:
+    - `export type AppliedChange = { plan: WritePlan; product: Product | null; source: Source | null; merchantLink: MerchantLink | null; linkHealth: LinkHealthEntry | null }`
+    - `export function applyWritePlans(datasetDir: string, plans: readonly AppliedChange[]): { written: string[]; skipped: string[] }`
   - `gate.ts`: `export type ModeGate`、`export function gateMode(mode: SyncMode, sw: Switches): ModeGate`
   - `export type SyncMode = 'links' | 'discover' | 'recheck'`
   - `export type SyncRunner = { search: (keyword: string) => Promise<RakutenItem[]>; fetchOfficial: OfficialFetcher }`
+  - `export type SyncOptions = { apply: boolean; limit: number; maxRequests: number; today: string; datasetDir?: string }`
+  - `export type SyncResult = { skippedReason: string | null; changes: AppliedChange[]; requests: number }`
   - `export async function runSync(mode: SyncMode, sw: Switches, runner: SyncRunner, options: SyncOptions): Promise<SyncResult>`（**runner を注入する。テストが呼び出し回数を数えられるようにする**）
   - CLI: `npm run automation:sync -- --mode links|discover|recheck [--apply] [--limit N] [--max-requests N] [--offline]`
 
@@ -3610,7 +3842,7 @@ npm run automation:sync -- --mode discover --apply --limit 3 --max-requests 8
 
 | ファイル | 条件 |
 |---|---|
-| `datasets/production/products/<category>.json` | `plan.publishProduct` または `plan.writeProductAsReview` |
+| `datasets/production/products/<category>.json` | **`plan.productStatus !== null`**（保存する `status` は `plan.productStatus`） |
 | `datasets/production/sources.json` | `plan.writeSource` |
 | `datasets/production/merchants/rakuten.json` | `plan.writeMerchantLink` または `plan.replaceMerchantLink` |
 | `automation/queue.json` | 常に（`plan.queue` をマージ） |
@@ -3619,6 +3851,32 @@ npm run automation:sync -- --mode discover --apply --limit 3 --max-requests 8
 
 **`datasets/production/candidates/` には書かない。**
 書き込み前に `inspectCatalog` を通し、`ok: false` なら**中止して終了コード 1**。
+
+### 保存する `status` は `applyWritePlans` が一度だけ決める
+
+`promoteCandidate`（Task 15）が返す `Product` は**必ず `status: 'review'`** である。
+`buildWritePlan`（Task 16）が `publishProduct: true` を返しても、
+その `Product` をそのまま書けば保存されるのは `review` のままになる。
+
+そこで `applyWritePlans` が、**書き込む直前に `status` を `plan.productStatus` で上書きする**。
+
+```ts
+for (const change of plans) {
+  const { plan, product } = change;
+  // productStatus が null なら Product ファイルには一切触れない
+  if (plan.productStatus === null || product === null) continue;
+  const toWrite: Product = { ...product, status: plan.productStatus };
+  upsertProduct(datasetDir, toWrite); // writeIfChanged 経由
+}
+```
+
+- **公開を決める箇所はここ 1 つだけ。** `promoteCandidate` は公開状態を判断しない。
+- `plan.productStatus === null` のときは `products/<category>.json` を**読み書きしない**
+  （`writeIfChanged` にも渡さない）。
+- `plan.productStatus !== null` なら `plan.writeSource` も必ず `true` なので、
+  Fact が参照する `Source` を同じ呼び出しで書く。順序は **Source → Product → MerchantLink**。
+- 書いたあとに `inspectCatalog` を通す。`review` の商品は配信物に出ないため、
+  `status: 'review'` で保存しても公開サイトの内容は変わらない。
 
 ### ステップ
 
@@ -3633,10 +3891,13 @@ npm run automation:sync -- --mode discover --apply --limit 3 --max-requests 8
 - [ ] `AUTOMATION_ENABLED` 未設定で `--apply` を付けても書かない失敗テストを書く（4 分）
 - [ ] 予算超過で終了コード 0（正常終了）になり、未処理分がキューに積まれる失敗テストを書く（5 分）
 - [ ] `applyWritePlans` が同じ内容なら書き込みを飛ばす失敗テストを書く（4 分）
+- [ ] **S / 再確認済み A / B / 公開 off の 4 ケースで、最終保存データの `status` を検査する**統合テストを書く（8 分）
+- [ ] `promoteCandidate` の `review` が `published` へ上書きされることを検査する失敗テストを書く（4 分）
 - [ ] `inspectCatalog` が失敗する内容では書き込みを中止する失敗テストを書く（5 分）
 - [ ] テストを実行し失敗を確認する（1 分）
 - [ ] `gate.ts`（`gateMode`）を実装する（4 分）
 - [ ] `apply.ts` の JSON 読み書きと `writeIfChanged` の呼び出しを実装する（5 分）
+- [ ] `apply.ts` で `plan.productStatus` による `status` 上書きと、`null` のときの読み書き回避を実装する（5 分）
 - [ ] `apply.ts` の `inspectCatalog` 検査と中止処理を実装する（4 分）
 - [ ] `runSync` の runner 注入とゲート判定を実装する（5 分）
 - [ ] `runSync` の mode 別ループと予算消費を実装する（5 分）
@@ -3789,10 +4050,185 @@ describe('automation:sync CLI', () => {
 });
 ```
 
+
+```ts
+// tests/automation-apply-status.test.ts
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { applyWritePlans, type AppliedChange } from '../src/lib/automation/sync/apply';
+import {
+  PRODUCTS_PER_WEEK,
+  buildWritePlan,
+  type WritePlanInput,
+} from '../src/lib/automation/sync/write-plan';
+import { readSwitches } from '../src/lib/automation/switches';
+import { makeProduct, makeSource } from './factories';
+
+const PRODUCT_ID = 'ace-06936-35l-4ea43263';
+
+let datasetDir: string;
+
+beforeEach(() => {
+  datasetDir = fs.mkdtempSync(path.join(os.tmpdir(), 'automation-apply-'));
+  fs.mkdirSync(path.join(datasetDir, 'products'), { recursive: true });
+  fs.mkdirSync(path.join(datasetDir, 'merchants'), { recursive: true });
+  fs.writeFileSync(path.join(datasetDir, 'products/suitcases.json'), '[]\n');
+  fs.writeFileSync(path.join(datasetDir, 'sources.json'), '[]\n');
+  fs.writeFileSync(path.join(datasetDir, 'merchants/rakuten.json'), '[]\n');
+});
+
+afterEach(() => {
+  fs.rmSync(datasetDir, { recursive: true, force: true });
+});
+
+function planInput(over: Partial<WritePlanInput> = {}): WritePlanInput {
+  return {
+    switches: readSwitches({
+      AUTOMATION_ENABLED: 'true',
+      AUTO_DISCOVER_PRODUCTS: 'true',
+      AUTO_PUBLISH_PRODUCTS: 'S,A',
+      AUTO_AUDIT_LINKS: 'true',
+    }),
+    tier: 'S',
+    recheck: 'matched-previous-day',
+    replacement: { action: 'replace-now' },
+    isNewProduct: true,
+    remainingThisWeek: PRODUCTS_PER_WEEK,
+    today: '2026-09-02',
+    targetId: PRODUCT_ID,
+    ...over,
+  };
+}
+
+/** promoteCandidate が返す Product は必ず status: 'review'。 */
+function promoted(): AppliedChange {
+  return {
+    plan: buildWritePlan(planInput()),
+    product: makeProduct({ id: PRODUCT_ID, status: 'review' }),
+    source: makeSource({ id: `src-${PRODUCT_ID}` }),
+    merchantLink: null,
+    linkHealth: null,
+  };
+}
+
+/** 保存されたファイルから status を読む。保存されていなければ null。 */
+function savedStatus(): string | null {
+  const raw = fs.readFileSync(path.join(datasetDir, 'products/suitcases.json'), 'utf8');
+  const rows = JSON.parse(raw) as { id: string; status: string }[];
+  return rows.find((row) => row.id === PRODUCT_ID)?.status ?? null;
+}
+
+const STATUS_CASES: readonly {
+  name: string;
+  input: Partial<WritePlanInput>;
+  /** B 判定は promoteCandidate が null を返すので Product 自体が無い。 */
+  hasProduct: boolean;
+  expected: 'published' | 'review' | null;
+}[] = [
+  {
+    name: 'S 判定・AUTO_PUBLISH_PRODUCTS=S,A',
+    input: { tier: 'S' },
+    hasProduct: true,
+    expected: 'published',
+  },
+  {
+    name: '再確認済み A 判定・AUTO_PUBLISH_PRODUCTS=S,A',
+    input: { tier: 'A', recheck: 'matched-previous-day' },
+    hasProduct: true,
+    expected: 'published',
+  },
+  {
+    name: 'B 判定（Product を作らない）',
+    input: { tier: 'B' },
+    hasProduct: false,
+    expected: null,
+  },
+  {
+    name: '公開 off（根拠は揃っているので review で保存する）',
+    input: {
+      switches: readSwitches({
+        AUTOMATION_ENABLED: 'true',
+        AUTO_DISCOVER_PRODUCTS: 'true',
+        AUTO_PUBLISH_PRODUCTS: 'off',
+        AUTO_AUDIT_LINKS: 'true',
+      }),
+    },
+    hasProduct: true,
+    expected: 'review',
+  },
+];
+
+describe('最終保存データの status', () => {
+  it.each(STATUS_CASES)('$name → $expected', ({ input, hasProduct, expected }) => {
+    const plan = buildWritePlan(planInput(input));
+    const change: AppliedChange = {
+      plan,
+      product: hasProduct ? makeProduct({ id: PRODUCT_ID, status: 'review' }) : null,
+      source: hasProduct ? makeSource({ id: `src-${PRODUCT_ID}` }) : null,
+      merchantLink: null,
+      linkHealth: null,
+    };
+    applyWritePlans(datasetDir, [change]);
+    expect(savedStatus()).toBe(expected);
+  });
+
+  it('promoteCandidate の review をそのまま保存しない（公開の決定は applyWritePlans の 1 箇所）', () => {
+    const change = promoted();
+    expect(change.product?.status).toBe('review');
+    expect(change.plan.productStatus).toBe('published');
+    applyWritePlans(datasetDir, [change]);
+    expect(savedStatus()).toBe('published');
+  });
+
+  it('productStatus が null なら products ファイルに触れない', () => {
+    const before = fs.readFileSync(path.join(datasetDir, 'products/suitcases.json'), 'utf8');
+    const plan = buildWritePlan(planInput({ tier: 'A', recheck: 'not-yet' }));
+    expect(plan.productStatus).toBeNull();
+    const result = applyWritePlans(datasetDir, [{
+      plan,
+      product: makeProduct({ id: PRODUCT_ID, status: 'review' }),
+      source: makeSource({ id: `src-${PRODUCT_ID}` }),
+      merchantLink: null,
+      linkHealth: null,
+    }]);
+    expect(fs.readFileSync(path.join(datasetDir, 'products/suitcases.json'), 'utf8')).toBe(before);
+    expect(result.written).not.toContain('products/suitcases.json');
+  });
+
+  it('review で保存しても Source を同時に書く（inspectCatalog を落とさない）', () => {
+    const plan = buildWritePlan(planInput({
+      switches: readSwitches({
+        AUTOMATION_ENABLED: 'true',
+        AUTO_DISCOVER_PRODUCTS: 'true',
+        AUTO_PUBLISH_PRODUCTS: 'off',
+        AUTO_AUDIT_LINKS: 'true',
+      }),
+    }));
+    expect(plan.writeSource).toBe(true);
+    applyWritePlans(datasetDir, [{
+      plan,
+      product: makeProduct({ id: PRODUCT_ID, status: 'review' }),
+      source: makeSource({ id: `src-${PRODUCT_ID}` }),
+      merchantLink: null,
+      linkHealth: null,
+    }]);
+    const sources = JSON.parse(
+      fs.readFileSync(path.join(datasetDir, 'sources.json'), 'utf8'),
+    ) as { id: string }[];
+    expect(sources.map((row) => row.id)).toContain(`src-${PRODUCT_ID}`);
+  });
+});
+```
+
 ### テスト実行コマンド
 
 ```bash
-cd travel-goods-site && npx vitest run tests/automation-sync-gate.test.ts tests/automation-sync-cli.test.ts
+cd travel-goods-site && npx vitest run \
+  tests/automation-sync-gate.test.ts \
+  tests/automation-sync-cli.test.ts \
+  tests/automation-apply-status.test.ts
 ```
 
 ### 期待する失敗内容
@@ -3811,7 +4247,7 @@ CLI は `flag()` / `has()` を既存 `scripts/rakuten-sync.ts` と同じ書き�
 
 ```bash
 cd travel-goods-site \
-  && npx vitest run tests/automation-sync-cli.test.ts \
+  && npx vitest run tests/automation-sync-cli.test.ts tests/automation-apply-status.test.ts \
   && CATALOG_DATASET=production npm run automation:sync -- --mode links --offline \
   && git -C .. status --short
 ```
@@ -3823,6 +4259,7 @@ feat(travel-goods-site): 自動運用の CLI と状態ファイル更新を追�
 
 Task 13〜16 の部品を結ぶ薄い CLI。既定は dry-run で 1 バイトも書かない。
 datasets/production/candidates/ には書かず、候補は automation/queue.json に持つ。
+保存する status は plan.productStatus で決め、書き込み直前に一度だけ上書きする。
 書き込み前に inspectCatalog を通し、失敗したら中止する。
 月・木に --limit 3 を渡しても週の合計は 3 件を超えない。
 ```
@@ -3946,6 +4383,14 @@ git -C .. diff --name-only main
 
 **未対応の節は 0 件。**
 
+### 今回の改訂（4 回目）で反映した指摘
+
+| 指摘 | 反映先 |
+|---|---|
+| 1. 取得ポリシーの引数が矛盾 | **F Task 13**（`isOfficialFetchApproved(id, policies = OFFICIAL_FETCH_POLICIES)` に統一。`resolveOfficialUrl` は受け取った `policies` をそのまま渡し、グローバルを直接参照しない。注入したポリシーを見ることを確かめるテストを追加） |
+| 2. Task 13 が未来の型に依存 | **F Task 13**（`ResolveTarget` と `targetFromFields` だけを持ち、`CandidateDraft` を import しない）／**F Task 15**（`targetFromDraft` を `candidate.ts` へ移し、内部で `targetFromFields` を呼ぶ。依存は `candidate.ts` → `resolve-official.ts` の一方向） |
+| 3. 商品が公開状態にならない | **F Task 16**（`WritePlan.productStatus: 'published' \| 'review' \| null` と `productStatusOf`。`off` と `S` 下の A は `review` で保存、B と再確認前 A は保存しない）／**F Task 17**（`applyWritePlans` が書き込み直前に `status` を `plan.productStatus` で上書きし、`null` なら products ファイルに触れない。S / 再確認済み A / B / 公開 off の 4 ケースを最終保存データの `status` まで検査する統合テスト `tests/automation-apply-status.test.ts`） |
+
 ### 今回の改訂（3 回目）で反映した指摘
 
 | 指摘 | 反映先 |
@@ -3955,7 +4400,7 @@ git -C .. diff --name-only main
 | 3. リコールの `clear` が危険 | **F Task 13**（`RecallCoverage`。`clear` は `exhaustive` のみ、`partial`/`unknown` の非一致は `unavailable`） |
 | 4. 週 3 商品の関数仕様が矛盾 | **F Task 16**（`(products, sources, today)` の 3 引数に統一。テストも Product と Source を対で渡す） |
 | 5. 商品 ID が衝突 | **F Task 15**（`productIdHash` を末尾に付与。色違い・日本語のみ・NFKC 表記違いのテスト） |
-| 6. コード例がそのまま実装できない | **F Task 13・15**（`ResolveTarget` / `targetFromDraft`・`candidateKey` の明文化）／**A Task 6**（import と fixture を自己完結に） |
+| 6. コード例がそのまま実装できない | **F Task 13・15**（`ResolveTarget` / `targetFromFields` / `targetFromDraft`・`candidateKey` の明文化）／**A Task 6**（import と fixture を自己完結に） |
 | 追加: ブランド複数一致 | **F Task 15**（複数 `manufacturerId` にまたがったら `null`） |
 | 追加: 重複キーの明文化 | **F Task 15**（`candidateKey` = `manufacturerId + model + 正規化 variant`） |
 | 追加: 実装ステップの分割 | 全 40 Task。**10 分以上のステップを 0 件**にした |
