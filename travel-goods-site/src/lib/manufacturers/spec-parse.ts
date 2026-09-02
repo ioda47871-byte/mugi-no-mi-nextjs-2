@@ -60,39 +60,59 @@ export function parseWeightG(raw: string): number | null {
 }
 
 /**
- * 「約W320×D200×H510mm」「W35×H55×D25cm（…）」。
+ * 「約W320×D200×H510mm」「W35×H55×D25cm（…）」「W35cm×H55cm×D25cm」。
+ *
  * **W・H・D のラベルで読む**（並び順に依存しない）。
  * 返す配列は登録データと同じ [幅, 高さ, 奥行]。
  *
- * 1 要素でも読めなければ寸法全体を null にする。
- * mm と cm が混在した表記は、どちらの尺度か決められないので推定せず null。
+ * 単位は**その寸法表記に直接付いているものだけ**を使う。文字列のどこかにある
+ * `mm`/`cm` を借りない。「W35×H55×D25（梱包サイズは80cm）」の 80cm は
+ * 梱包の値であって寸法の単位ではないので、この入力は null にする。
+ *
+ * 1 要素でも読めなければ寸法全体を null。W/H/D で単位が混在しても null。
+ * 同じラベルが複数現れて、どの組か決められない場合も安全側で null。
  */
 export function parseLabeledSizeMm(raw: string): [number, number, number] | null {
   const text = clean(raw);
 
-  const units = [...text.matchAll(/(mm|cm)/g)].map((m) => m[1]);
-  const unit = units[0];
-  if (unit === undefined) return null;
-  // 単位が混在していたら尺度を決められない
-  if (units.some((u) => u !== unit)) return null;
-  const scale = unit === 'cm' ? 10 : 1;
-
-  const pick = (label: 'W' | 'H' | 'D'): number | null => {
-    // ラベルの直後は数字で始まらなければならない（W. や W-35 を通さない）
-    const captured = new RegExp(`${label}(${NUMBER_SOURCE})`).exec(text)?.[1];
+  /**
+   * ラベルの直後の数値と、その数値に続く単位（あれば）を取り出す。
+   * ラベルが複数回現れたら曖昧なので null。
+   */
+  const pick = (label: 'W' | 'H' | 'D'): { value: number; unit: 'mm' | 'cm' | null } | null => {
+    const matches = [...text.matchAll(new RegExp(`${label}(${NUMBER_SOURCE})(mm|cm)?`, 'g'))];
+    if (matches.length !== 1) return null; // 0 件＝無い、2 件以上＝曖昧
+    const match = matches[0];
+    if (match === undefined) return null;
+    const captured = match[1];
     if (captured === undefined) return null;
     // 「W1.2.3」のように余分な小数点が続く形を弾く
-    if (new RegExp(`${label}${captured.replace('.', '\\.')}\\.`).test(text)) return null;
+    const rest = text.slice(match.index + match[0].length);
+    if (match[2] === undefined && rest.startsWith('.')) return null;
     const value = parsePositiveNumber(captured);
-    // 換算・丸めの後も正で有限であること（0.01cm → 0、巨大値 → Infinity を弾く）
-    return value === null ? null : finitePositive(Math.round(value * scale));
+    if (value === null) return null;
+    const unit = match[2] === 'mm' || match[2] === 'cm' ? match[2] : null;
+    return { value, unit };
   };
 
   const w = pick('W');
   const h = pick('H');
   const d = pick('D');
   if (w === null || h === null || d === null) return null;
-  return [w, h, d];
+
+  const units = [w.unit, h.unit, d.unit].filter((u): u is 'mm' | 'cm' => u !== null);
+  if (units.length === 0) return null; // 寸法に付いた単位が 1 つも無い
+  const unit = units[0];
+  if (units.some((u) => u !== unit)) return null; // 単位が混在
+
+  const scale = unit === 'cm' ? 10 : 1;
+  // 換算・丸めの後も正で有限であること（0.01cm → 0、巨大値 → Infinity を弾く）
+  const toMm = (value: number): number | null => finitePositive(Math.round(value * scale));
+  const mmW = toMm(w.value);
+  const mmH = toMm(h.value);
+  const mmD = toMm(d.value);
+  if (mmW === null || mmH === null || mmD === null) return null;
+  return [mmW, mmH, mmD];
 }
 
 /** 「約30L」「35L」。 */

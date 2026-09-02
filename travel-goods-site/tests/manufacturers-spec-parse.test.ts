@@ -104,3 +104,37 @@ describe('換算・丸めの後も正で有限であることを検査する', (
     expect(parseWatt('最大65W')).toBe(65);
   });
 });
+
+describe('寸法と無関係な単位を流用しない', () => {
+  it('W/H/D に単位が付いていなければ、後半の単位を借りない', () => {
+    expect(parseLabeledSizeMm('W35×H55×D25（梱包サイズは80cm）')).toBeNull();
+    expect(parseLabeledSizeMm('W35×H55×D25（ストラップは800mm）')).toBeNull();
+    expect(parseLabeledSizeMm('W35×H55×D25')).toBeNull();
+  });
+
+  it('W/H/D に単位が付いていれば、後半に別単位があっても読める', () => {
+    expect(parseLabeledSizeMm('W35×H55×D25cm（梱包サイズは80cm）')).toEqual([350, 550, 250]);
+    expect(parseLabeledSizeMm('W35×H55×D25cm（ストラップは800mm）')).toEqual([350, 550, 250]);
+  });
+
+  it('各ラベルに同じ単位が付いていれば読める', () => {
+    expect(parseLabeledSizeMm('W35cm×H55cm×D25cm')).toEqual([350, 550, 250]);
+    expect(parseLabeledSizeMm('W320mm×H510mm×D200mm')).toEqual([320, 510, 200]);
+  });
+
+  it('W/H/D に異なる単位が混在すれば null', () => {
+    expect(parseLabeledSizeMm('W35cm×H550mm×D25cm')).toBeNull();
+    expect(parseLabeledSizeMm('W320mm×H51cm×D200mm')).toBeNull();
+  });
+
+  it('同じラベルが複数あり曖昧なら null', () => {
+    expect(parseLabeledSizeMm('W35×H55×D25cm / W40×H60×D30cm')).toBeNull();
+    expect(parseLabeledSizeMm('W35×H55×D25cm 本体 W40cm')).toBeNull();
+  });
+
+  it('従来の正常な表記は成功する', () => {
+    expect(parseLabeledSizeMm('W35×H55×D25cm')).toEqual([350, 550, 250]);
+    expect(parseLabeledSizeMm('約W320×D200×H510mm')).toEqual([320, 510, 200]);
+    expect(parseLabeledSizeMm('W35×H55×D25cm（ハンドル・キャスターを含む）')).toEqual([350, 550, 250]);
+  });
+});

@@ -165,6 +165,59 @@ describe('リンク状態機械', () => {
   });
 });
 
+describe('lastHealthyAt は在庫を確認できた日だけ更新する', () => {
+  /** 在庫切れの日を n 日与える。today を進めながら渡す。 */
+  function advanceWithDates(start: LinkHealthEntry, signals: LinkSignals, days: number): LinkHealthEntry {
+    let entry = start;
+    for (let i = 0; i < days; i += 1) {
+      entry = nextLinkState(entry, signals, `2026-09-${String(i + 2).padStart(2, '0')}`);
+    }
+    return entry;
+  }
+
+  it('在庫切れ 1 日では更新しない（表示は維持したまま）', () => {
+    const prev = makeLinkHealthEntry({ lastHealthyAt: '2026-09-01' });
+    const next = nextLinkState(prev, outOfStock, '2026-09-02');
+    expect(next.state).toBe('healthy');
+    expect(next.lastHealthyAt).toBe('2026-09-01');
+  });
+
+  it('在庫切れが 13 日続いても lastHealthyAt は変わらない', () => {
+    const prev = makeLinkHealthEntry({ lastHealthyAt: '2026-09-01' });
+    const after13 = advanceWithDates(prev, outOfStock, 13);
+    expect(after13.state).toBe('healthy');
+    expect(after13.lastHealthyAt).toBe('2026-09-01');
+  });
+
+  it('14 日目の hidden でも更新しない', () => {
+    const prev = makeLinkHealthEntry({ lastHealthyAt: '2026-09-01' });
+    const after14 = advanceWithDates(prev, outOfStock, 14);
+    expect(after14.state).toBe('hidden');
+    expect(after14.lastHealthyAt).toBe('2026-09-01');
+  });
+
+  it('availability === 1 の日だけ today へ更新する', () => {
+    const prev = makeLinkHealthEntry({ lastHealthyAt: '2026-09-01' });
+    expect(nextLinkState(prev, healthy, '2026-09-02').lastHealthyAt).toBe('2026-09-02');
+  });
+
+  it('在庫が戻った日に更新される（在庫切れ 10 日のあと）', () => {
+    const prev = makeLinkHealthEntry({ lastHealthyAt: '2026-09-01' });
+    const after10 = advanceWithDates(prev, outOfStock, 10);
+    expect(after10.lastHealthyAt).toBe('2026-09-01');
+    expect(nextLinkState(after10, healthy, '2026-09-12').lastHealthyAt).toBe('2026-09-12');
+  });
+
+  it('manual-hold / hidden / replace / API 障害では更新しない', () => {
+    const prev = makeLinkHealthEntry({ lastHealthyAt: '2026-09-01' });
+    const changed = makeLinkSignals({ affiliateTargetChanged: true });
+    expect(nextLinkState(prev, changed, '2026-09-02').lastHealthyAt).toBe('2026-09-01');
+    expect(nextLinkState(prev, apiError, '2026-09-02').lastHealthyAt).toBe('2026-09-01');
+    expect(advanceWithDates(prev, gone, 3).lastHealthyAt).toBe('2026-09-01');
+    expect(advanceWithDates(prev, gone, 7).lastHealthyAt).toBe('2026-09-01');
+  });
+});
+
 describe('itemCode はあるが在庫を取得できない日', () => {
   /** API は答えた。商品も見つかった。しかし在庫情報だけ取れなかった。 */
   const stockUnknown: LinkSignals = makeLinkSignals({

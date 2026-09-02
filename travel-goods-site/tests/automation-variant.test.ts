@@ -127,6 +127,52 @@ describe('販売ページ文言との照合', () => {
   });
 });
 
+describe('サイズトークンの境界', () => {
+  it('Lサイズ は LLサイズ に一致しない', () => {
+    const v = verifyVariant('Lサイズ 16L / 03 ダークネイビー', 'ポーチ LLサイズ 16L 03 ダークネイビー');
+    expect(v.matched).toBe(false);
+    expect(v.matchedVariantLabel).toBeNull();
+  });
+
+  it('Sサイズ は XSサイズ に一致しない', () => {
+    const v = verifyVariant('Sサイズ 6L / 03 ダークネイビー', 'ポーチ XSサイズ 6L 03 ダークネイビー');
+    expect(v.matched).toBe(false);
+  });
+
+  it('Mサイズ は 2Mサイズ に一致しない', () => {
+    const v = verifyVariant('Mサイズ / ブラック', 'ポーチ 2Mサイズ ブラック');
+    expect(v.matched).toBe(false);
+  });
+
+  it('XS / LL / 2M / SL をサイズとして抽出しない', () => {
+    for (const text of ['XSサイズ', 'LLサイズ', '2Mサイズ', 'SLサイズ']) {
+      expect(extractVariantTokens(text).sizes).toEqual([]);
+    }
+  });
+
+  it('独立した S / M / L / XL / 2XL は従来どおり抽出する', () => {
+    expect(extractVariantTokens('Sサイズ 6L').sizes).toEqual(['Sサイズ']);
+    expect(extractVariantTokens('Mサイズ / ブラック').sizes).toEqual(['Mサイズ']);
+    expect(extractVariantTokens('Lサイズ 16L').sizes).toEqual(['Lサイズ']);
+    expect(extractVariantTokens('XLサイズ').sizes).toEqual(['XLサイズ']);
+    expect(extractVariantTokens('2XLサイズ').sizes).toEqual(['2XLサイズ']);
+  });
+
+  it('Lサイズ 単独は従来どおり一致する', () => {
+    expect(verifyVariant('Lサイズ 16L / 03 ダークネイビー', 'ポーチ Lサイズ 16L 03 ダークネイビー').matched)
+      .toBe(true);
+  });
+
+  it('XL / 2XL の正常ケースを壊さない', () => {
+    expect(verifyVariant('XLサイズ / ブラック', 'ポーチ XLサイズ ブラック').matched).toBe(true);
+    expect(verifyVariant('2XLサイズ / ブラック', 'ポーチ 2XLサイズ ブラック').matched).toBe(true);
+  });
+
+  it('XLサイズ を Lサイズ として拾わない', () => {
+    expect(verifyVariant('Lサイズ / ブラック', 'ポーチ XLサイズ ブラック').matched).toBe(false);
+  });
+});
+
 describe('色名をマーケティング文言から拾わない', () => {
   it('ブラックフライデーを色として扱わない', () => {
     const v = verifyVariant('30L / ブラック', '旅行リュック 30L ブラックフライデー特価');

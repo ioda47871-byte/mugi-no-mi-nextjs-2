@@ -72,6 +72,33 @@ describe('アダプターの契約', () => {
     expect(r).toEqual({ ok: false, reason: 'model-shape-unsupported' });
   });
 
+  it('6 桁以上の数字列から 5 桁を切り出さない', () => {
+    for (const model of ['123456', '1069360', '候補 123456', '069360', '0693600']) {
+      expect(adapterFor('ace').findProductUrl(model, '35L / 01 ブラックヘアライン', []))
+        .toEqual({ ok: false, reason: 'model-shape-unsupported' });
+    }
+  });
+
+  it('独立した 5 桁品番なら導ける', () => {
+    for (const model of ['06936', 'ACE 06936', 'クレスタ2 06936', '06936 スーツケース']) {
+      expect(adapterFor('ace').findProductUrl(model, '35L / 01 ブラックヘアライン', [])).toEqual({
+        ok: true, url: 'https://store.ace.jp/shop/g/g06936-01/', basis: 'deterministic-rule',
+      });
+    }
+  });
+
+  it('5 桁品番が 2 つ以上あれば曖昧なので導かない', () => {
+    expect(adapterFor('ace').findProductUrl('06936 06937', '35L / 01 ブラックヘアライン', []))
+      .toEqual({ ok: false, reason: 'model-shape-unsupported' });
+  });
+
+  it('6 桁以上でも既存 Source があれば第一候補にする（契約を変えない）', () => {
+    const source = makeSource({ url: 'https://store.ace.jp/shop/g/g06936-01/' });
+    expect(adapterFor('ace').findProductUrl('1069360', '35L / 01 ブラックヘアライン', [source])).toEqual({
+      ok: true, url: 'https://store.ace.jp/shop/g/g06936-01/', basis: 'existing-source',
+    });
+  });
+
   it('ELECOM は model そのままで導ける', () => {
     expect(adapterFor('elecom').findProductUrl('BM-BPTRCSEPBK', '30L / ブラック', [])).toEqual({
       ok: true, url: 'https://www.elecom.co.jp/products/BM-BPTRCSEPBK.html', basis: 'deterministic-rule',

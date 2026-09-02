@@ -19,8 +19,14 @@ import type {
 
 export const ACE_HOST = 'store.ace.jp';
 
-/** model 内の 5 桁品番。例: 「クレスタ2 06936」→ 06936 */
-const MODEL_NUMBER_RE = /(\d{5})/;
+/**
+ * model 内の 5 桁品番。例: 「クレスタ2 06936」→ 06936
+ *
+ * **数字列として独立した 5 桁だけを品番とみなす。** 前後が数字なら拒否する。
+ * `/(\d{5})/` のままだと「123456」から 12345 を、「1069360」から 10693 を
+ * 切り出して、実在しない公式 URL を作ってしまう。
+ */
+const MODEL_NUMBER_RE = /(?<!\d)(\d{5})(?!\d)/g;
 /** variant 先頭側の 2 桁カラーコード。例: 「35L / 01 ブラックヘアライン」→ 01 */
 const COLOR_CODE_RE = /(?:^|\/\s*)(\d{2})\s/;
 
@@ -29,7 +35,11 @@ const COLOR_CODE_RE = /(?:^|\/\s*)(\d{2})\s/;
  * どちらか欠ければ推測せずに失敗を返す。
  */
 export function resolveAceUrl(model: string, variant: string): UrlResolution {
-  const modelNumber = MODEL_NUMBER_RE.exec(model)?.[1];
+  // 候補が 0 件（品番が無い）でも 2 件以上（どれか決められない）でも導かない
+  const found = [...model.matchAll(MODEL_NUMBER_RE)]
+    .map((match) => match[1])
+    .filter((value): value is string => value !== undefined);
+  const modelNumber = found.length === 1 ? found[0] : undefined;
   if (modelNumber === undefined) return { ok: false, reason: 'model-shape-unsupported' };
   const colorCode = COLOR_CODE_RE.exec(variant)?.[1];
   if (colorCode === undefined) return { ok: false, reason: 'variant-code-missing' };

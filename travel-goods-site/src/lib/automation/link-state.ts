@@ -70,8 +70,13 @@ export function nextLinkState(
       : 0;
 
   const state = decideState(signals, consecutiveFailures, consecutiveOutOfStock);
+
+  // lastHealthyAt は「在庫があると確認できた日」だけ進める。
+  // 在庫切れ（availability === 0）でも 14 日目までは state が healthy のままなので、
+  // state だけを見ると在庫切れの日まで健全だったことになってしまう。
+  const stockConfirmed = signals.itemCodeAlive && signals.availability === 1;
   const lastHealthyAt =
-    state === 'healthy' && today !== undefined ? today : previous.lastHealthyAt;
+    state === 'healthy' && stockConfirmed && today !== undefined ? today : previous.lastHealthyAt;
 
   return { ...base, consecutiveFailures, consecutiveOutOfStock, state, lastHealthyAt };
 }

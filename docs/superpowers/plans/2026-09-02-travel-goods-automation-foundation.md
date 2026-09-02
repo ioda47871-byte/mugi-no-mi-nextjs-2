@@ -1115,6 +1115,7 @@ feat(travel-goods-site): 日次予算の判定と繰越キューを追加
 - [ ] `verifyVariant('30L / ブラック', '旅行リュック 30L/40L 選べる2サイズ ブラック')` が `matched: false` かつ `conflicting` に `'40L'` を含む失敗テストを書く（4 分）
 - [ ] 色が出てこない場合に `missing` に色が入る失敗テストを書く（3 分）
 - [ ] 「ブラックフライデー」「ホワイトニング」を色として拾わない失敗テストを書く（4 分）
+- [ ] `Lサイズ` が `LLサイズ` に、`Sサイズ` が `XSサイズ` に一致しない失敗テストを書く（4 分）
 - [ ] `hasExcludedTerm('【中古】スーツケース')` が `true` を返す失敗テストを書く（2 分）
 - [ ] `matched: false` のとき `matchedVariantLabel` が `null` である失敗テストを書く（2 分）
 - [ ] テストを実行し失敗を確認する（1 分）
@@ -1166,8 +1167,13 @@ Error: Failed to load url ../src/lib/automation/variant
 より長い語の一部なので色として扱わない。これで「ブラックフライデー」「ホワイトニング」
 「ミッドナイトネイビー」を色指定と誤認しない。販売ページ側にも同じ規則を使う。
 判定できない書き方は一致させない（false-negative 側へ倒す）。容量は `/(\d+(?:\.\d+)?)L/g`、
-サイズは `/\b(S|M|L|XL|2XL)サイズ\b/g`、セット数は `/(\d+)個セット/g`。
-照合は `normalizeForMatch` を通した文字列同士で行う。
+サイズは `/(?<![0-9A-Za-z])(2XL|XL|S|M|L)サイズ/g`、セット数は `/(\d+)個セット/g`。
+**サイズは前が英数字なら拾わない。** `LLサイズ`・`XSサイズ`・`2Mサイズ`・`SLサイズ` を
+`Lサイズ`・`Sサイズ`・`Mサイズ` と誤認しないため（`2XL` は選択肢の先頭に置く）。
+
+**照合は substring では行わない。** 販売ページ側も同じ規則でトークン化し、
+集合として突き合わせる。色は表記ゆれを潰すと辞書に当たらなくなるので生文字列から、
+サイズ・容量・セット数は `normalizeForMatch` を通した文字列から取り出す。
 
 ### 成功確認コマンド
 
@@ -1228,9 +1234,13 @@ feat(travel-goods-site): variant トークンの抽出と販売ページ文言�
 1. **`knownSources` に、その商品の仕様出典として既に登録された URL があればそれを使う**
    （`basis: 'existing-source'`）。既存 23 商品はすべてこれで解決する。
 2. 無ければ、メーカーごとの**決定的な規則**が適用できるときだけ導く（`basis: 'deterministic-rule'`）。
-   - ACE 系: `model` から `/(\d{5})/` で 5 桁品番、`variant` から `/(?:^|\/\s*)(\d{2})\s/` で
-     2 桁カラーコードを取り、両方取れたときだけ `https://store.ace.jp/shop/g/g{品番}-{カラー}/` を返す。
+   - ACE 系: `model` から `/(?<!\d)(\d{5})(?!\d)/g` で**数字列として独立した**5 桁品番、
+     `variant` から `/(?:^|\/\s*)(\d{2})\s/` で 2 桁カラーコードを取り、
+     両方取れたときだけ `https://store.ace.jp/shop/g/g{品番}-{カラー}/` を返す。
      **どちらか欠ければ `{ ok: false, reason: 'variant-code-missing' }`。**
+     **6 桁以上の数字列から 5 桁を切り出さない。** `/(\d{5})/` のままだと
+     「123456」から `12345`、「1069360」から `10693` を取り出して実在しない URL を作る。
+     5 桁品番が 2 つ以上あるときも、どれか決められないので導かない。
    - ELECOM: `model` が `/^[A-Z0-9-]{6,}$/` のときだけ `https://www.elecom.co.jp/products/{model}.html`。
    - **Anker: 規則が無いため常に `{ ok: false, reason: 'model-shape-unsupported' }` を返す。**
 3. 1 も 2 も成立しなければ `{ ok: false, ... }`。**公式検索は段階0 では行わない**
@@ -1266,6 +1276,7 @@ ACE・PROTECA・World Traveler は `store.ace.jp` を共有するが、
 - [ ] `ace`/`proteca`/`world-traveler` の `manufacturerId` が互いに異なる失敗テストを書く（3 分）
 - [ ] `findProductUrl` が既存 `Source` を第一候補にする失敗テストを書く（4 分）
 - [ ] ACE で variant にカラーコードが無いと `'variant-code-missing'` を返す失敗テストを書く（4 分）
+- [ ] 6 桁以上の数字列（`123456`・`1069360`）から 5 桁を切り出さない失敗テストを書く（4 分）
 - [ ] Anker が常に `'model-shape-unsupported'` を返す失敗テストを書く（3 分）
 - [ ] どのアダプターも `basis: 'official-search'` を返さない失敗テストを書く（3 分）
 - [ ] テストを実行し失敗を確認する（1 分）
@@ -1517,6 +1528,12 @@ Error: Failed to load url ../src/lib/manufacturers/ace
 **入力の検査だけでは足りない。** `0.0001kg`（×1000 → 丸めて 0）、
 `W0.01cm`（×10 → 丸めて 0）、`1e307kg`（×1000 → `Infinity`）はいずれも
 入力は正の有限値なので、**換算・丸めの後の最終値にも同じ検査を通す**。
+
+**寸法の単位は W/H/D に直接付いているものだけを使う。**
+文字列のどこかにある `mm`/`cm` を借りない。
+「W35×H55×D25（梱包サイズは80cm）」の `80cm` は梱包の値であって寸法の単位ではないので、
+この入力は `null` にする。W/H/D で単位が混在しても `null`。
+同じラベルが複数現れてどの組か決められない場合も安全側で `null`。
 W/H/D のどれか 1 つでも不正なら**寸法全体を `null`** にし、
 `mm` と `cm` が混在した表記は尺度を決められないので推定せず `null` にする。
 `W35×H55×D25cm` は `/W([\d.]+)×H([\d.]+)×D([\d.]+)cm/` で取り、**登録順（幅・高さ・奥行）のまま**返す。
@@ -2089,7 +2106,7 @@ API 障害を商品消失として数えてしまう。そこで `observationSta
 | `observationStatus === 'ok'` かつ `!itemCodeAlive` | `consecutiveFailures` を +1（`availability` が `null` でも数える） | `consecutiveOutOfStock` は 0 | 更新しない |
 | 上の連続が 3 日 | `hidden` | — | 更新しない |
 | 上の連続が 7 日 | `replace` | — | 更新しない |
-| `observationStatus === 'ok'` かつ `itemCodeAlive && availability === 0` | 表示維持。14 日で `hidden` | `consecutiveOutOfStock` を +1、`consecutiveFailures` は 0 | 更新しない |
+| `observationStatus === 'ok'` かつ `itemCodeAlive && availability === 0` | 表示維持（`healthy`）。14 日で `hidden` | `consecutiveOutOfStock` を +1、`consecutiveFailures` は 0 | **更新しない**（在庫を確認できていない） |
 | `observationStatus === 'ok'` かつ `itemCodeAlive && availability === null` | **`uncertain`**（在庫の判断材料が無いので `healthy` にしない） | `consecutiveFailures` は 0（itemCode の存在は確認できた）。**`consecutiveOutOfStock` は据え置く**（在庫が戻った証拠が無いので 0 へ戻さない） | 更新しない |
 | `affiliateTargetChanged === true` | **`manual-hold`**。自動交換もしない | `consecutiveFailures` を増やさない | 更新しない |
 | `identifierMatch === 'weak' && !variantMatch` | `manual-hold` | — | 更新しない |
@@ -2101,6 +2118,11 @@ API 障害が何日続いても据え置き、緩和するのは `healthy` → `
 
 **`healthy` にするのは `availability === 1` を確認できたときだけ。**
 `availability === null`（在庫情報だけ取れなかった）は `uncertain` にする。
+
+**`lastHealthyAt` を進めるのは `availability === 1` を確認できた日だけ。**
+在庫切れの日は 14 日目まで `state` が `healthy` のままなので、`state` だけを見ると
+在庫切れの日まで健全だったことになってしまう。`state === 'healthy'` に加えて
+`itemCodeAlive && availability === 1` を条件にする。
 
 **`affiliateTargetChanged` は保存するだけにしない。** 紹介URLの `pc` 遷移先が
 変わったリンクは別商品へ飛びうるので、他の信号が正常でも `healthy` にしない。
@@ -2125,6 +2147,7 @@ API 障害が何日続いても据え置き、緩和するのは `healthy` → `
 - [ ] `observationStatus === 'ok'` かつ `!itemCodeAlive` なら `availability` が `null` でも数える失敗テストを書く（4 分）
 - [ ] `itemCodeAlive` かつ `availability === null` で `healthy` にせず、`consecutiveOutOfStock` を据え置く失敗テストを書く（4 分）
 - [ ] `hidden` / `replace` / `manual-hold` が API 障害で解除されない失敗テストを書く（4 分）
+- [ ] 在庫切れが 13 日続いても `lastHealthyAt` が変わらない失敗テストを書く（3 分）
 - [ ] `!itemCodeAlive` を 3 日連続で与えると 3 日目に `hidden` になる失敗テストを書く（4 分）
 - [ ] `affiliateTargetChanged` が `true` なら `healthy` にせず `manual-hold` にする失敗テストを書く（4 分）
 - [ ] 遷移先が変わっても連続失敗日数を増やさず `lastHealthyAt` を更新しない失敗テストを書く（3 分）

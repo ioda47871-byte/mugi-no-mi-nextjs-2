@@ -59,8 +59,15 @@ export const EXCLUDED_LISTING_TERMS: readonly string[] = [
 const CAPACITY_L_RE = /(\d+(?:\.\d+)?(?:\s*\/\s*\d+(?:\.\d+)?)*)\s*L(?![a-zA-Z])/g;
 /** モバイルバッテリーの容量。 */
 const CAPACITY_MAH_RE = /(\d+(?:\.\d+)?)\s*mAh/gi;
-/** S/M/L/XL/2XL のサイズ表記。長いものを先に見る。 */
-const SIZE_RE = /(2XL|XL|S|M|L)サイズ/g;
+/**
+ * S/M/L/XL/2XL のサイズ表記。長いものを先に見る。
+ *
+ * 前が英数字なら独立したサイズ表記ではないので拾わない。
+ * `(?<![0-9A-Za-z])` により `LLサイズ`・`XSサイズ`・`2Mサイズ`・`SLサイズ` を弾く
+ * （`2XL` は選択肢の先頭に置いてあるので `2XLサイズ` としてまとまって一致する）。
+ * 後ろは必ず「サイズ」なので、英数字が続く心配はない。
+ */
+const SIZE_RE = /(?<![0-9A-Za-z])(2XL|XL|S|M|L)サイズ/g;
 const SET_COUNT_RE = /(\d+)個セット/g;
 
 function uniq(values: string[]): string[] {
@@ -157,17 +164,27 @@ function labelOf(tokens: VariantTokens): string {
 export function verifyVariant(variant: string, listingText: string): VariantVerdict {
   const tokens = extractVariantTokens(variant);
   const all = [...tokens.sizes, ...tokens.capacities, ...tokens.colors, ...tokens.setCounts];
-  const haystack = normalizeForMatch(listingText);
-
-  // 販売ページ側も同じ規則でトークン化する。
-  // 色を substring で照合すると「ブラック」が「ブラックヘアライン」に一致してしまう。
+  // 販売ページ側も同じ規則でトークン化してから突き合わせる。
+  // substring で照合すると「ブラック」が「ブラックヘアライン」に、
+  // 「Lサイズ」が「LLサイズ」に一致してしまう。
+  //
+  // 色は表記ゆれを潰すと辞書に当たらなくなる（ダークネイビー → ダクネイビ）ので生文字列から、
+  // それ以外は全角・記号の違いを吸収した文字列から取り出す。
+  const normalizedListing = normalizeForMatch(listingText);
   const listingColors = new Set(colorsIn(listingText).map(normalizeForMatch));
+  const listingSizes = new Set(sizesIn(normalizedListing).map(normalizeForMatch));
+  const listingCapacities = new Set(capacitiesIn(normalizedListing).map(normalizeForMatch));
+  const listingSetCounts = new Set(setCountsIn(normalizedListing).map(normalizeForMatch));
 
-  const missing = all.filter((token) => {
-    const normalized = normalizeForMatch(token);
-    if (tokens.colors.includes(token)) return !listingColors.has(normalized);
-    return !haystack.includes(normalized);
-  });
+  const notIn = (found: ReadonlySet<string>) => (token: string) =>
+    !found.has(normalizeForMatch(token));
+
+  const missing = [
+    ...tokens.sizes.filter(notIn(listingSizes)),
+    ...tokens.capacities.filter(notIn(listingCapacities)),
+    ...tokens.colors.filter(notIn(listingColors)),
+    ...tokens.setCounts.filter(notIn(listingSetCounts)),
+  ];
 
   // 販売ページ側に現れる、対象と異なる色・容量・サイズ・セット数
   const ownColors = new Set(tokens.colors.map(normalizeForMatch));
@@ -176,9 +193,9 @@ export function verifyVariant(variant: string, listingText: string): VariantVerd
   const ownSetCounts = new Set(tokens.setCounts.map(normalizeForMatch));
   const conflicting = [
     ...colorsIn(listingText).filter((v) => !ownColors.has(normalizeForMatch(v))),
-    ...capacitiesIn(listingText).filter((v) => !ownCapacities.has(normalizeForMatch(v))),
-    ...sizesIn(listingText).filter((v) => !ownSizes.has(normalizeForMatch(v))),
-    ...setCountsIn(listingText).filter((v) => !ownSetCounts.has(normalizeForMatch(v))),
+    ...capacitiesIn(normalizedListing).filter((v) => !ownCapacities.has(normalizeForMatch(v))),
+    ...sizesIn(normalizedListing).filter((v) => !ownSizes.has(normalizeForMatch(v))),
+    ...setCountsIn(normalizedListing).filter((v) => !ownSetCounts.has(normalizeForMatch(v))),
   ];
 
   // トークンが 1 つも取れなければ、何にでも一致してしまうので一致にしない
