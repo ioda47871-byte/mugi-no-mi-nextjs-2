@@ -3016,7 +3016,7 @@ RecallChecker はメーカー別の承認済み確認先を持ち、未承認・
 
 - Consumes: `decideTier`（Task 9）、`nextLinkState` / `decideReplacement`（Task 10）、`verifyVariant` / `hasExcludedTerm`（Task 5）、`resolveOfficialUrl` / `RecallChecker`（Task 13）、`matchProduct` / `pickBestMatch` / `searchKeywordsFor` / `isHumanVerifiedLink`（既存）、`itemPageUrlFromAffiliateUrl`（既存）
 - Produces:
-  - `export type PipelineDeps = { search: (keyword: string) => Promise<RakutenItem[]>; fetchOfficial: OfficialFetcher; checkRecall: RecallChecker; today: string }`
+  - `export type PipelineDeps = { search: (keyword: string) => Promise<RakutenItem[]>; fetchOfficial: OfficialFetcher; checkRecall: RecallChecker; policies: readonly OfficialFetchPolicy[]; today: string }`（`policies` は `resolveOfficialUrl` へそのまま渡す。**グローバルを直接見ない**）
   - `export type ExistingOutcome = { productId: string; tier: Tier; blockers: BlockerCode[]; signals: LinkSignals; linkState: LinkState; replacement: ReplacementDecision; matchedVariantLabel: string | null; extractedSpec: ExtractedSpec | null; officialUrl: string | null; officialRangeHash: string | null }`
   - `export async function runExistingProduct(product: Product, catalog: Catalog, deps: PipelineDeps): Promise<ExistingOutcome>`
 
@@ -3030,7 +3030,7 @@ RecallChecker はメーカー別の承認済み確認先を持ち、未承認・
 
 ### ステップ
 
-- [ ] `makePipelineDeps` を factory に足す（4 分）
+- [ ] `makePipelineDeps` を factory に足す（`policies` の既定は `OFFICIAL_FETCH_POLICIES`）（4 分）
 - [ ] 正常な入力で `blockers` が `recall-unavailable` だけになる失敗テストを書く（段階0 の既定）（5 分）
 - [ ] `checkRecall` を `'clear'` にすると `tier: 'S'` になる失敗テストを書く（4 分）
 - [ ] `fetchOfficial` が `robots-denied` を返すと `official-robots-denied` が立つ失敗テストを書く（3 分）
@@ -3052,7 +3052,13 @@ RecallChecker はメーカー別の承認済み確認先を持ち、未承認・
 // tests/automation-existing.test.ts
 import { describe, expect, it } from 'vitest';
 import { runExistingProduct } from '../src/lib/automation/sync/existing';
+import type { OfficialFetchPolicy } from '../src/lib/automation/sync/resolve-official';
 import { makeCatalog, makeMerchantLink, makePipelineDeps, makeProduct } from './factories';
+
+/** 段階0 は全メーカー未承認。承認済みの経路を通すテストだけが注入する。 */
+const approvedAce: readonly OfficialFetchPolicy[] = [
+  { manufacturerId: 'ace', approved: true, approvedNote: 'テスト用' },
+];
 
 describe('既存商品の判定', () => {
   it('段階0 の既定ではリコール未確認で B になる', async () => {
@@ -3061,16 +3067,24 @@ describe('既存商品の判定', () => {
     expect(outcome.blockers).toEqual(['recall-unavailable']);
   });
 
-  it('リコールが clear なら S になる', async () => {
-    const deps = makePipelineDeps({ checkRecall: async () => 'clear' });
+  it('リコールが clear で取得も承認済みなら S になる', async () => {
+    const deps = makePipelineDeps({ checkRecall: async () => 'clear', policies: approvedAce });
     const outcome = await runExistingProduct(makeProduct({ jan: '4549550317535' }), makeCatalog(), deps);
     expect(outcome.blockers).toEqual([]);
     expect(outcome.tier).toBe('S');
   });
 
+  it('取得が未承認なら、リコールが clear でも B のまま', async () => {
+    const deps = makePipelineDeps({ checkRecall: async () => 'clear' });
+    const outcome = await runExistingProduct(makeProduct({ jan: '4549550317535' }), makeCatalog(), deps);
+    expect(outcome.tier).toBe('B');
+    expect(outcome.blockers).toContain('official-fetch-failed');
+  });
+
   it('robots 拒否は official-robots-denied として立つ', async () => {
     const deps = makePipelineDeps({
       checkRecall: async () => 'clear',
+      policies: approvedAce,
       fetchOfficial: async () => ({ status: 'robots-denied', httpStatus: null }),
     });
     const outcome = await runExistingProduct(makeProduct(), makeCatalog(), deps);
@@ -3084,7 +3098,7 @@ describe('既存商品の判定', () => {
   });
 
   it('matchedVariant は販売ページ文言から抽出した値', async () => {
-    const deps = makePipelineDeps({ checkRecall: async () => 'clear' });
+    const deps = makePipelineDeps({ checkRecall: async () => 'clear', policies: approvedAce });
     const outcome = await runExistingProduct(makeProduct(), makeCatalog(), deps);
     expect(outcome.matchedVariantLabel).not.toBeNull();
     expect(outcome.matchedVariantLabel).toContain('35L');
@@ -3096,6 +3110,7 @@ describe('既存商品の判定', () => {
     const catalog = makeCatalog({ merchantLinks: [link] });
     const deps = makePipelineDeps({
       checkRecall: async () => 'clear',
+      policies: approvedAce,
       search: async () => [],
     });
     const outcome = await runExistingProduct(makeProduct(), catalog, deps);
@@ -3108,6 +3123,7 @@ describe('既存商品の判定', () => {
 
 ```ts
 import type { PipelineDeps } from '../../src/lib/automation/sync/existing';
+import { OFFICIAL_FETCH_POLICIES } from '../../src/lib/automation/sync/resolve-official';
 
 export const OFFICIAL_HTML_FIXTURE = `<table class="spec">
 <tr><th>本体重量</th><td>2.9kg</td></tr>
@@ -3120,11 +3136,17 @@ export function makePipelineDeps(over: Partial<PipelineDeps> = {}): PipelineDeps
     search: async () => [makeRakutenItem()],
     fetchOfficial: async () => ({ status: 'ok', html: OFFICIAL_HTML_FIXTURE }),
     checkRecall: async () => 'unavailable',
+    // 既定は段階0 の全件未承認。承認済みの経路を通すテストだけが明示的に注入する。
+    policies: OFFICIAL_FETCH_POLICIES,
     today: '2026-09-02',
     ...over,
   };
 }
 ```
+
+> `makePipelineDeps` は `OFFICIAL_FETCH_POLICIES`（Task 13）を import する。
+> **既定を承認済みにしない。** 既定を承認済みにすると、承認の抜け道テスト
+> （Task 13 の「未承認なら既存 Source があっても解決しない」）と食い違う。
 
 ### テスト実行コマンド
 
@@ -3168,8 +3190,10 @@ TierInput と LinkSignals を組み立てて判定するだけで、書き込み
 
 | 種別 | パス |
 |---|---|
+| 作成 | `travel-goods-site/src/lib/automation/sync/constants.ts` |
 | 作成 | `travel-goods-site/src/lib/automation/sync/candidate.ts` |
 | 作成 | `travel-goods-site/tests/automation-candidate.test.ts` |
+| 変更 | `travel-goods-site/tests/factories/index.ts`（`makePipelineDeps` に `policies` を追加） |
 
 ### Consumes / Produces
 
@@ -3184,6 +3208,10 @@ TierInput と LinkSignals を組み立てて判定するだけで、書き込み
 > `model` か `variantLabel` が `null` なら `targetFromDraft` は `null` を返し、
 > `evaluateCandidate` は `officialFetchStatus: 'failed'` として扱う。
 - Produces:
+  - `constants.ts`（**値の依存を持たない葉モジュール**。Task 15 と Task 16 の両方が import する）
+    - `export const AUTO_REGISTERED_MARKER = 'automation:product-discovery'`
+    - `export function autoRegisteredUsageNote(detail: string): string`（`` `${AUTO_REGISTERED_MARKER} ${detail}` ``）
+    - `export const MANUFACTURER_PUBLISHERS: Record<ManufacturerId, string>`
   - `export type CandidateDraft = { itemCode: string; manufacturerId: ManufacturerId | null; model: string | null; variantLabel: string | null; category: Category | null; janFromListing: string | null; affiliateItemPageUrl: string | null; excludedTerm: ExcludedTermState }`
   - `export function buildCandidateFromRakutenItem(item: RakutenItem, known: readonly Product[]): CandidateDraft`
   - `export function targetFromDraft(draft: CandidateDraft): ResolveTarget | null`（**Task 13 の `targetFromFields` を呼ぶだけ**。`model` か `variantLabel` が `null` なら `null`）
@@ -3196,6 +3224,7 @@ TierInput と LinkSignals を組み立てて判定するだけで、書き込み
   - `export const PRODUCT_ID_HASH_LENGTH = 8`
   - `export type PromotedProduct = { product: Product; source: Source }`
   - `export function promoteCandidate(evaluation: CandidateEvaluation, today: string): PromotedProduct | null`
+    （**返す `Source.usageNote` は必ず `autoRegisteredUsageNote(...)` で作る**）
   - `export function buildProductId(manufacturerId: ManufacturerId, model: string, variantLabel: string): string`
 
 ### 仕様（新商品探索の入力から公開・queue まで）
@@ -3348,6 +3377,82 @@ export function candidateKeyOfProduct(product: Product): string | null {
 作る `Product` は `status: 'review'` で、**`Fact` の `sourceId` は同時に作る `Source` の ID**、
 `checkedAt` は `today`。**取得できなかった項目は `null` のまま**にする。
 
+#### 自動登録の印を `Source.usageNote` に必ず入れる
+
+Task 16 の `registeredProductsThisWeek` は、**商品の Facts が参照する `Source` の
+`usageNote` に `AUTO_REGISTERED_MARKER` があるか**だけで自動登録商品を数える。
+`promoteCandidate` が印を付けなければ、自動登録した商品が 1 件も数えられず、
+**週 3 件の上限が効かなくなる**。したがって印付けは `promoteCandidate` の契約である。
+
+印の文字列は `src/lib/automation/sync/constants.ts` に 1 箇所だけ置く。
+
+```ts
+// src/lib/automation/sync/constants.ts
+// 依存を持たない葉モジュール。candidate.ts と write-plan.ts の両方が import する。
+// ここに置くことで、candidate.ts <-> write-plan.ts の循環 import を作らない。
+
+/** 自動探索で登録した商品の Source に必ず入れる印。週次件数の判別に使う。 */
+export const AUTO_REGISTERED_MARKER = 'automation:product-discovery';
+
+/** 自動登録 Source の usageNote を作る。印を必ず先頭に置く。 */
+export function autoRegisteredUsageNote(detail: string): string {
+  return `${AUTO_REGISTERED_MARKER} ${detail}`;
+}
+
+/** Source.publisher に入れる発行者名。現行 datasets/production/sources.json の表記に合わせる。 */
+export const MANUFACTURER_PUBLISHERS: Record<ManufacturerId, string> = {
+  ace: 'エース株式会社（エース公式通販）',
+  proteca: 'エース株式会社（プロテカ）',
+  'world-traveler': 'エース株式会社（ワールドトラベラー）',
+  elecom: 'エレコム株式会社',
+  anker: 'アンカー・ジャパン株式会社',
+};
+```
+
+`constants.ts` が import するのは `ManufacturerId` の型だけで、値の import は持たない。
+
+`promoteCandidate` が作る `Source` は次の形にする。
+
+```ts
+const source: Source = {
+  id: `src-${productId}`,
+  url: evaluation.officialUrl,          // 条件3 で非 null が保証されている
+  publisher: MANUFACTURER_PUBLISHERS[draft.manufacturerId],
+  checkedAt: today,
+  provenance: 'direct-fetch',
+  importedFrom: null,
+  locator: 'メーカー公式の商品ページの仕様表',
+  editorialUse: 'verified',
+  automatedFetch: 'allowed',            // 取得ポリシーが approved のときだけここへ来る
+  llmInput: 'unverified',
+  // 印はここでだけ付ける。文字列を直書きしない。
+  usageNote: autoRegisteredUsageNote('自動探索で登録。仕様表から抽出した公表値のみ'),
+};
+```
+
+- **印を付けるのは `promoteCandidate` だけ。** 人が登録した `Source` に自動で付けない。
+  Task 13 の `resolveOfficialUrl` も、Task 14 の `runExistingProduct` も `Source` を作らない。
+- `usageNote` は `sourceSchema` で 1〜400 文字なので、印を足しても収まる。
+- **`isAutoRegistered`（Task 16）は `includes` で判定する**ため、印の後ろに説明文を足してよい。
+
+#### `evaluateCandidate` は取得ポリシーを `deps` から受け取る
+
+段階0 の `OFFICIAL_FETCH_POLICIES` は全件 `approved: false` なので、
+既定のままでは `resolveOfficialUrl` が必ず `fetch-not-approved` を返し、
+**S 判定になるテストが 1 つも書けない**。
+
+そこで `PipelineDeps`（Task 14）に `policies: readonly OfficialFetchPolicy[]` を持たせ、
+`evaluateCandidate` は `resolveOfficialUrl(target, catalog.sources, deps.policies)` と渡す。
+`makePipelineDeps` の既定は `OFFICIAL_FETCH_POLICIES`（＝段階0 の未承認）とし、
+**承認済みの経路を通すテストだけが明示的に注入する**。
+
+```ts
+/** 承認済みメーカーを注入するときに使う。段階0 の既定は未承認のまま。 */
+const approvedAce: readonly OfficialFetchPolicy[] = [
+  { manufacturerId: 'ace', approved: true, approvedNote: 'テスト用' },
+];
+```
+
 ### ステップ
 
 - [ ] `buildCandidateFromRakutenItem` がブランドを完全一致で判定する失敗テストを書く（4 分）
@@ -3367,16 +3472,23 @@ export function candidateKeyOfProduct(product: Product): string | null {
 - [ ] `promoteCandidate` が `model === null` で `null` を返す失敗テストを書く（3 分）
 - [ ] `promoteCandidate` が必須 Facts の欠落で `null` を返す失敗テストを書く（4 分）
 - [ ] `promoteCandidate` が成功したとき `status: 'review'` の Product と Source を返す失敗テストを書く（5 分）
+- [ ] **`promoteCandidate` が返す `Source.usageNote` に `AUTO_REGISTERED_MARKER` が含まれる**失敗テストを書く（3 分）
+- [ ] **作った Product の全 Facts が、その印付き Source を参照している**失敗テストを書く（4 分）
+- [ ] **人が登録した通常の Source には印が付かない**失敗テストを書く（3 分）
 - [ ] 作られた Product が `productSchema` を通る失敗テストを書く（4 分）
 - [ ] テストを実行し失敗を確認する（1 分）
 - [ ] `BRAND_LISTING_TOKENS` と、複数 `manufacturerId` にまたがる場合の `null` を実装する（5 分）
 - [ ] 型番抽出（該当 1 つのときだけ採用）を実装する（4 分）
 - [ ] `CATEGORY_LISTING_KEYWORDS` とカテゴリ判定を実装する（4 分）
 - [ ] `variantLabel` と `janFromListing` の抽出を実装する（4 分）
+- [ ] `constants.ts` に `AUTO_REGISTERED_MARKER` / `autoRegisteredUsageNote` / `MANUFACTURER_PUBLISHERS` を書く（4 分）
+- [ ] `makePipelineDeps` に `policies`（既定は `OFFICIAL_FETCH_POLICIES`）を足す（3 分）
 - [ ] `targetFromDraft`（`targetFromFields` への委譲）を実装する（2 分）
 - [ ] `productIdHash` / `buildProductId` / `candidateKey` / `candidateKeyOfProduct` を実装する（5 分）
 - [ ] `evaluateCandidate`（`targetFromDraft` → `resolveOfficialUrl` → 取得 → 抽出 → `decideTier`）を実装する（5 分）
 - [ ] `promoteCandidate` の 5 条件を実装する（5 分）
+- [ ] `promoteCandidate` の Source 生成（`autoRegisteredUsageNote` と `MANUFACTURER_PUBLISHERS`）を実装する（4 分）
+- [ ] `promoteCandidate` の Facts の `sourceId` をその Source の ID へ揃える実装を書く（3 分）
 - [ ] テストが成功することを確認する（1 分）
 
 ### 最初に失敗するテスト
@@ -3396,8 +3508,27 @@ import {
   targetFromDraft,
 } from '../src/lib/automation/sync/candidate';
 import type { CandidateDraft } from '../src/lib/automation/sync/candidate';
+import type { RakutenItem } from '../src/lib/rakuten/types';
+import {
+  AUTO_REGISTERED_MARKER,
+  MANUFACTURER_PUBLISHERS,
+  autoRegisteredUsageNote,
+} from '../src/lib/automation/sync/constants';
+import type { OfficialFetchPolicy } from '../src/lib/automation/sync/resolve-official';
 import { productSchema } from '../src/lib/catalog/schema';
-import { makeCatalog, makePipelineDeps, makeProduct, makeRakutenItem } from './factories';
+import {
+  makeCandidatePair,
+  makeCatalog,
+  makePipelineDeps,
+  makeProduct,
+  makeRakutenItem,
+  makeSource,
+} from './factories';
+
+/** 段階0 は全メーカー未承認。S 判定の経路を通すテストだけが承認済みを注入する。 */
+const approvedAce: readonly OfficialFetchPolicy[] = [
+  { manufacturerId: 'ace', approved: true, approvedNote: 'テスト用' },
+];
 
 describe('楽天検索結果から候補を作る', () => {
   it('ブランドを完全一致で判定する', () => {
@@ -3513,6 +3644,25 @@ describe('候補から ResolveTarget を作る', () => {
   });
 });
 
+/**
+ * S 判定まで通る候補を昇格させる。段階0 の既定では取得未承認で B になるため、
+ * 承認済みポリシーとリコール clear を明示的に注入する。
+ */
+async function promoteFixture(over: Partial<RakutenItem> = {}, today = '2026-09-02') {
+  const item = makeRakutenItem({
+    itemCaption: '本体重量2.9kg。外寸 幅35×高さ55×奥行25cm。容量35L。JAN 4549550317535',
+    ...over,
+  });
+  const draft = buildCandidateFromRakutenItem(item, []);
+  const evaluation = await evaluateCandidate(
+    draft,
+    makeCatalog(),
+    makePipelineDeps({ checkRecall: async () => 'clear', policies: approvedAce, today }),
+  );
+  expect(evaluation.tier).toBe('S');
+  return promoteCandidate(evaluation, today);
+}
+
 describe('候補の昇格', () => {
   it('段階0 は取得未承認とリコール未確認で必ず B。Product を作らない', async () => {
     const draft = buildCandidateFromRakutenItem(makeRakutenItem(), []);
@@ -3522,11 +3672,23 @@ describe('候補の昇格', () => {
     expect(promoteCandidate(evaluation, '2026-09-02')).toBeNull();
   });
 
+  it('取得ポリシーが未承認なら、リコールが clear でも B のまま', async () => {
+    const draft = buildCandidateFromRakutenItem(
+      makeRakutenItem({ itemCaption: '本体重量2.9kg。外寸 幅35×高さ55×奥行25cm。容量35L。JAN 4549550317535' }), []);
+    // policies を注入しない = 段階0 の全件未承認
+    const evaluation = await evaluateCandidate(
+      draft, makeCatalog(), makePipelineDeps({ checkRecall: async () => 'clear' }));
+    expect(evaluation.tier).toBe('B');
+    expect(promoteCandidate(evaluation, '2026-09-02')).toBeNull();
+  });
+
   it('model が決まらなければ Product を作らない', async () => {
     const item = makeRakutenItem({ itemName: 'エース スーツケース 35L ブラックヘアライン' });
     const draft = buildCandidateFromRakutenItem(item, []);
     expect(draft.model).toBeNull();
-    const evaluation = await evaluateCandidate(draft, makeCatalog(), makePipelineDeps({ checkRecall: async () => 'clear' }));
+    const evaluation = await evaluateCandidate(
+      draft, makeCatalog(),
+      makePipelineDeps({ checkRecall: async () => 'clear', policies: approvedAce }));
     expect(promoteCandidate(evaluation, '2026-09-02')).toBeNull();
   });
 
@@ -3534,6 +3696,7 @@ describe('候補の昇格', () => {
     const draft = buildCandidateFromRakutenItem(makeRakutenItem(), []);
     const deps = makePipelineDeps({
       checkRecall: async () => 'clear',
+      policies: approvedAce,
       fetchOfficial: async () => ({ status: 'ok', html: '<table class="spec"><tr><th>本体重量</th><td>2.9kg</td></tr></table>' }),
     });
     const evaluation = await evaluateCandidate(draft, makeCatalog(), deps);
@@ -3541,19 +3704,53 @@ describe('候補の昇格', () => {
   });
 
   it('すべて揃えば review の Product と Source を作る', async () => {
-    const draft = buildCandidateFromRakutenItem(
-      makeRakutenItem({ itemCaption: '本体重量2.9kg。外寸 幅35×高さ55×奥行25cm。容量35L。JAN 4549550317535' }), []);
-    const evaluation = await evaluateCandidate(
-      draft, makeCatalog(), makePipelineDeps({ checkRecall: async () => 'clear' }));
-    expect(evaluation.tier).toBe('S');
-    const promoted = promoteCandidate(evaluation, '2026-09-02');
+    const promoted = await promoteFixture();
     expect(promoted).not.toBeNull();
     if (promoted === null) return;
     expect(promoted.product.status).toBe('review');
     expect(promoted.product.weightG.sourceId).toBe(promoted.source.id);
     expect(promoted.source.provenance).toBe('direct-fetch');
     expect(promoted.source.checkedAt).toBe('2026-09-02');
+    expect(promoted.source.publisher).toBe(MANUFACTURER_PUBLISHERS.ace);
     expect(productSchema.safeParse(promoted.product).success).toBe(true);
+  });
+});
+
+describe('自動登録の印', () => {
+  it('promoteCandidate が返す Source.usageNote に印が入る', async () => {
+    const promoted = await promoteFixture();
+    expect(promoted).not.toBeNull();
+    if (promoted === null) return;
+    expect(promoted.source.usageNote).toContain(AUTO_REGISTERED_MARKER);
+    // 週次件数の判別はこの印だけで行う（Task 16 の isAutoRegistered）
+    expect(promoted.source.usageNote.startsWith(AUTO_REGISTERED_MARKER)).toBe(true);
+    expect(promoted.source.usageNote.length).toBeLessThanOrEqual(400);
+  });
+
+  it('作った Product の全 Facts が印付き Source を参照する', async () => {
+    const promoted = await promoteFixture();
+    expect(promoted).not.toBeNull();
+    if (promoted === null) return;
+    const { product, source } = promoted;
+    const factSourceIds = [
+      product.weightG.sourceId,
+      product.outerSizeMm.sourceId,
+      product.capacityL.sourceId,
+      ...(product.bodySizeMm ? [product.bodySizeMm.sourceId] : []),
+      ...Object.values(product.specs).map((fact) => fact.sourceId),
+    ].filter((id): id is string => id !== null);
+    expect(factSourceIds.length).toBeGreaterThan(0);
+    for (const id of factSourceIds) expect(id).toBe(source.id);
+    expect(source.usageNote).toContain(AUTO_REGISTERED_MARKER);
+  });
+
+  it('人が登録した通常の Source には印を自動付与しない', () => {
+    expect(makeSource().usageNote).not.toContain(AUTO_REGISTERED_MARKER);
+    expect(makeCandidatePair('human-1').source.usageNote).not.toContain(AUTO_REGISTERED_MARKER);
+  });
+
+  it('印の文字列は constants.ts の 1 箇所だけで作る', () => {
+    expect(autoRegisteredUsageNote('説明')).toBe(`${AUTO_REGISTERED_MARKER} 説明`);
   });
 });
 ```
@@ -3591,6 +3788,8 @@ buildCandidateFromRakutenItem → evaluateCandidate → promoteCandidate の 3 �
 ブランドは完全一致、型番とカテゴリは該当が 1 つのときだけ採用する。
 model・variant・公式URL・必須 Facts のどれかが決まらなければ
 Product を作らず null を返す。呼び出し側が queue に残す。
+作る Source の usageNote には自動登録の印を必ず入れる。
+印の文字列は constants.ts に 1 箇所だけ置き、週次件数の判別と共有する。
 ```
 
 ---
@@ -3606,11 +3805,11 @@ Product を作らず null を返す。呼び出し側が queue に残す。
 
 ### Consumes / Produces
 
-- Consumes: `Switches` / `allowsTier`（計画3 Task 1）、`Tier`、`ExistingOutcome`、`CandidateEvaluation`、`PromotedProduct`、`Product`
+- Consumes: `Switches` / `allowsTier`（計画3 Task 1）、`Tier`、`ExistingOutcome`、`CandidateEvaluation`、`PromotedProduct`、`Product`、`AUTO_REGISTERED_MARKER`（Task 15 の `constants.ts`）
 - Produces:
   - `export const PRODUCTS_PER_WEEK = 3`
   - `export function jstWeekStart(isoDate: string): string`
-  - `export const AUTO_REGISTERED_MARKER = 'automation:product-discovery'`
+  - **`AUTO_REGISTERED_MARKER` はここで定義しない。** `src/lib/automation/sync/constants.ts`（Task 15）から import する
   - `export function isAutoRegistered(product: Product, sources: readonly Source[]): boolean`
   - `export function registeredProductsThisWeek(products: readonly Product[], sources: readonly Source[], today: string): number`
   - `export function remainingProductsThisWeek(products: readonly Product[], sources: readonly Source[], today: string): number`
@@ -3629,8 +3828,10 @@ Product を作らず null を返す。呼び出し側が queue に残す。
 自動登録の判別に `Source.usageNote` を見るため、`sources` が必要である。
 
 ```ts
+// 印の文字列は constants.ts の 1 箇所だけ。write-plan.ts でも tests でも再定義しない。
+import { AUTO_REGISTERED_MARKER } from './constants';
+
 export const PRODUCTS_PER_WEEK = 3;
-export const AUTO_REGISTERED_MARKER = 'automation:product-discovery';
 
 /** その商品の Facts が参照する Source の usageNote にマーカーがあるか。 */
 export function isAutoRegistered(product: Product, sources: readonly Source[]): boolean {
@@ -3663,6 +3864,11 @@ export function remainingProductsThisWeek(
 ```
 
 - **人が登録した商品は数えない**（`usageNote` にマーカーが無い）。
+- **マーカーを付けるのは `promoteCandidate`（Task 15）だけ。**
+  `promoteCandidate` が `autoRegisteredUsageNote(...)` で作った `Source` を
+  `applyWritePlans`（Task 17）がそのまま保存するので、
+  保存後に `registeredProductsThisWeek` が同じ商品を数えられる。
+  この往復は Task 17 の統合テスト（`automation-apply-status.test.ts`）で固定する。
 - テストでも `makeAutoRegisteredProduct` と `makeAutoRegisteredSource` を**対で渡す**。
 - **数えるのは公開・保留を問わず「自動登録した商品」**であり、
   `status` が `published` か `review` かは問わない。
@@ -3748,6 +3954,7 @@ export function productStatusOf(
 - [ ] `jstWeekStart` の週境界テストを書く（月・水・日・翌月曜）（4 分）
 - [ ] `registeredProductsThisWeek` が**人が登録した商品を数えない**失敗テストを書く（4 分）
 - [ ] Source が対で無ければ自動登録とみなさない失敗テストを書く（3 分）
+- [ ] `makeAutoRegisteredSource` の印が本番の `AUTO_REGISTERED_MARKER` と同一である失敗テストを書く（2 分）
 - [ ] 月曜に 3 件登録したら木曜の残りが 0 になる失敗テストを書く（4 分）
 - [ ] 同日再実行でも残りが増えない失敗テストを書く（3 分）
 - [ ] 週が変われば残りが 3 に戻る失敗テストを書く（3 分）
@@ -3763,7 +3970,7 @@ export function productStatusOf(
 - [ ] `AUTO_PUBLISH_PRODUCTS=S,A` でも**再確認前の A** は公開しない失敗テストを書く（4 分）
 - [ ] 週上限を超えた新商品が `queue` に残る失敗テストを書く（4 分）
 - [ ] テストを実行し失敗を確認する（1 分）
-- [ ] `jstWeekStart` と `isAutoRegistered` を実装する（4 分）
+- [ ] `jstWeekStart` と `isAutoRegistered`（`constants.ts` から印を import）を実装する（4 分）
 - [ ] `registeredProductsThisWeek` / `remainingProductsThisWeek`（3 引数）を実装する（4 分）
 - [ ] `buildWritePlan` の `automationEnabled` と `isNewProduct` の分岐を実装する（4 分）
 - [ ] Tier と `recheck` と `allowsTier` の分岐、および `productStatusOf` を実装する（5 分）
@@ -4000,7 +4207,8 @@ describe('停止スイッチの結線', () => {
 `makeAutoRegisteredProduct` を `tests/factories/index.ts` に足す。
 
 ```ts
-export const AUTO_REGISTERED_MARKER = 'automation:product-discovery';
+// テスト側でも文字列を再定義しない。本番の定数をそのまま import する。
+import { AUTO_REGISTERED_MARKER } from '../../src/lib/automation/sync/constants';
 
 /**
  * 自動登録された商品（Source の usageNote にマーカーを持つ）。
@@ -4020,6 +4228,10 @@ export function makeAutoRegisteredSource(id: string, checkedAt: string): Source 
 `usageNote: AUTO_REGISTERED_MARKER` を持つ。**必ず対で渡す。**
 `makeCandidatePair` が返す Source には `usageNote` のマーカーが無いため、
 自動登録の判別に使うのは `makeAutoRegisteredSource` のほうである。
+
+**`AUTO_REGISTERED_MARKER` を `tests/factories/index.ts` で再定義しない。**
+本番の `src/lib/automation/sync/constants.ts` から import する。
+テスト側に文字列を複製すると、本番の印を変えたときにテストだけが通り続ける。
 
 ### テスト実行コマンド
 
@@ -4075,7 +4287,7 @@ feat(travel-goods-site): 書き込み計画を作る純関数を追加
 
 ### Consumes / Produces
 
-- Consumes: Task 13〜16 のすべて、`readBudget` / `readQueue` / `readLinkHealth` / `writeIfChanged` / `serialize*`（Task 2・3）、`canSpend` / `spend` / `enqueue` / `dequeue`（Task 4）、`readSwitches`（計画3 Task 1）、`inspectCatalog`（既存）、`seedMinimalDataset` / `readSeededDataset` / `makeCandidatePair`（Task 1・統合テスト用）
+- Consumes: Task 13〜16 のすべて、`readBudget` / `readQueue` / `readLinkHealth` / `writeIfChanged` / `serialize*`（Task 2・3）、`canSpend` / `spend` / `enqueue` / `dequeue`（Task 4）、`readSwitches`（計画3 Task 1）、`inspectCatalog`（既存）、`seedMinimalDataset` / `readSeededDataset` / `makeCandidatePair` / `makePipelineDeps`（Task 1・Task 14・統合テスト用）、`registeredProductsThisWeek` / `remainingProductsThisWeek`（Task 16）、`AUTO_REGISTERED_MARKER`（Task 15 の `constants.ts`）
 - Produces:
   - `apply.ts`:
     - `export type AppliedChange = { plan: WritePlan; product: Product | null; source: Source | null; merchantLink: MerchantLink | null; linkHealth: LinkHealthEntry | null }`
@@ -4198,6 +4410,13 @@ for (const change of plans) {
 - 書いたあとに `inspectCatalog` を通す。`review` の商品は配信物に出ないため、
   `status: 'review'` で保存しても公開サイトの内容は変わらない。
 
+**統合テストは fixture だけで終わらせない。** `promoteCandidate`（Task 15）が
+`Source.usageNote` に `AUTO_REGISTERED_MARKER` を付け、`applyWritePlans` がそれを保存し、
+`registeredProductsThisWeek`（Task 16）が保存後のデータからその商品を数える——
+この往復が繋がっていないと**週 3 件の上限が黙って効かなくなる**。
+そのため統合テストには、fixture ではなく**実際に `promoteCandidate` を通した
+Product と Source を保存し、読み戻して件数を数えるケース**を置く。
+
 **統合テストは実データセットを触らない。** `seedMinimalDataset(tmpdir)`（Task 1）で
 `datasets/production/` と同じ構造を tmpdir に作り、そこへ書く。
 保存する `Product` と `Source` は `makeCandidatePair(productId, 'review')` で作るため、
@@ -4226,6 +4445,11 @@ Source 参照不整合で落ちない。`makeProduct({ id })` だけを差し替
 - [ ] **8. `productStatus === null` なら products ファイルへ一切触れない**失敗テストを書く（4 分）
 - [ ] **9. `promoteCandidate` の初期 `review` が公開許可時だけ `published` へ上書きされる**失敗テストを書く（4 分）
 - [ ] `review` 保存では `MerchantLink` を書かない失敗テストを書く（3 分）
+- [ ] 実際に `promoteCandidate` を通す `promoteReal` と、読み戻す `savedCatalog` の補助関数を書く（5 分）
+- [ ] **1 件 promote → 保存 → 読み戻しで `registeredProductsThisWeek === 1` / `remainingProductsThisWeek === 2`** の失敗テストを書く（5 分）
+- [ ] **同じ週に 3 件 promote → 保存で `remainingProductsThisWeek === 0`**（ID が衝突しないことも）の失敗テストを書く（5 分）
+- [ ] 翌週の日付では残りが 3 に戻る失敗テストを書く（3 分）
+- [ ] 人が登録した商品（印なし）は週次件数に数えない失敗テストを書く（4 分）
 - [ ] `inspectCatalog` が失敗する内容では書き込みを中止する失敗テストを書く（5 分）
 - [ ] テストを実行し失敗を確認する（1 分）
 - [ ] `gate.ts`（`gateMode`）を実装する（4 分）
@@ -4397,9 +4621,33 @@ import {
   buildWritePlan,
   type WritePlanInput,
 } from '../src/lib/automation/sync/write-plan';
+import {
+  registeredProductsThisWeek,
+  remainingProductsThisWeek,
+} from '../src/lib/automation/sync/write-plan';
+import {
+  buildCandidateFromRakutenItem,
+  evaluateCandidate,
+  promoteCandidate,
+} from '../src/lib/automation/sync/candidate';
+import { AUTO_REGISTERED_MARKER } from '../src/lib/automation/sync/constants';
+import type { OfficialFetchPolicy } from '../src/lib/automation/sync/resolve-official';
 import { readSwitches, type Switches } from '../src/lib/automation/switches';
 import { inspectCatalog } from '../src/lib/catalog/validate';
-import { makeCandidatePair, readSeededDataset, seedMinimalDataset } from './factories';
+import type { Product, Source } from '../src/lib/catalog/types';
+import {
+  makeCandidatePair,
+  makeCatalog,
+  makePipelineDeps,
+  makeRakutenItem,
+  readSeededDataset,
+  seedMinimalDataset,
+} from './factories';
+
+/** 承認済みメーカーを注入する。段階0 の既定は未承認のまま。 */
+const approvedAce: readonly OfficialFetchPolicy[] = [
+  { manufacturerId: 'ace', approved: true, approvedNote: 'テスト用' },
+];
 
 const PRODUCT_ID = 'ace-06936-35l-4ea43263';
 const SOURCE_ID = `src-${PRODUCT_ID}`;
@@ -4603,6 +4851,122 @@ describe('最終保存データの status', () => {
     expectCatalogOk();
   });
 });
+
+/**
+ * fixture ではなく、実際に promoteCandidate() を通したものを保存する。
+ * promoteCandidate が Source に印を付けなければ、保存後の
+ * registeredProductsThisWeek が 0 のままになり、週 3 件の上限が効かない。
+ * その往復をここで固定する。
+ */
+describe('promoteCandidate から週次件数までの往復', () => {
+  const TODAY = '2026-09-02'; // 水曜。週の始まりは 2026-08-31（月）
+
+  /** 実際に S 判定まで通して昇格させる。 */
+  async function promoteReal(model: string, colorCode: string, colorName: string) {
+    const item = makeRakutenItem({
+      itemCode: `testshop:${model}-${colorCode}`,
+      itemName: `エース クレスタ2 ${model} スーツケース 35L ${colorCode} ${colorName}`,
+      itemUrl: `https://item.rakuten.co.jp/testshop/${model}-${colorCode}/`,
+      itemCaption: '本体重量2.9kg。外寸 幅35×高さ55×奥行25cm。容量35L。JAN 4549550317535',
+    });
+    const draft = buildCandidateFromRakutenItem(item, []);
+    const evaluation = await evaluateCandidate(
+      draft,
+      makeCatalog(),
+      makePipelineDeps({ checkRecall: async () => 'clear', policies: approvedAce, today: TODAY }),
+    );
+    expect(evaluation.tier).toBe('S');
+    const promoted = promoteCandidate(evaluation, TODAY);
+    expect(promoted).not.toBeNull();
+    if (promoted === null) throw new Error('promoteCandidate が null を返した');
+    return promoted;
+  }
+
+  /** 保存後のデータセットを読み戻して商品と出典を取り出す。 */
+  function savedCatalog(): { products: Product[]; sources: Source[] } {
+    const input = readSeededDataset(datasetDir);
+    const result = inspectCatalog(input);
+    expect(result.issues.map((issue) => issue.message)).toEqual([]);
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('inspectCatalog が失敗した');
+    return { products: result.catalog.products, sources: result.catalog.sources };
+  }
+
+  it('1 件 promote して保存すると、その週の件数が 1 になり残りが 2 になる', async () => {
+    const promoted = await promoteReal('06936', '01', 'ブラックヘアライン');
+    // 印が付いていることを保存前に確かめる（付いていなければ以降が全て 0 になる）
+    expect(promoted.source.usageNote).toContain(AUTO_REGISTERED_MARKER);
+
+    const plan = buildWritePlan(planInput({ tier: 'S', today: TODAY, targetId: promoted.product.id }));
+    expect(plan.productStatus).toBe('published');
+    applyWritePlans(datasetDir, [{
+      plan,
+      product: promoted.product,
+      source: promoted.source,
+      merchantLink: null,
+      linkHealth: null,
+    }]);
+
+    const { products, sources } = savedCatalog();
+    expect(products).toHaveLength(1);
+    expect(products[0].status).toBe('published');
+    expect(registeredProductsThisWeek(products, sources, TODAY)).toBe(1);
+    expect(remainingProductsThisWeek(products, sources, TODAY)).toBe(2);
+  });
+
+  it('同じ週に 3 件 promote して保存すると残りが 0 になる', async () => {
+    const colors = [['06936', '01', 'ブラックヘアライン'], ['06937', '02', 'ネイビー'], ['06938', '03', 'シルバー']];
+    for (const [model, code, name] of colors) {
+      const promoted = await promoteReal(model, code, name);
+      const plan = buildWritePlan(planInput({ tier: 'S', today: TODAY, targetId: promoted.product.id }));
+      applyWritePlans(datasetDir, [{
+        plan,
+        product: promoted.product,
+        source: promoted.source,
+        merchantLink: null,
+        linkHealth: null,
+      }]);
+    }
+
+    const { products, sources } = savedCatalog();
+    expect(products).toHaveLength(3);
+    expect(new Set(products.map((row) => row.id)).size).toBe(3); // ID が衝突していない
+    expect(registeredProductsThisWeek(products, sources, TODAY)).toBe(3);
+    expect(remainingProductsThisWeek(products, sources, TODAY)).toBe(0);
+  });
+
+  it('翌週になれば残りが 3 に戻る', async () => {
+    const promoted = await promoteReal('06936', '01', 'ブラックヘアライン');
+    const plan = buildWritePlan(planInput({ tier: 'S', today: TODAY, targetId: promoted.product.id }));
+    applyWritePlans(datasetDir, [{
+      plan,
+      product: promoted.product,
+      source: promoted.source,
+      merchantLink: null,
+      linkHealth: null,
+    }]);
+
+    const { products, sources } = savedCatalog();
+    expect(remainingProductsThisWeek(products, sources, '2026-09-07')).toBe(PRODUCTS_PER_WEEK);
+  });
+
+  it('人が登録した商品は週次件数に数えない', async () => {
+    const human = makeCandidatePair('human-registered-1', 'published');
+    fs.writeFileSync(
+      path.join(datasetDir, PRODUCT_FILE),
+      `${JSON.stringify([human.product], null, 2)}\n`,
+    );
+    fs.writeFileSync(
+      path.join(datasetDir, 'sources.json'),
+      `${JSON.stringify([human.source], null, 2)}\n`,
+    );
+
+    const { products, sources } = savedCatalog();
+    expect(products).toHaveLength(1);
+    expect(registeredProductsThisWeek(products, sources, TODAY)).toBe(0);
+    expect(remainingProductsThisWeek(products, sources, TODAY)).toBe(PRODUCTS_PER_WEEK);
+  });
+});
 ```
 
 ### テスト実行コマンド
@@ -4643,6 +5007,8 @@ feat(travel-goods-site): 自動運用の CLI と状態ファイル更新を追�
 Task 13〜16 の部品を結ぶ薄い CLI。既定は dry-run で 1 バイトも書かない。
 datasets/production/candidates/ には書かず、候補は automation/queue.json に持つ。
 保存する status は plan.productStatus で決め、書き込み直前に一度だけ上書きする。
+promoteCandidate が付けた自動登録の印が保存後も残り、週 3 件の上限が
+実際に効くことを、promote から件数までの往復として統合テストで固定する。
 書き込み前に inspectCatalog を通し、失敗したら中止する。
 月・木に --limit 3 を渡しても週の合計は 3 件を超えない。
 ```
@@ -4765,6 +5131,13 @@ git -C .. diff --name-only main
 | **計画外（意図的に除外）** | **4**（段階2 / 段階3 / 段階4 / 17.1 未解決事項） |
 
 **未対応の節は 0 件。**
+
+### 今回の改訂（6 回目）で反映した指摘
+
+| 指摘 | 反映先 |
+|---|---|
+| `promoteCandidate` が自動登録の印を付けず、週 3 件の上限が効かない | **F Task 15**（`src/lib/automation/sync/constants.ts` を新設し、`AUTO_REGISTERED_MARKER` / `autoRegisteredUsageNote` / `MANUFACTURER_PUBLISHERS` を 1 箇所に置く。`promoteCandidate` が作る `Source` の形を仕様・Produces・実装ステップへ明記し、印・Facts の参照先・人の Source に印を付けないことの 4 テストを追加）／**F Task 16**（`write-plan.ts` と `tests/factories/index.ts` の重複定義を削除し、`constants.ts` から import）／**F Task 17**（fixture ではなく実際に `promoteCandidate` を通す統合ケース 4 本。1 件で `registeredProductsThisWeek === 1` / `remainingProductsThisWeek === 2`、同週 3 件で残り 0、翌週で 3 に戻る、人の登録は数えない） |
+| 併せて: 段階0 の未承認ポリシーでは S 判定のテストが 1 つも成立しない | **F Task 14**（`PipelineDeps` に `policies` を追加。`makePipelineDeps` の既定は `OFFICIAL_FETCH_POLICIES`＝未承認のまま）／**F Task 14・15**（S を期待するテストだけが `approvedAce` を注入。未承認なら B のままであるテストも追加） |
 
 ### 今回の改訂（5 回目）で反映した指摘
 
