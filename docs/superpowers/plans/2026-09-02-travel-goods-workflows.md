@@ -146,17 +146,47 @@ travel-goods-site/scripts/
 |---|---|---|---|---|
 | `AUTOMATION_ENABLED` | `false` | **全ジョブが即座に正常終了** | すべて | 何もしない（終了コード 0） |
 | `AUTO_DISCOVER_PRODUCTS` | `false` | 新商品探索（`--mode discover`） | `products/`・`sources.json`・`queue.json`（`candidate`） | 楽天API を 1 回も呼ばず正常終了 |
-| `AUTO_PUBLISH_PRODUCTS` | `off` | **S も A も商品の公開書き込み** | `products/`・`sources.json`・`merchants/` | 判定は行い、**S も A も `queue.json` に残す**（`kind: 'candidate'`） |
-| `AUTO_PUBLISH_PRODUCTS` | `S` | A の公開だけ | `products/`（A の `published`） | **S は `published` で書く。A は `tier-a-recheck` キューに積む**（`review` でも書かない） |
+| `AUTO_PUBLISH_PRODUCTS` | `off` | **S も A も「公開」だけ**（データ作成は止めない） | `products/`（`published`）・`merchants/` | 判定は行い、**S も再確認済み A も `status: 'review'` で Product と Source を保存**し、`queue.json` にも残す（`kind: 'candidate'`） |
+| `AUTO_PUBLISH_PRODUCTS` | `S` | A の公開だけ | `products/`（A の `published`）・`merchants/`（A のリンク） | **S は `published` で書く。再確認済み A は `status: 'review'` で Product と Source を保存**し、`queue.json` にも残す（`kind: 'candidate'`） |
 | `AUTO_PUBLISH_PRODUCTS` | `S,A` | なし | — | **S と、再確認済み（`recheck === 'matched-previous-day'`）の A だけ** `published` で書く |
 | `AUTO_AUDIT_LINKS` | `false` | リンク健全性チェック（`--mode links` の audit 部） | `link-health.json`・`merchants/`（非表示化） | 楽天API を audit のために呼ばない |
 | `AUTO_REPLACE_LINKS` | `false` | 代替リンクへの交換 | `merchants/`（`affiliateUrl` の差し替え） | `decideReplacement` の結果を `queue.json` に記録するだけ |
 | `AUTO_GENERATE_ARTICLES` | `false` | 記事候補の生成 | `articles/` | `article:generate` が候補を 1 件も作らず正常終了 |
 | `AUTO_PUBLISH_ARTICLES` | `false` | 記事を `published` で保存 | `articles/`（`status`） | 生成はするが **`status: 'review'` で保存**。14 検査の結果は記録する |
 
+#### `AUTO_PUBLISH_PRODUCTS` は「自動公開」だけを止める
+
+**`off` は「商品データの作成停止」ではなく「自動公開停止」である。**
+根拠が揃った S / 再確認済み A は `status: 'review'` として保持し、人が公開できる状態にする。
+記事側の `AUTO_PUBLISH_ARTICLES=false`（生成はするが `status: 'review'` で保存）と同じ考え方である。
+
+**この表が正**であり、実装は計画1 Task 16 の `buildWritePlan` と
+`WritePlan.productStatus`、計画1 Task 17 の `applyWritePlans` が行う。
+両計画の記述が食い違ったら、この表と計画1 Task 16 の
+「保存する `status` を計画に持たせる」節を突き合わせて直す。
+
+| 条件 | 最終処理 |
+|---|---|
+| S ＋ `S` または `S,A` | `published` で保存 |
+| 再確認済み A ＋ `S,A` | `published` で保存 |
+| S ＋ `off` | `review` で Product と Source を保存し、`candidate` queue にも記録 |
+| 再確認済み A ＋ `off` または `S` | `review` で Product と Source を保存し、`candidate` queue にも記録 |
+| 再確認前 A | Product を保存せず、`tier-a-recheck` queue |
+| B | Product を作らず、`candidate` queue |
+| 週 3 件上限超過 | `review` でも保存せず、`candidate` queue |
+| `AUTOMATION_ENABLED=false` | 一切書き込まない |
+| `AUTO_DISCOVER_PRODUCTS=false` | 外部通信も書き込みも行わない |
+
+- `review` で保存するときも **Source を必ず同時に書く**（Fact の `sourceId` が宙に浮くと
+  `inspectCatalog` が落ちる）。`MerchantLink` は書かない（未公開商品に CTA を出さない）。
+- `review` の商品は配信物に出ないため、**`review` 保存で公開サイトの内容は変わらない**。
+- **B と週上限超過は `review` でも保存しない。** B は根拠不足で `promoteCandidate` が
+  `Product` を返さず、週上限は「自動登録の件数」の上限だからである。
+
 **段階1（観察運転）のスイッチ構成**では、すべて既定値
 （`AUTOMATION_ENABLED=false`、`AUTO_PUBLISH_PRODUCTS=off`、他すべて `false`）である。
-このため**公開書き込みは一切発生しない**。これは計画4 Task 6 の統合テストで固定する。
+`AUTOMATION_ENABLED=false` が最優先で全書き込みを止めるため、
+**`review` 保存を含めて書き込みは一切発生しない**。これは計画4 Task 6 の統合テストで固定する。
 
 ### ステップ
 
@@ -165,11 +195,15 @@ travel-goods-site/scripts/
 - [ ] `AUTO_PUBLISH_PRODUCTS='true'` が `'off'` として扱われる（真偽値は無効）失敗テストを書く（3 分）
 - [ ] `AUTO_PUBLISH_PRODUCTS='S,A'` が正しく読める失敗テストを書く（2 分）
 - [ ] `allowsTier` の 6 通り（3 値 × 2 Tier）を検査する失敗テストを書く（4 分）
-- [ ] `AUTOMATION_ENABLED=true` でも各スイッチが `false`/`off` なら
-      対応する書き込みが許可されないことを **table-driven** で検査する失敗テストを書く（8 分）
+- [ ] `SWITCH_CASES` の配列型と `it.each` の枠だけを書く（まだケースは 0 件）（3 分）
+- [ ] `SWITCH_CASES` に `AUTO_DISCOVER_PRODUCTS` と `AUTO_AUDIT_LINKS` と `AUTO_REPLACE_LINKS` の 3 ケースを足す（4 分）
+- [ ] `SWITCH_CASES` に `AUTO_PUBLISH_PRODUCTS` の `off` と `S` の 2 ケースを足す（`published` にしない、が意味であることをコメントで書く）（4 分）
+- [ ] `SWITCH_CASES` に `AUTO_GENERATE_ARTICLES` と `AUTO_PUBLISH_ARTICLES` の 2 ケースを足す（3 分）
 - [ ] 段階1 のスイッチ構成（すべて既定値）で**公開書き込みが 1 件も許可されない**失敗テストを書く（4 分）
 - [ ] テストを実行し失敗を確認する（1 分）
-- [ ] `switches.ts` を実装する（6 分）
+- [ ] `SWITCH_NAMES` と `Switches` 型を書く（3 分）
+- [ ] `readSwitches` の真偽値 4 種の読み取りを実装する（3 分）
+- [ ] `readSwitches` の `AUTO_PUBLISH_PRODUCTS` 3 値判定と `allowsTier` を実装する（4 分）
 - [ ] テストが成功することを確認する（1 分）
 
 ### 最初に失敗するテスト
@@ -196,9 +230,15 @@ it('S は A を許可しない', () => {
 
 /**
  * AUTOMATION_ENABLED=true でも、個別スイッチが false/off なら
- * 対応する書き込みが許可されないこと。
+ * 対応する処理が許可されないこと。
  * 実際の書き込み可否は計画1 Task 16 の buildWritePlan が決めるため、
  * ここでは readSwitches の読み取り結果だけを固定する。
+ *
+ * allowsTier が false なのは「published にしない」という意味であり、
+ * 「Product を保存しない」という意味ではない。off / S 配下の再確認済み A は
+ * status: 'review' で保存する（計画1 Task 16 の productStatus）。
+ * 最終保存データの status は計画1 Task 17 の
+ * tests/automation-apply-status.test.ts が検査する。
  */
 const SWITCH_CASES: readonly {
   name: string;
@@ -211,7 +251,7 @@ const SWITCH_CASES: readonly {
     expect: (s) => expect(s.autoDiscoverProducts).toBe(false),
   },
   {
-    name: 'AUTO_PUBLISH_PRODUCTS=off なら S も A も公開しない',
+    name: 'AUTO_PUBLISH_PRODUCTS=off なら S も A も published にしない（review 保存は止めない）',
     env: { AUTOMATION_ENABLED: 'true', AUTO_PUBLISH_PRODUCTS: 'off' },
     expect: (s) => {
       expect(allowsTier(s.autoPublishProducts, 'S')).toBe(false);
@@ -219,7 +259,7 @@ const SWITCH_CASES: readonly {
     },
   },
   {
-    name: 'AUTO_PUBLISH_PRODUCTS=S なら S だけ公開する',
+    name: 'AUTO_PUBLISH_PRODUCTS=S なら S だけ published にする（A は review 保存）',
     env: { AUTOMATION_ENABLED: 'true', AUTO_PUBLISH_PRODUCTS: 'S' },
     expect: (s) => {
       expect(allowsTier(s.autoPublishProducts, 'S')).toBe(true);
@@ -254,8 +294,9 @@ it.each(SWITCH_CASES)('$name', ({ env, expect: check }) => {
   check(switches);
 });
 
-it('段階1 の構成（すべて既定値）では公開書き込みが起きない', () => {
+it('段階1 の構成（すべて既定値）では review 保存も含めて書き込みが起きない', () => {
   const switches = readSwitches({});
+  // automationEnabled=false が最優先で全書き込みを止める（review 保存も起きない）
   expect(switches.automationEnabled).toBe(false);
   expect(switches.autoPublishProducts).toBe('off');
   expect(allowsTier(switches.autoPublishProducts, 'S')).toBe(false);
@@ -825,7 +866,9 @@ permissions:
 - [ ] `--state` が `success` / `failure` 以外なら終了コード 2 で止まる失敗テストを書く（3 分）
 - [ ] `--sha` が 40 桁の 16 進でなければ終了コード 2 で止まる失敗テストを書く（3 分）
 - [ ] テストを実行し失敗を確認する（1 分）
-- [ ] `post-verify-status.ts` を実装する（8 分）
+- [ ] `post-verify-status.ts` の引数解析（`--state` / `--sha` / `--dry-run`）を実装する（4 分）
+- [ ] `--state` と `--sha` の検証と終了コード 2 を実装する（3 分）
+- [ ] Commit Status の送信本体（`context: automation/verify`）と `--dry-run` 分岐を実装する（4 分）
 - [ ] `travel-goods-ci.yml` に `statuses: write` とステップを追加する（4 分）
 - [ ] YAML が妥当であることを確認する（`node -e "require('yaml')"` 相当、または目視）（2 分）
 - [ ] テストが成功することを確認する（1 分）
@@ -945,11 +988,14 @@ defaults:
 - [ ] cron が仕様どおりである失敗テストを書く（3 分）
 - [ ] どの workflow も `--force` を含まない失敗テストを書く（3 分）
 - [ ] テストを実行し失敗を確認する（1 分）
-- [ ] `ensure-daily-branch.sh` を書く（8 分）
+- [ ] `ensure-daily-branch.sh` のブランチ名生成（JST 日付）と既存ブランチ検出を書く（4 分）
+- [ ] `ensure-daily-branch.sh` の `main` からの作成と再利用時の rebase 回避を書く（4 分）
 - [ ] `automation-links.yml` の共通ヘッダとスイッチ判定を書く（4 分）
 - [ ] `automation-links.yml` の取得ステップと push を書く（5 分）
-- [ ] `automation-discover.yml` を書く（8 分）
-- [ ] `automation-articles.yml` を書く（8 分）
+- [ ] `automation-discover.yml` の共通ヘッダ（`schedule` / `workflow_dispatch` / `permissions` / `concurrency`）を書く（4 分）
+- [ ] `automation-discover.yml` の `--mode discover` 実行ステップと push を書く（4 分）
+- [ ] `automation-articles.yml` の共通ヘッダを書く（3 分）
+- [ ] `automation-articles.yml` の `article:generate` 実行ステップと push を書く（5 分）
 - [ ] テストが成功することを確認する（1 分）
 
 ### 最初に失敗するテスト
@@ -1404,7 +1450,10 @@ export const EXIT_CODE_TIMEOUT = 3;
 - [ ] `scripts/wait-for-deploy.ts` の polling ループを実装する（5 分）
 - [ ] `notify.ts` の 7 条件を実装する（5 分）
 - [ ] `scripts/post-deploy-check.ts` を実装する（5 分）
-- [ ] `automation-commit.yml` に `wait-for-deploy` と `post-deploy-check` の 2 job を足す（8 分）
+- [ ] `automation-commit.yml` に `wait-for-deploy` job（`needs: verify-and-merge`・`checks: read`）を足す（4 分）
+- [ ] `wait-for-deploy` の timeout（終了コード 3）を `post-deploy-check` へ渡す出力を足す（3 分）
+- [ ] `automation-commit.yml` に `post-deploy-check` job を足す（4 分）
+- [ ] `post-deploy-check` の失敗を `revert` job へ繋ぐ `needs` と `if` を書く（3 分）
 - [ ] テストが成功することを確認する（1 分）
 
 ### 最初に失敗するテスト

@@ -136,6 +136,10 @@ factory があることで、計画に載せたテストコードを**そのま�
   - `export function makeCatalog(over?: Partial<Catalog>): Catalog`
   - `export function makeRakutenItem(over?: Partial<RakutenItem>): RakutenItem`
   - `export const AFFILIATE_URL_FIXTURE: string`（`item.rakuten.co.jp` を `pc` に持つテスト用の紹介URL。**実在の紹介IDを含まない**）
+  - `export type CandidatePair = { product: Product; source: Source }`
+  - `export function makeCandidatePair(productId: string, status?: PublicationStatus, checkedAt?: string): CandidatePair`（**Product の全 Fact の `sourceId` を、対になる Source の ID へ揃える**）
+  - `export function seedMinimalDataset(rootDir: string): void`（`datasets/production/` と同じ構造の最小データセットを作る）
+  - `export function readSeededDataset(rootDir: string): CatalogInput`（`seedMinimalDataset` で作ったディレクトリを読み戻す。`inspectCatalog` にそのまま渡せる）
 
 ### 仕様
 
@@ -144,6 +148,44 @@ factory があることで、計画に載せたテストコードを**そのま�
 - **実在の紹介ID・資格情報を含めない。** `AFFILIATE_URL_FIXTURE` の ID 部は `0000test0.00000000.0000test1.00000000` とする。
 - 商品の既定値は、現行データセットに実在する形（`model: 'クレスタ2 06936'`、`variant: '35L / 01 ブラックヘアライン'`）に合わせる。
 
+#### `makeCandidatePair` — Fact の `sourceId` を必ず対の Source へ揃える
+
+`makeProduct({ id })` だけを差し替えると、Fact の `sourceId` は既定の
+`'src-fixture-ace-06936'` のまま残る。その Product と `src-<新しいID>` の Source を
+同時に保存すると、**`inspectCatalog` が Source 参照不整合で落ちる**。
+
+そこで、統合テストで使う「Product と Source の対」は必ず `makeCandidatePair` で作る。
+この関数は `weightG` / `outerSizeMm` / `capacityL` と、`bodySizeMm` を持たせる場合、
+`alternateMeasurements[].sizeMm` / `alternateMeasurements[].capacityL` / `specs[*]` の
+**すべての非 `null` Fact の `sourceId`** を、対になる Source の ID へ揃える。
+
+`makeAutoRegisteredProduct` / `makeAutoRegisteredSource`（Task 16 で使う）も
+`makeCandidatePair` の上に実装し、**同じ規則を二度書かない**。
+
+#### `seedMinimalDataset` — tmpdir に本物と同じ構造を作る
+
+`applyWritePlans`（Task 17）は実ディレクトリへ書くため、統合テストは tmpdir に
+`datasets/production/` と同じ構造を作る必要がある。
+
+| 作るもの | 内容 |
+|---|---|
+| `dataset.json` | `{ kind: 'production', label: ..., notice: null }` |
+| `products/suitcases.json` | `[]` |
+| `products/backpacks.json` | `[]` |
+| `products/pouches.json` | `[]` |
+| `products/power-banks.json` | `[]` |
+| `sources.json` | `[]` |
+| `merchants/rakuten.json` | `[]` |
+| `merchants/amazon.json` | `[]` |
+| `articles/` | 空ディレクトリ |
+
+商品ファイルは `CATEGORIES`（`suitcases` / `backpacks` / `pouches` / `power-banks`）から
+生成する。**カテゴリを増やしたときにここを直し忘れないため、配列を直書きしない。**
+
+`readSeededDataset(rootDir)` は同じ構造を `CatalogInput` として読み戻す。
+`src/lib/catalog/load.ts` の `readDatasetInput` は `DatasetKind` でしか解決できないため、
+**テスト側に読み戻し用の薄い関数を置く**（`src/` は変更しない）。
+
 ### ステップ
 
 - [ ] `makeProduct()` が `productSchema` を通る失敗テストを書く（4 分）
@@ -151,10 +193,18 @@ factory があることで、計画に載せたテストコードを**そのま�
 - [ ] `makeCatalog()` が `inspectCatalog` を `ok: true` で通る失敗テストを書く（5 分）
 - [ ] `over` で差し替えたフィールドだけが変わる失敗テストを書く（3 分）
 - [ ] `AFFILIATE_URL_FIXTURE` が `itemPageUrlFromAffiliateUrl` で `https://item.rakuten.co.jp/` を返す失敗テストを書く（4 分）
+- [ ] **`makeCandidatePair('x')` の全 Fact の `sourceId` が対の Source の ID と一致する**失敗テストを書く（4 分）
+- [ ] `makeCandidatePair` の対だけを `inspectCatalog` に渡して `ok: true` になる失敗テストを書く（4 分）
+- [ ] `seedMinimalDataset` が 8 ファイルと `articles/` を作る失敗テストを書く（4 分）
+- [ ] `readSeededDataset` の結果が `inspectCatalog` を `ok: true` で通る失敗テストを書く（4 分）
 - [ ] テストを実行し失敗を確認する（1 分）
 - [ ] `makeFact` / `makeSource` を実装する（4 分）
 - [ ] `makeProduct` / `makeMerchantLink` を実装する（4 分）
-- [ ] `makeArticle` / `makeCatalog` / `makeRakutenItem` と `AFFILIATE_URL_FIXTURE` を実装する（5 分）
+- [ ] `makeArticle` / `makeCatalog` を実装する（3 分）
+- [ ] `makeRakutenItem` と `AFFILIATE_URL_FIXTURE` を実装する（3 分）
+- [ ] `makeCandidatePair`（全 Fact の `sourceId` を揃える）を実装する（4 分）
+- [ ] `seedMinimalDataset`（`CATEGORIES` から商品ファイルを生成）を実装する（4 分）
+- [ ] `readSeededDataset` を実装する（3 分）
 - [ ] テストが成功することを確認する（1 分）
 
 ### 最初に失敗するテスト
@@ -194,6 +244,97 @@ describe('fixture factory', () => {
   it('テスト用の紹介URLから商品ページURLを取り出せる', () => {
     expect(itemPageUrlFromAffiliateUrl(AFFILIATE_URL_FIXTURE))
       .toBe('https://item.rakuten.co.jp/testshop/test-item-001/');
+  });
+});
+```
+
+```ts
+// tests/factories.test.ts（続き）
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { afterEach, beforeEach } from 'vitest';
+import { makeCandidatePair, readSeededDataset, seedMinimalDataset } from './factories';
+
+describe('makeCandidatePair', () => {
+  it('全 Fact の sourceId が対の Source の ID と一致する', () => {
+    const { product, source } = makeCandidatePair('ace-06936-35l-4ea43263');
+    expect(source.id).toBe('src-ace-06936-35l-4ea43263');
+    expect(product.weightG.sourceId).toBe(source.id);
+    expect(product.outerSizeMm.sourceId).toBe(source.id);
+    expect(product.capacityL.sourceId).toBe(source.id);
+    expect(product.bodySizeMm ?? null).toBeNull();
+    expect(product.alternateMeasurements).toEqual([]);
+    expect(product.specs).toEqual({});
+  });
+
+  it('既定の src-fixture-ace-06936 を残さない', () => {
+    const { product } = makeCandidatePair('ace-06936-35l-4ea43263');
+    const ids = [product.weightG.sourceId, product.outerSizeMm.sourceId, product.capacityL.sourceId];
+    expect(ids).not.toContain('src-fixture-ace-06936');
+  });
+
+  it('対だけを渡しても inspectCatalog が ok になる', () => {
+    const { product, source } = makeCandidatePair('ace-06936-35l-4ea43263', 'published');
+    const result = inspectCatalog({
+      dataset: { kind: 'production', label: 'テスト用', notice: null },
+      products: [product],
+      sources: [source],
+      merchantLinks: [],
+      articles: [],
+    });
+    expect(result.issues.map((i) => i.message)).toEqual([]);
+    expect(result.ok).toBe(true);
+  });
+});
+
+describe('seedMinimalDataset', () => {
+  let rootDir: string;
+
+  beforeEach(() => {
+    rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'seed-dataset-'));
+    seedMinimalDataset(rootDir);
+  });
+
+  afterEach(() => {
+    fs.rmSync(rootDir, { recursive: true, force: true });
+  });
+
+  it('production と同じ構造を作る', () => {
+    for (const rel of [
+      'dataset.json',
+      'products/suitcases.json',
+      'products/backpacks.json',
+      'products/pouches.json',
+      'products/power-banks.json',
+      'sources.json',
+      'merchants/rakuten.json',
+      'merchants/amazon.json',
+      'articles',
+    ]) {
+      expect(fs.existsSync(path.join(rootDir, rel))).toBe(true);
+    }
+  });
+
+  it('空のまま inspectCatalog を通る', () => {
+    const result = inspectCatalog(readSeededDataset(rootDir));
+    expect(result.issues.map((i) => i.message)).toEqual([]);
+    expect(result.ok).toBe(true);
+  });
+
+  it('対を書き込んだあとも inspectCatalog を通る', () => {
+    const { product, source } = makeCandidatePair('ace-06936-35l-4ea43263', 'published');
+    fs.writeFileSync(
+      path.join(rootDir, 'products/suitcases.json'),
+      `${JSON.stringify([product], null, 2)}\n`,
+    );
+    fs.writeFileSync(
+      path.join(rootDir, 'sources.json'),
+      `${JSON.stringify([source], null, 2)}\n`,
+    );
+    const result = inspectCatalog(readSeededDataset(rootDir));
+    expect(result.issues.map((i) => i.message)).toEqual([]);
+    expect(result.ok).toBe(true);
   });
 });
 ```
@@ -332,10 +473,101 @@ export function makeRakutenItem(over: Partial<RakutenItem> = {}): RakutenItem {
     ...over,
   };
 }
+
+export type CandidatePair = { product: Product; source: Source };
+
+/**
+ * Product と、その全 Fact が参照する Source を対で作る。
+ * Fact の sourceId を既定値のまま残さないことがこの関数の目的である。
+ */
+export function makeCandidatePair(
+  productId: string,
+  status: PublicationStatus = 'review',
+  checkedAt: string = CHECKED_AT,
+): CandidatePair {
+  const sourceId = `src-${productId}`;
+  const at = { sourceId, checkedAt };
+  return {
+    source: makeSource({ id: sourceId, checkedAt }),
+    product: makeProduct({
+      id: productId,
+      status,
+      weightG: makeFact(2900, at),
+      outerSizeMm: makeFact<[number, number, number]>([350, 550, 250], at),
+      capacityL: makeFact(35, at),
+      // bodySizeMm / alternateMeasurements / specs を持たせるときも、
+      // それぞれの Fact に同じ `at` を渡して sourceId を揃える。
+      alternateMeasurements: [],
+      specs: {},
+    }),
+  };
+}
 ```
 
 > `makeArticle().body` は `evaluatePublication` の 400 文字下限を満たすため 40 回繰り返す。
 > `makeProduct().jan` は `null`（現行 23 件中 20 件が JAN を持たないため、既定を実態に合わせる）。
+
+`seedMinimalDataset` と `readSeededDataset` は同じ `tests/factories/index.ts` に置く。
+**下の `import` は実ファイルでは先頭の import 群にまとめる**（ここでは読みやすさのため分けて示す）。
+
+```ts
+// tests/factories/index.ts（続き）
+import fs from 'node:fs';
+import path from 'node:path';
+import { CATEGORIES } from '../../src/lib/catalog/types';
+import type { PublicationStatus } from '../../src/lib/catalog/types';
+import type { CatalogInput } from '../../src/lib/catalog/validate';
+
+function writeJson(filePath: string, value: unknown): void {
+  fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
+}
+
+/** datasets/production と同じ構造の、空の最小データセットを rootDir に作る。 */
+export function seedMinimalDataset(rootDir: string): void {
+  fs.mkdirSync(path.join(rootDir, 'products'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'merchants'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'articles'), { recursive: true });
+  writeJson(path.join(rootDir, 'dataset.json'), {
+    kind: 'production',
+    label: 'テスト用の最小データセット',
+    notice: null,
+  });
+  // カテゴリを増やしたときに直し忘れないよう CATEGORIES から生成する
+  for (const category of CATEGORIES) {
+    writeJson(path.join(rootDir, 'products', `${category}.json`), []);
+  }
+  writeJson(path.join(rootDir, 'sources.json'), []);
+  writeJson(path.join(rootDir, 'merchants', 'rakuten.json'), []);
+  writeJson(path.join(rootDir, 'merchants', 'amazon.json'), []);
+}
+
+function readJson(filePath: string): unknown {
+  return JSON.parse(fs.readFileSync(filePath, 'utf8')) as unknown;
+}
+
+function readJsonArrayDir(dir: string): unknown[] {
+  return fs
+    .readdirSync(dir)
+    .filter((file) => file.endsWith('.json'))
+    .sort()
+    .flatMap((file) => readJson(path.join(dir, file)) as unknown[]);
+}
+
+/**
+ * seedMinimalDataset で作ったディレクトリを CatalogInput として読み戻す。
+ * src/lib/catalog/load.ts の readDatasetInput は DatasetKind でしか解決できないため、
+ * テスト側に置く。src/ は変更しない。
+ */
+export function readSeededDataset(rootDir: string): CatalogInput {
+  return {
+    dataset: readJson(path.join(rootDir, 'dataset.json')),
+    products: readJsonArrayDir(path.join(rootDir, 'products')),
+    sources: readJson(path.join(rootDir, 'sources.json')),
+    merchantLinks: readJsonArrayDir(path.join(rootDir, 'merchants')),
+    articles: [],
+  };
+}
+```
 
 ### 成功確認コマンド
 
@@ -349,6 +581,9 @@ cd travel-goods-site && npx vitest run tests/factories.test.ts && npm run typech
 test(travel-goods-site): テスト用 fixture factory を追加
 
 引数なしで検証を通る Product / Source / MerchantLink / Article / Catalog / RakutenItem を返す。
+makeCandidatePair は Product の全 Fact の sourceId を対の Source へ揃えるため、
+統合テストで Source 参照不整合を起こさない。
+seedMinimalDataset は datasets/production と同じ構造の空データセットを tmpdir に作る。
 以降のすべてのテストがこれを使い、部分的なオブジェクトを as で型回避しない。
 実在の紹介IDと資格情報は含めない。
 
@@ -447,7 +682,10 @@ export const REVERT_HISTORY_LIMIT = 20;
 - [ ] `queueFileSchema` が `payload` の 200 文字超を拒否する失敗テストを書く（3 分）
 - [ ] `linkHealthFileSchema` が `state` の未知の値を拒否する失敗テストを書く（3 分）
 - [ ] テストを実行し失敗を確認する（1 分）
-- [ ] `schema.ts` を実装する（8 分）
+- [ ] `schema.ts` に `QueueKind` / `QueueEntry` / `queueFileSchema` を書く（4 分）
+- [ ] `RevertRecord` / `CircuitBreaker` / `REVERT_HISTORY_LIMIT` と `budgetFileSchema` を書く（5 分）
+- [ ] `LinkSignals` / `LinkState` / `LinkHealthEntry` / `linkHealthFileSchema` を書く（5 分）
+- [ ] `AUTOMATION_STATE_FILES` を書く（2 分）
 - [ ] テストが成功することを確認する（1 分）
 
 ### 最初に失敗するテスト
@@ -596,6 +834,38 @@ payload には分類コードとハッシュだけを入れ、外部本文は保
   - `export function readBudget(dir: string, today: string): BudgetFile`（存在しないか日付が古ければ当日の初期値）
   - `export function readLinkHealth(dir: string): LinkHealthFile`
 
+### 仕様
+
+#### 同じ状態からは必ず同じバイト列を作る
+
+自動 PR の差分を読めるものにするため、**入力の順序が変わっても出力が変わらない**ようにする。
+
+- オブジェクトのキーは**昇順**で出す（`JSON.stringify` の第 2 引数にキー配列を渡さず、
+  再帰的にキーを並べ替えてから直列化する）。
+- インデントは 2 スペース、**末尾に改行を 1 つ**付ける（リポジトリの既存 JSON と揃える）。
+- `serializeQueue` は `queuedAt` 昇順、同日は `targetId` 昇順で `entries` を並べる。
+- `serializeLinkHealth` は `productId` 昇順で `entries` を並べる。
+- `serializeBudget` は配列を持つのが `circuitBreaker.revertHistory` だけなので、
+  そこを `revertedOn` 昇順で並べる。
+
+#### 意味が変わらない書き込みは行わない
+
+`writeIfChanged(absPath, content)` は、既存ファイルの内容と `content` が
+**バイト列として同一なら書かない**で `'unchanged'` を返す。
+これにより「実行しただけで mtime と差分が出る」状態を避け、
+自動 PR が空の変更で立つことを防ぐ。
+
+#### 読み取りは常に成功させる（fail-closed の前段）
+
+- ファイルが無ければ**空の初期値**を返す。例外にしない（初回実行で落とさない）。
+- `readBudget(dir, today)` は、`budget.json` の `date` が `today` と違えば
+  **消費値（`rakutenRequests` / `workersAiNeurons` / `browserSeconds`）を 0 にリセット**し、
+  `date` を `today` にする。
+- **`circuitBreaker` は日付が変わっても引き継ぐ。**
+  breaker は日次で自動復旧しない（復旧は計画3 Task 8 の `automation-reset.yml` だけ）。
+- スキーマに合わない内容は `schema.ts` の `safeParse` で弾き、**例外を投げて実行を止める**
+  （壊れた状態ファイルの上に書き足さない）。
+
 ### ステップ
 
 - [ ] 同じ内容を 2 回書いたとき 2 回目が `'unchanged'` を返す失敗テストを書く（3 分）
@@ -603,7 +873,10 @@ payload には分類コードとハッシュだけを入れ、外部本文は保
 - [ ] `serializeQueue` が `queuedAt` 昇順、同日は `targetId` 昇順でソートする失敗テストを書く（3 分）
 - [ ] `readBudget` が前日の `budget.json` を渡されたとき、消費値を 0 にリセットし `circuitBreaker` は**引き継ぐ**失敗テストを書く（4 分）
 - [ ] テストを実行し失敗を確認する（1 分）
-- [ ] `io.ts` を実装する（8 分）
+- [ ] `io.ts` の `stableStringify`（キー昇順・末尾改行）を実装する（4 分）
+- [ ] `serializeQueue` / `serializeLinkHealth` のソート規則を実装する（5 分）
+- [ ] `writeIfChanged`（同一内容なら書かない）を実装する（3 分）
+- [ ] `readBudget` の日付リセットと `circuitBreaker` 引き継ぎを実装する（4 分）
 - [ ] テストが成功することを確認する（1 分）
 
 ### 最初に失敗するテスト
@@ -694,6 +967,36 @@ feat(travel-goods-site): automation 状態ファイルの安定シリアライ�
   - `export function dequeue(queue: QueueFile, kind: QueueKind, limit: number): { taken: QueueEntry[]; rest: QueueFile }`
   - `export function pruneQueue(queue: QueueFile, today: string, retentionDays: 60): QueueFile`
 
+### 仕様
+
+#### 上限は「無料枠より十分小さい値」を固定で持つ
+
+設計書 10 節の無料枠に対し、**日次の自前上限**を置く。使い切っても翌日へ繰り越す。
+
+| 資源 | `DAILY_LIMITS` | 無料枠 | 置き方 |
+|---|---:|---|---|
+| `rakutenRequests` | 30 | 1 req/sec（1日の総量制限は非公開） | 1 実行あたり最大 30 回。超えたら停止 |
+| `workersAiNeurons` | 8000 | 10,000 Neurons/日 | 8 割で止め、余白を残す |
+| `browserSeconds` | 480 | 600 秒/日（10 分） | 8 割で止め、余白を残す |
+| `pagesDeploysPerDay` | 1 | 500 builds/月 | 1 日 1 デプロイ（月 31 回で上限の 1 割以下） |
+
+- **上限を超えたらエラーにしない。** 未処理分を `queue.json` へ積み、終了コード 0 で終わる。
+  「安全に翌日へ繰り越す」（設計書 10.4）を、例外ではなくキューで実現する。
+- `spend` は**新しいオブジェクトを返す純関数**にする。呼び出し側が書き込みの成否と
+  独立に予算を積めるようにするためである。
+- `pagesDeploysPerDay` は `ResourceName` に含めない（`canSpend` の対象ではなく、
+  workflow 側の同時実行制御で担保する。計画3 Task 6）。
+
+#### キューは重複を作らず、古い候補を溜め込まない
+
+- `enqueue` は同一 `kind` + `targetId` があれば **`attempts` を +1 して置換**する。
+  同じ対象が毎日積まれて `queue.json` が膨らむのを防ぐ。
+- `dequeue` は `queuedAt` の**古い順**に `limit` 件だけ取り、残りを `rest` として返す。
+  取ったものはこの関数では消費済みにしない（書き込みが成功して初めて消える）。
+- `pruneQueue` は `queuedAt` から **60 日**を超えた `kind: 'candidate'` を落とす。
+  `tier-a-recheck` / `link-recheck` / `article-plan` は落とさない
+  （期限切れで消えると、再確認そのものが行われなくなるため）。
+
 ### ステップ
 
 - [ ] `remaining` が上限から消費を引いた値を返す失敗テストを書く（2 分）
@@ -703,7 +1006,10 @@ feat(travel-goods-site): automation 状態ファイルの安定シリアライ�
 - [ ] `dequeue` が `queuedAt` の古い順に `limit` 件だけ取り、残りを返す失敗テストを書く（4 分）
 - [ ] `pruneQueue` が 60 日を超えた `candidate` を落とす失敗テストを書く（3 分）
 - [ ] テストを実行し失敗を確認する（1 分）
-- [ ] `budget.ts` を実装する（8 分）
+- [ ] `DAILY_LIMITS` と `canSpend` / `spend` を実装する（4 分）
+- [ ] `enqueue`（同一 `kind`+`targetId` の重複を作らず `attempts` を増やす）を実装する（4 分）
+- [ ] `dequeue`（`queuedAt` 昇順で `limit` 件）を実装する（3 分）
+- [ ] `pruneQueue`（60 日超の `candidate` を落とす）を実装する（3 分）
 - [ ] テストが成功することを確認する（1 分）
 
 ### 最初に失敗するテスト
@@ -1097,7 +1403,8 @@ store.ace.jp を共有する 3 ブランドも manufacturerId は分離する。
 
 ### ステップ
 
-- [ ] `ace-spec-table.html` を手で書く（上表の値。`<table class="spec">` を 1 つ持つ）（6 分）
+- [ ] `ace-spec-table.html` の骨格（`<table class="spec">` 1 つと見出し行）を書く（3 分）
+- [ ] 同 fixture に重量・外寸・容量の 3 行を上表の値で書く（4 分）
 - [ ] `aceAdapter.extract` が `weightG: 2900`、`outerSizeMm: [350, 550, 250]`、`capacityL: 35` を返す失敗テストを書く（4 分）
 - [ ] 抽出結果が**登録済みの `Fact.value` と一致する**ことを本番データと突き合わせる失敗テストを書く（5 分）
 - [ ] 容量の行を削ると `{ ok: false, reason: 'required-field-missing' }` を返す失敗テストを書く（3 分）
@@ -1532,7 +1839,11 @@ export type BlockerCode =
 - [ ] `tests/factories/index.ts` に `makeTierInput`（**S を満たす既定値**）を足す（5 分）
 - [ ] `BLOCKER_CODES` がちょうど 17 個である失敗テストを書く（2 分）
 - [ ] `makeTierInput()` が `'S'` になる失敗テストを書く（2 分）
-- [ ] **17 個のブロッカーを table-driven で 1 つずつ反転**し、すべて `'B'` になる失敗テストを書く（8 分）
+- [ ] `BLOCKER_CASES`（`{ code, apply }` の配列）の型と `it.each` の枠を書く（まだ 0 件）（3 分）
+- [ ] 出典・取得に関する 6 ブロッカーのケースを足す（5 分）
+- [ ] 抽出・照合に関する 6 ブロッカーのケースを足す（5 分）
+- [ ] リコール・重複・予算に関する残り 5 ブロッカーのケースを足す（4 分）
+- [ ] `BLOCKER_CASES` の件数が `BLOCKER_CODES` と一致する（取りこぼし検出）テストを書く（3 分）
 - [ ] 同じ 17 個を **A の入力に加えても**すべて `'B'` になる失敗テストを書く（5 分）
 - [ ] `initialSelection: '6b-inferred'` でも `'S'` になる失敗テストを書く（3 分）
 - [ ] `jan: 'published-but-mismatched'` は S でも A でもなく `'B'` になる失敗テストを書く（3 分）
@@ -2050,7 +2361,9 @@ verified + visual の 14 件が、どの状態・どの候補 Tier でも
 - [ ] 3 条件すべて満たすと `{ ready: true, sharedSpecs: [...] }` を返し、`sharedSpecs` が 3 件以上ある失敗テストを書く（4 分）
 - [ ] `EXPANSION_THRESHOLDS` の 4 つの値が設計書どおりである失敗テストを書く（2 分）
 - [ ] テストを実行し失敗を確認する（1 分）
-- [ ] `category-expansion.ts` を実装する（8 分）
+- [ ] `EXPANSION_THRESHOLDS` と入力型を書く（3 分）
+- [ ] 3 条件の判定（商品数・出典数・共通 spec 数）を実装する（5 分）
+- [ ] `missing` の組み立てと `sharedSpecs` の算出を実装する（4 分）
 - [ ] テストが成功することを確認する（1 分）
 
 ### 最初に失敗するテスト
@@ -3421,10 +3734,14 @@ export function productStatusOf(
 | B | `false` | `false` | `null` | 保存しない（`promoteCandidate` が `null`） |
 | `AUTOMATION_ENABLED=false` / `AUTO_DISCOVER_PRODUCTS=false` / 週上限超過 | `false` | `false` | `null` | 保存しない |
 
-> **`off` と B の違い。** `off` は「根拠は揃っているが、公開を人が握っている」状態なので
+> **`off` は「商品データの作成停止」ではなく「自動公開停止」。**
+> `off` は「根拠は揃っているが、公開を人が握っている」状態なので
 > `review` で保存して人が公開できるようにする（記事側の `articleStatusFor` と同じ考え方）。
 > B は「根拠が足りない」状態で、そもそも `promoteCandidate` が `Product` を返さないため
 > 保存する対象が存在しない。**根拠不足のものを `review` でデータへ入れない。**
+>
+> **この契約は計画3 Task 1 の「`AUTO_PUBLISH_PRODUCTS` は「自動公開」だけを止める」節と同一。**
+> 片方だけを変えない。`review` 保存時も Source を必ず同時に書き、`MerchantLink` は書かない。
 
 ### ステップ
 
@@ -3436,7 +3753,10 @@ export function productStatusOf(
 - [ ] 週が変われば残りが 3 に戻る失敗テストを書く（3 分）
 - [ ] **B/A 候補（Product を作らなかったもの）を公開件数に数えない**失敗テストを書く（4 分）
 - [ ] `automationEnabled === false` ですべて `false` になる失敗テストを書く（3 分）
-- [ ] 7 スイッチそれぞれを落とすと対応する書き込みが `false` になる **table-driven test** を書く（8 分）
+- [ ] `SWITCH_CASES` の型と `it.each` の枠を書く（まだ 0 件）（3 分）
+- [ ] `AUTO_DISCOVER_PRODUCTS=false` のケースを足す（3 分）
+- [ ] `AUTO_PUBLISH_PRODUCTS=off` のケース（`review` 保存になることまで検査）を足す（4 分）
+- [ ] `AUTO_AUDIT_LINKS=false` と `AUTO_REPLACE_LINKS=false` のケースを足す（4 分）
 - [ ] `AUTO_PUBLISH_PRODUCTS=S` で A が `productStatus: 'review'` になる失敗テストを書く（4 分）
 - [ ] `AUTO_PUBLISH_PRODUCTS=off` で S も `productStatus: 'review'` になる失敗テストを書く（3 分）
 - [ ] `publishProduct` と `writeProductAsReview` が同時に `true` にならない不変条件テストを書く（3 分）
@@ -3682,14 +4002,12 @@ describe('停止スイッチの結線', () => {
 ```ts
 export const AUTO_REGISTERED_MARKER = 'automation:product-discovery';
 
-/** 自動登録された商品（Source の usageNote にマーカーを持つ）。 */
+/**
+ * 自動登録された商品（Source の usageNote にマーカーを持つ）。
+ * Fact の sourceId を揃える規則は makeCandidatePair に一本化する（Task 1）。
+ */
 export function makeAutoRegisteredProduct(id: string, checkedAt: string): Product {
-  return makeProduct({
-    id,
-    weightG: makeFact(2900, { sourceId: `src-${id}`, checkedAt }),
-    outerSizeMm: makeFact<[number, number, number]>([350, 550, 250], { sourceId: `src-${id}`, checkedAt }),
-    capacityL: makeFact(35, { sourceId: `src-${id}`, checkedAt }),
-  });
+  return makeCandidatePair(id, 'published', checkedAt).product;
 }
 
 export function makeAutoRegisteredSource(id: string, checkedAt: string): Source {
@@ -3700,6 +4018,8 @@ export function makeAutoRegisteredSource(id: string, checkedAt: string): Source 
 `makeAutoRegisteredProduct(id, checkedAt)` は `sourceId: 'src-<id>'` の Facts を持ち、
 `makeAutoRegisteredSource(id, checkedAt)` は `id: 'src-<id>'` と
 `usageNote: AUTO_REGISTERED_MARKER` を持つ。**必ず対で渡す。**
+`makeCandidatePair` が返す Source には `usageNote` のマーカーが無いため、
+自動登録の判別に使うのは `makeAutoRegisteredSource` のほうである。
 
 ### テスト実行コマンド
 
@@ -3755,7 +4075,7 @@ feat(travel-goods-site): 書き込み計画を作る純関数を追加
 
 ### Consumes / Produces
 
-- Consumes: Task 13〜16 のすべて、`readBudget` / `readQueue` / `readLinkHealth` / `writeIfChanged` / `serialize*`（Task 2・3）、`canSpend` / `spend` / `enqueue` / `dequeue`（Task 4）、`readSwitches`（計画3 Task 1）、`inspectCatalog`（既存）
+- Consumes: Task 13〜16 のすべて、`readBudget` / `readQueue` / `readLinkHealth` / `writeIfChanged` / `serialize*`（Task 2・3）、`canSpend` / `spend` / `enqueue` / `dequeue`（Task 4）、`readSwitches`（計画3 Task 1）、`inspectCatalog`（既存）、`seedMinimalDataset` / `readSeededDataset` / `makeCandidatePair`（Task 1・統合テスト用）
 - Produces:
   - `apply.ts`:
     - `export type AppliedChange = { plan: WritePlan; product: Product | null; source: Source | null; merchantLink: MerchantLink | null; linkHealth: LinkHealthEntry | null }`
@@ -3878,6 +4198,13 @@ for (const change of plans) {
 - 書いたあとに `inspectCatalog` を通す。`review` の商品は配信物に出ないため、
   `status: 'review'` で保存しても公開サイトの内容は変わらない。
 
+**統合テストは実データセットを触らない。** `seedMinimalDataset(tmpdir)`（Task 1）で
+`datasets/production/` と同じ構造を tmpdir に作り、そこへ書く。
+保存する `Product` と `Source` は `makeCandidatePair(productId, 'review')` で作るため、
+**Fact の `sourceId` が対の Source の ID と必ず一致し**、`inspectCatalog` が
+Source 参照不整合で落ちない。`makeProduct({ id })` だけを差し替えると
+既定の `'src-fixture-ace-06936'` が残るため、統合テストでは使わない。
+
 ### ステップ
 
 - [ ] `gateMode` の 4 ケースを table-driven で検査する失敗テストを書く（5 分）
@@ -3891,13 +4218,20 @@ for (const change of plans) {
 - [ ] `AUTOMATION_ENABLED` 未設定で `--apply` を付けても書かない失敗テストを書く（4 分）
 - [ ] 予算超過で終了コード 0（正常終了）になり、未処理分がキューに積まれる失敗テストを書く（5 分）
 - [ ] `applyWritePlans` が同じ内容なら書き込みを飛ばす失敗テストを書く（4 分）
-- [ ] **S / 再確認済み A / B / 公開 off の 4 ケースで、最終保存データの `status` を検査する**統合テストを書く（8 分）
-- [ ] `promoteCandidate` の `review` が `published` へ上書きされることを検査する失敗テストを書く（4 分）
+- [ ] `automation-apply-status.test.ts` の枠（`seedMinimalDataset` の `beforeEach` と `savedStatus` / `expectCatalogOk` の補助関数）を書く（5 分）
+- [ ] `STATUS_CASES` に **1. S ＋ `S,A`** と **2. 再確認済み A ＋ `S,A`**（ともに `published`）を足す（4 分）
+- [ ] `STATUS_CASES` に **3. S ＋ `off`** と **4. 再確認済み A ＋ `S`**（ともに `review`・Source も保存）を足す（4 分）
+- [ ] `STATUS_CASES` に **5. B** / **6. 再確認前 A** / **7. 週上限超過**（いずれも products ファイル無変更）を足す（5 分）
+- [ ] 各ケースの末尾で `inspectCatalog(readSeededDataset(...)).ok === true` を検査する行を足す（3 分）
+- [ ] **8. `productStatus === null` なら products ファイルへ一切触れない**失敗テストを書く（4 分）
+- [ ] **9. `promoteCandidate` の初期 `review` が公開許可時だけ `published` へ上書きされる**失敗テストを書く（4 分）
+- [ ] `review` 保存では `MerchantLink` を書かない失敗テストを書く（3 分）
 - [ ] `inspectCatalog` が失敗する内容では書き込みを中止する失敗テストを書く（5 分）
 - [ ] テストを実行し失敗を確認する（1 分）
 - [ ] `gate.ts`（`gateMode`）を実装する（4 分）
 - [ ] `apply.ts` の JSON 読み書きと `writeIfChanged` の呼び出しを実装する（5 分）
-- [ ] `apply.ts` で `plan.productStatus` による `status` 上書きと、`null` のときの読み書き回避を実装する（5 分）
+- [ ] `apply.ts` で `plan.productStatus` による `status` 上書きを実装する（4 分）
+- [ ] `apply.ts` で `productStatus === null` のとき products ファイルを読み書きしない分岐を実装する（3 分）
 - [ ] `apply.ts` の `inspectCatalog` 検査と中止処理を実装する（4 分）
 - [ ] `runSync` の runner 注入とゲート判定を実装する（5 分）
 - [ ] `runSync` の mode 別ループと予算消費を実装する（5 分）
@@ -4063,20 +4397,30 @@ import {
   buildWritePlan,
   type WritePlanInput,
 } from '../src/lib/automation/sync/write-plan';
-import { readSwitches } from '../src/lib/automation/switches';
-import { makeProduct, makeSource } from './factories';
+import { readSwitches, type Switches } from '../src/lib/automation/switches';
+import { inspectCatalog } from '../src/lib/catalog/validate';
+import { makeCandidatePair, readSeededDataset, seedMinimalDataset } from './factories';
 
 const PRODUCT_ID = 'ace-06936-35l-4ea43263';
+const SOURCE_ID = `src-${PRODUCT_ID}`;
+const PRODUCT_FILE = 'products/suitcases.json';
+
+/** 公開許可の 3 値ごとにスイッチを作る。探索と audit は有効。 */
+function switchesFor(publish: 'off' | 'S' | 'S,A'): Switches {
+  return readSwitches({
+    AUTOMATION_ENABLED: 'true',
+    AUTO_DISCOVER_PRODUCTS: 'true',
+    AUTO_PUBLISH_PRODUCTS: publish,
+    AUTO_AUDIT_LINKS: 'true',
+    AUTO_REPLACE_LINKS: 'true',
+  });
+}
 
 let datasetDir: string;
 
 beforeEach(() => {
   datasetDir = fs.mkdtempSync(path.join(os.tmpdir(), 'automation-apply-'));
-  fs.mkdirSync(path.join(datasetDir, 'products'), { recursive: true });
-  fs.mkdirSync(path.join(datasetDir, 'merchants'), { recursive: true });
-  fs.writeFileSync(path.join(datasetDir, 'products/suitcases.json'), '[]\n');
-  fs.writeFileSync(path.join(datasetDir, 'sources.json'), '[]\n');
-  fs.writeFileSync(path.join(datasetDir, 'merchants/rakuten.json'), '[]\n');
+  seedMinimalDataset(datasetDir);
 });
 
 afterEach(() => {
@@ -4085,12 +4429,7 @@ afterEach(() => {
 
 function planInput(over: Partial<WritePlanInput> = {}): WritePlanInput {
   return {
-    switches: readSwitches({
-      AUTOMATION_ENABLED: 'true',
-      AUTO_DISCOVER_PRODUCTS: 'true',
-      AUTO_PUBLISH_PRODUCTS: 'S,A',
-      AUTO_AUDIT_LINKS: 'true',
-    }),
+    switches: switchesFor('S,A'),
     tier: 'S',
     recheck: 'matched-previous-day',
     replacement: { action: 'replace-now' },
@@ -4102,122 +4441,166 @@ function planInput(over: Partial<WritePlanInput> = {}): WritePlanInput {
   };
 }
 
-/** promoteCandidate が返す Product は必ず status: 'review'。 */
-function promoted(): AppliedChange {
-  return {
-    plan: buildWritePlan(planInput()),
-    product: makeProduct({ id: PRODUCT_ID, status: 'review' }),
-    source: makeSource({ id: `src-${PRODUCT_ID}` }),
-    merchantLink: null,
-    linkHealth: null,
-  };
+/**
+ * promoteCandidate が返すのは必ず status: 'review' の Product。
+ * Fact の sourceId は対の Source（SOURCE_ID）へ揃っている。
+ */
+function change(plan: ReturnType<typeof buildWritePlan>, hasProduct = true): AppliedChange {
+  if (!hasProduct) {
+    return { plan, product: null, source: null, merchantLink: null, linkHealth: null };
+  }
+  const pair = makeCandidatePair(PRODUCT_ID, 'review');
+  return { plan, product: pair.product, source: pair.source, merchantLink: null, linkHealth: null };
 }
 
-/** 保存されたファイルから status を読む。保存されていなければ null。 */
+function readProductFile(): { id: string; status: string }[] {
+  const raw = fs.readFileSync(path.join(datasetDir, PRODUCT_FILE), 'utf8');
+  return JSON.parse(raw) as { id: string; status: string }[];
+}
+
+/** 保存された status。保存されていなければ null。 */
 function savedStatus(): string | null {
-  const raw = fs.readFileSync(path.join(datasetDir, 'products/suitcases.json'), 'utf8');
-  const rows = JSON.parse(raw) as { id: string; status: string }[];
-  return rows.find((row) => row.id === PRODUCT_ID)?.status ?? null;
+  return readProductFile().find((row) => row.id === PRODUCT_ID)?.status ?? null;
+}
+
+function savedSourceIds(): string[] {
+  const raw = fs.readFileSync(path.join(datasetDir, 'sources.json'), 'utf8');
+  return (JSON.parse(raw) as { id: string }[]).map((row) => row.id);
+}
+
+/** 保存後のデータセット全体が検証を通ること。 */
+function expectCatalogOk(): void {
+  const result = inspectCatalog(readSeededDataset(datasetDir));
+  expect(result.issues.map((issue) => issue.message)).toEqual([]);
+  expect(result.ok).toBe(true);
 }
 
 const STATUS_CASES: readonly {
   name: string;
   input: Partial<WritePlanInput>;
-  /** B 判定は promoteCandidate が null を返すので Product 自体が無い。 */
+  /** B は promoteCandidate が null を返すので Product 自体が無い。 */
   hasProduct: boolean;
-  expected: 'published' | 'review' | null;
+  expectedStatus: 'published' | 'review' | null;
+  expectsSource: boolean;
 }[] = [
   {
-    name: 'S 判定・AUTO_PUBLISH_PRODUCTS=S,A',
+    name: '1. S ＋ S,A',
     input: { tier: 'S' },
     hasProduct: true,
-    expected: 'published',
+    expectedStatus: 'published',
+    expectsSource: true,
   },
   {
-    name: '再確認済み A 判定・AUTO_PUBLISH_PRODUCTS=S,A',
+    name: '2. 再確認済み A ＋ S,A',
     input: { tier: 'A', recheck: 'matched-previous-day' },
     hasProduct: true,
-    expected: 'published',
+    expectedStatus: 'published',
+    expectsSource: true,
   },
   {
-    name: 'B 判定（Product を作らない）',
+    name: '3. S ＋ off',
+    input: { tier: 'S', switches: switchesFor('off') },
+    hasProduct: true,
+    expectedStatus: 'review',
+    expectsSource: true,
+  },
+  {
+    name: '4. 再確認済み A ＋ S',
+    input: { tier: 'A', recheck: 'matched-previous-day', switches: switchesFor('S') },
+    hasProduct: true,
+    expectedStatus: 'review',
+    expectsSource: true,
+  },
+  {
+    name: '5. B',
     input: { tier: 'B' },
     hasProduct: false,
-    expected: null,
+    expectedStatus: null,
+    expectsSource: false,
   },
   {
-    name: '公開 off（根拠は揃っているので review で保存する）',
-    input: {
-      switches: readSwitches({
-        AUTOMATION_ENABLED: 'true',
-        AUTO_DISCOVER_PRODUCTS: 'true',
-        AUTO_PUBLISH_PRODUCTS: 'off',
-        AUTO_AUDIT_LINKS: 'true',
-      }),
-    },
+    name: '6. 再確認前 A',
+    input: { tier: 'A', recheck: 'not-yet' },
     hasProduct: true,
-    expected: 'review',
+    expectedStatus: null,
+    expectsSource: false,
+  },
+  {
+    name: '7. 週上限超過',
+    input: { tier: 'S', isNewProduct: true, remainingThisWeek: 0 },
+    hasProduct: true,
+    expectedStatus: null,
+    expectsSource: false,
   },
 ];
 
 describe('最終保存データの status', () => {
-  it.each(STATUS_CASES)('$name → $expected', ({ input, hasProduct, expected }) => {
+  it.each(STATUS_CASES)('$name → $expectedStatus', ({ input, hasProduct, expectedStatus, expectsSource }) => {
+    const before = fs.readFileSync(path.join(datasetDir, PRODUCT_FILE), 'utf8');
     const plan = buildWritePlan(planInput(input));
-    const change: AppliedChange = {
-      plan,
-      product: hasProduct ? makeProduct({ id: PRODUCT_ID, status: 'review' }) : null,
-      source: hasProduct ? makeSource({ id: `src-${PRODUCT_ID}` }) : null,
+    expect(plan.productStatus).toBe(expectedStatus);
+
+    applyWritePlans(datasetDir, [change(plan, hasProduct)]);
+
+    expect(savedStatus()).toBe(expectedStatus);
+    if (expectedStatus === null) {
+      // 8. productStatus が null なら products ファイルへ一切触れない
+      expect(fs.readFileSync(path.join(datasetDir, PRODUCT_FILE), 'utf8')).toBe(before);
+    }
+    expect(savedSourceIds().includes(SOURCE_ID)).toBe(expectsSource);
+    // 10. どのケースでも保存後のデータセットは検証を通る
+    expectCatalogOk();
+  });
+
+  it('9. promoteCandidate の review は、公開許可のときだけ published へ上書きされる', () => {
+    const pair = makeCandidatePair(PRODUCT_ID, 'review');
+    expect(pair.product.status).toBe('review');
+
+    const publishPlan = buildWritePlan(planInput({ tier: 'S' }));
+    applyWritePlans(datasetDir, [{
+      plan: publishPlan,
+      product: pair.product,
+      source: pair.source,
       merchantLink: null,
       linkHealth: null,
-    };
-    applyWritePlans(datasetDir, [change]);
-    expect(savedStatus()).toBe(expected);
-  });
-
-  it('promoteCandidate の review をそのまま保存しない（公開の決定は applyWritePlans の 1 箇所）', () => {
-    const change = promoted();
-    expect(change.product?.status).toBe('review');
-    expect(change.plan.productStatus).toBe('published');
-    applyWritePlans(datasetDir, [change]);
+    }]);
     expect(savedStatus()).toBe('published');
+    // 元の Product オブジェクトは変更されない（上書きは書き込み時のコピーで行う）
+    expect(pair.product.status).toBe('review');
+    expectCatalogOk();
   });
 
-  it('productStatus が null なら products ファイルに触れない', () => {
-    const before = fs.readFileSync(path.join(datasetDir, 'products/suitcases.json'), 'utf8');
+  it('9b. 公開が許可されないときは review のまま保存される', () => {
+    const pair = makeCandidatePair(PRODUCT_ID, 'review');
+    const reviewPlan = buildWritePlan(planInput({ tier: 'S', switches: switchesFor('off') }));
+    applyWritePlans(datasetDir, [{
+      plan: reviewPlan,
+      product: pair.product,
+      source: pair.source,
+      merchantLink: null,
+      linkHealth: null,
+    }]);
+    expect(savedStatus()).toBe('review');
+    expect(savedSourceIds()).toContain(SOURCE_ID);
+    expectCatalogOk();
+  });
+
+  it('8. productStatus が null なら written に products を含めない', () => {
     const plan = buildWritePlan(planInput({ tier: 'A', recheck: 'not-yet' }));
     expect(plan.productStatus).toBeNull();
-    const result = applyWritePlans(datasetDir, [{
-      plan,
-      product: makeProduct({ id: PRODUCT_ID, status: 'review' }),
-      source: makeSource({ id: `src-${PRODUCT_ID}` }),
-      merchantLink: null,
-      linkHealth: null,
-    }]);
-    expect(fs.readFileSync(path.join(datasetDir, 'products/suitcases.json'), 'utf8')).toBe(before);
-    expect(result.written).not.toContain('products/suitcases.json');
+    const result = applyWritePlans(datasetDir, [change(plan)]);
+    expect(result.written).not.toContain(PRODUCT_FILE);
+    expect(readProductFile()).toEqual([]);
+    expectCatalogOk();
   });
 
-  it('review で保存しても Source を同時に書く（inspectCatalog を落とさない）', () => {
-    const plan = buildWritePlan(planInput({
-      switches: readSwitches({
-        AUTOMATION_ENABLED: 'true',
-        AUTO_DISCOVER_PRODUCTS: 'true',
-        AUTO_PUBLISH_PRODUCTS: 'off',
-        AUTO_AUDIT_LINKS: 'true',
-      }),
-    }));
-    expect(plan.writeSource).toBe(true);
-    applyWritePlans(datasetDir, [{
-      plan,
-      product: makeProduct({ id: PRODUCT_ID, status: 'review' }),
-      source: makeSource({ id: `src-${PRODUCT_ID}` }),
-      merchantLink: null,
-      linkHealth: null,
-    }]);
-    const sources = JSON.parse(
-      fs.readFileSync(path.join(datasetDir, 'sources.json'), 'utf8'),
-    ) as { id: string }[];
-    expect(sources.map((row) => row.id)).toContain(`src-${PRODUCT_ID}`);
+  it('review 保存では MerchantLink を書かない（未公開商品に CTA を出さない）', () => {
+    const plan = buildWritePlan(planInput({ tier: 'S', switches: switchesFor('off') }));
+    expect(plan.writeMerchantLink).toBe(false);
+    applyWritePlans(datasetDir, [change(plan)]);
+    const raw = fs.readFileSync(path.join(datasetDir, 'merchants/rakuten.json'), 'utf8');
+    expect(JSON.parse(raw)).toEqual([]);
+    expectCatalogOk();
   });
 });
 ```
@@ -4348,7 +4731,7 @@ git -C .. diff --name-only main
 | 12.4 | 公開後検査と自動 revert | **W Task 9**（bounded polling・別 SHA 誤認防止・タイムアウト） |
 | 12.5 | 自動 revert の手順 | **W Task 4**／**W Task 8**（`revert` job） |
 | 12.6 | circuit breaker と 2 つの例外 | **W Task 3**（`RevertRecord[]`）／**W Task 8**／**W Task 2** |
-| 13.1 | **停止スイッチ** | **W Task 1**（7 スイッチの動作表と table-driven test）／**F Task 16**（書き込み計画への結線） |
+| 13.1 | **停止スイッチ** | **W Task 1**（7 スイッチの動作表と `AUTO_PUBLISH_PRODUCTS` の契約表・table-driven test）／**F Task 16**（`buildWritePlan` と `productStatus` への結線）／**F Task 17**（最終保存 `status` の統合テスト） |
 | 13.2 | 通知 | **W Task 9** |
 | 14.1 | テストの原則 | **F Task 1**（fixture factory）／全 Task |
 | 14.2 | 追加する単体テスト | F・A・W の全 Task |
@@ -4383,13 +4766,21 @@ git -C .. diff --name-only main
 
 **未対応の節は 0 件。**
 
+### 今回の改訂（5 回目）で反映した指摘
+
+| 指摘 | 反映先 |
+|---|---|
+| 1. `AUTO_PUBLISH_PRODUCTS=off` の契約を全計画で統一 | **W Task 1**（動作表の `off` / `S` 行を `review` 保存へ直し、9 行の契約表と「`off` は自動公開停止であって作成停止ではない」節を追加。`SWITCH_CASES` の説明とテスト名も統一）／**F Task 16**（同じ契約であることを相互参照）／**F 付録 coverage 13.1**（担当 Task を追記）。計画2・計画4 に旧契約なし（記事側は `articleStatusFor`、段階0/1 は `AUTOMATION_ENABLED=false` で全書き込みが止まるため） |
+| 2. `automation-apply-status.test.ts` の fixture を検証可能に | **F Task 1**（`makeCandidatePair(productId, status, checkedAt)` が全 Fact の `sourceId` を対の Source へ揃える。`seedMinimalDataset(rootDir)` が `dataset.json`／4 カテゴリの `products/`／`sources.json`／`merchants/` 2 本／`articles/` を作る。`readSeededDataset(rootDir)` で読み戻す）／**F Task 16**（`makeAutoRegisteredProduct` を `makeCandidatePair` へ委譲）／**F Task 17**（10 ケースの統合テストへ全面改訂。毎ケース `inspectCatalog(...).ok === true` を検査） |
+| 3. 全ステップを 2〜5 分へ分割 | **F Task 2・3・4・7・9・12・16・17**／**W Task 1・7・8・9**／**A Task 2**／**S Task 2・4**（**6 分以上のステップを 0 件**にした） |
+
 ### 今回の改訂（4 回目）で反映した指摘
 
 | 指摘 | 反映先 |
 |---|---|
 | 1. 取得ポリシーの引数が矛盾 | **F Task 13**（`isOfficialFetchApproved(id, policies = OFFICIAL_FETCH_POLICIES)` に統一。`resolveOfficialUrl` は受け取った `policies` をそのまま渡し、グローバルを直接参照しない。注入したポリシーを見ることを確かめるテストを追加） |
 | 2. Task 13 が未来の型に依存 | **F Task 13**（`ResolveTarget` と `targetFromFields` だけを持ち、`CandidateDraft` を import しない）／**F Task 15**（`targetFromDraft` を `candidate.ts` へ移し、内部で `targetFromFields` を呼ぶ。依存は `candidate.ts` → `resolve-official.ts` の一方向） |
-| 3. 商品が公開状態にならない | **F Task 16**（`WritePlan.productStatus: 'published' \| 'review' \| null` と `productStatusOf`。`off` と `S` 下の A は `review` で保存、B と再確認前 A は保存しない）／**F Task 17**（`applyWritePlans` が書き込み直前に `status` を `plan.productStatus` で上書きし、`null` なら products ファイルに触れない。S / 再確認済み A / B / 公開 off の 4 ケースを最終保存データの `status` まで検査する統合テスト `tests/automation-apply-status.test.ts`） |
+| 3. 商品が公開状態にならない | **F Task 16**（`WritePlan.productStatus: 'published' \| 'review' \| null` と `productStatusOf`。`off` と `S` 下の A は `review` で保存、B と再確認前 A は保存しない）／**F Task 17**（`applyWritePlans` が書き込み直前に `status` を `plan.productStatus` で上書きし、`null` なら products ファイルに触れない。S / 再確認済み A / B / 公開 off の 4 ケースを最終保存データの `status` まで検査する統合テスト `tests/automation-apply-status.test.ts`。**5 回目の改訂で 10 ケースへ拡張**） |
 
 ### 今回の改訂（3 回目）で反映した指摘
 

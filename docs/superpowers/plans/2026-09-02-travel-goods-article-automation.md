@@ -304,7 +304,10 @@ derived-from-verified-facts のときだけ reviewer の形式を要求する。
 - [ ] `eligiblePlugins` が `destination` を返さない失敗テストを書く（3 分）
 - [ ] すべてのプラグインの `forbiddenExpressions` が共通セットを含む失敗テストを書く（3 分）
 - [ ] テストを実行し失敗を確認する（1 分）
-- [ ] `types.ts` と `registry.ts` を実装する。各プラグインは Task 3 で実装するのでスタブでよい（`eligibility` は `false` を返す）（8 分）
+- [ ] `types.ts` に `ArticleFormatPlugin` と `ArticleContext` の型を書く（4 分）
+- [ ] `types.ts` に共通の `forbiddenExpressions` セットを書く（3 分）
+- [ ] `registry.ts` に 4 プラグインのスタブ（`eligibility` は `false` を返す）を書く。本体は Task 3（5 分）
+- [ ] `registry.ts` の `getPlugin` / `eligiblePlugins` を実装する（4 分）
 - [ ] テストが成功することを確認する（1 分）
 
 ### 最初に失敗するテスト

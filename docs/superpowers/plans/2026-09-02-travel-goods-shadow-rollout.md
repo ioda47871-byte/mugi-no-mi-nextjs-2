@@ -232,7 +232,9 @@ feat(travel-goods-site): 観測レポートの型と伏せ字検査を追加
 
 ### ステップ
 
-- [ ] `rakuten-mock-server.mjs` に `availability: 1` / `0` / フィールド無しの 3 パターンを足す（6 分）
+- [ ] `rakuten-mock-server.mjs` に `availability: 1` を返す商品を足す（3 分）
+- [ ] 同じ mock に `availability: 0` を返す商品を足す（3 分）
+- [ ] 同じ mock に `availability` フィールド自体を持たない商品を足す（3 分）
 - [ ] `--offline` で外部通信なしに終了コード 0 になる失敗テストを書く（4 分）
 - [ ] 実行後に `datasets/` と `automation/` に差分が出ない失敗テストを書く（一時 clone で `git status` を見る）（5 分）
 - [ ] 出力 JSON が `ObservationReport` の形である失敗テストを書く（3 分）
@@ -535,7 +537,9 @@ artifact 名の日付で対応づけ、同日に複数の成功 run があれば
 - [ ] `Advisory` から公開可否を導く関数を export していない失敗テストを書く（4 分）
 - [ ] `mergeAdvisoryIntoPrBody` が両方の状態で例外を投げない失敗テストを書く（3 分）
 - [ ] テストを実行し失敗を確認する（1 分）
-- [ ] `advisory.ts` を実装する（8 分）
+- [ ] `AdvisoryInput` / `Advisory` の型を書く（メーカー本文を渡せない形にする）（4 分）
+- [ ] 常に `{ available: false }` を返す無効実装を書く（3 分）
+- [ ] `mergeAdvisoryIntoPrBody`（参考所見を本文へ併記するだけ）を実装する（4 分）
 - [ ] テストが成功することを確認する（1 分）
 
 ### 最初に失敗するテスト
