@@ -1,0 +1,40 @@
+<!--
+  テスト用の合成 HTML。実サイトの HTML ではない（設計書 4.2）。
+
+  数値は datasets/production/products/power-banks.json の A1335011 に
+  登録済みの確認済み値だけを使う。
+
+    weightG            360           → 約360g
+    outerSizeMm        [135,55,33]   → 約W135×H55×D33mm（W・H・D のラベル付き）
+    capacityL          null          → 行を書かない（モバイルバッテリーには存在しない）
+    specs.capacityMah  12000         → 12000mAh
+    specs.maxOutputW   65            → 最大65W
+
+  登録上 ratedWh は value: null（「商品ページの製品仕様に記載がありません」）なので、
+  この fixture にも定格電力量の行を書かない。
+  W・H・D のラベルは、解析を決定的にするためにこの fixture が採る表記であり、
+  数値そのものは登録済みの Fact.value と一致する。
+-->
+<html>
+  <body>
+    <h1>テスト用モバイルバッテリー</h1>
+    <table class="spec">
+      <tr>
+        <th>重量</th>
+        <td>約360g</td>
+      </tr>
+      <tr>
+        <th>サイズ</th>
+        <td>約W135×H55×D33mm</td>
+      </tr>
+      <tr>
+        <th>容量</th>
+        <td>12000mAh</td>
+      </tr>
+      <tr>
+        <th>最大出力</th>
+        <td>最大65W</td>
+      </tr>
+    </table>
+  </body>
+</html>

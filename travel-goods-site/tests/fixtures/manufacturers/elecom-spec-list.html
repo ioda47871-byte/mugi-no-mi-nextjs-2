@@ -1,0 +1,26 @@
+<!--
+  テスト用の合成 HTML。実サイトの HTML ではない（設計書 4.2）。
+
+  数値は datasets/production/products/backpacks.json の BM-BPTRCSEPBK に
+  登録済みの確認済み値だけを使う。
+
+    weightG      1250          → 約1,250g
+    outerSizeMm  [320,510,200] → 約W320×D200×H510mm（W・H・D のラベル付き）
+    capacityL    30            → 約30L
+
+  登録値に無いものは書かない。抽出結果が登録済みの Fact.value と一致することを
+  tests/manufacturers-others.test.ts で固定する。
+-->
+<html>
+  <body>
+    <h1>テスト用バックパック</h1>
+    <dl class="spec">
+      <dt>質量</dt>
+      <dd>約1,250g</dd>
+      <dt>外形寸法</dt>
+      <dd>約W320×D200×H510mm</dd>
+      <dt>容量</dt>
+      <dd>約30L</dd>
+    </dl>
+  </body>
+</html>
