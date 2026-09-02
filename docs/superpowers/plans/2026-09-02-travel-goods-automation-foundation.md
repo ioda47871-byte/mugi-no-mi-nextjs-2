@@ -846,7 +846,12 @@ payload には分類コードとハッシュだけを入れ、外部本文は保
 - `serializeQueue` は `queuedAt` 昇順、同日は `targetId` 昇順で `entries` を並べる。
 - `serializeLinkHealth` は `productId` 昇順で `entries` を並べる。
 - `serializeBudget` は配列を持つのが `circuitBreaker.revertHistory` だけなので、
-  そこを `revertedOn` 昇順で並べる。
+  そこを **`revertedOn` 降順（新しい順）、同日は `sha` 昇順**で並べる。
+  **昇順にしない。** 「新しい順」は Task 2 の型コメントで定めた契約であり、
+  計画3 Task 3 の `trip()` が新しい `RevertRecord` を配列の**先頭**へ足して
+  `slice(0, REVERT_HISTORY_LIMIT)` で切ることを前提にしている。
+  昇順で書き出すと読み戻した履歴が古い順になり、上限まで埋まった状態で
+  `trip()` したとき、最古ではなく**直前の新しい履歴が落ちる**。
 
 #### 意味が変わらない書き込みは行わない
 
@@ -871,10 +876,13 @@ payload には分類コードとハッシュだけを入れ、外部本文は保
 - [ ] 同じ内容を 2 回書いたとき 2 回目が `'unchanged'` を返す失敗テストを書く（3 分）
 - [ ] `entries` の順序が入れ替わっても `serializeLinkHealth` の出力が同一になる失敗テストを書く（`productId` 昇順ソート）（3 分）
 - [ ] `serializeQueue` が `queuedAt` 昇順、同日は `targetId` 昇順でソートする失敗テストを書く（3 分）
+- [ ] **`serializeBudget` が `revertHistory` を `revertedOn` 降順（新しい順）、同日は `sha` 昇順で出す**失敗テストを書く（4 分）
+- [ ] 読み戻した `revertHistory[0]` が最新日である（`trip()` の先頭追加と整合する）失敗テストを書く（3 分）
 - [ ] `readBudget` が前日の `budget.json` を渡されたとき、消費値を 0 にリセットし `circuitBreaker` は**引き継ぐ**失敗テストを書く（4 分）
 - [ ] テストを実行し失敗を確認する（1 分）
 - [ ] `io.ts` の `stableStringify`（キー昇順・末尾改行）を実装する（4 分）
 - [ ] `serializeQueue` / `serializeLinkHealth` のソート規則を実装する（5 分）
+- [ ] `serializeBudget` の `revertHistory` 降順ソートを実装する（3 分）
 - [ ] `writeIfChanged`（同一内容なら書かない）を実装する（3 分）
 - [ ] `readBudget` の日付リセットと `circuitBreaker` 引き継ぎを実装する（4 分）
 - [ ] テストが成功することを確認する（1 分）
