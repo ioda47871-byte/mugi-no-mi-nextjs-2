@@ -404,7 +404,12 @@ formatId ごとに必要商品数・必須仕様・禁止表現・商品選定�
 - [ ] `specExplainerPlugin` が 1 件で `eligibility: true` を返す失敗テストを書く（3 分）
 - [ ] `buildTitle` が禁止表現を含まない失敗テストを書く（3 分）
 - [ ] テストを実行し失敗を確認する（1 分）
-- [ ] 6 ファイルを実装し、`registry.ts` を差し替える（18 分）
+- [ ] `comparison.ts` を実装する（測定条件依存軸の除外を含む）（5 分）
+- [ ] `selections.ts` を実装する（役割で 3 件選ぶ。順位を付けない）（5 分）
+- [ ] `trip-duration.ts` を実装する（`TRIP_NIGHT_CAPACITY_RANGES`）（4 分）
+- [ ] `purpose-guide.ts` を実装する（`PURPOSE_SPEC_KEYS`）（4 分）
+- [ ] `spec-explainer.ts` と `destination.ts`（常に false）を実装する（4 分）
+- [ ] `registry.ts` のスタブを差し替える（3 分）
 - [ ] テストが成功することを確認する（1 分）
 
 ### 最初に失敗するテスト
@@ -567,7 +572,9 @@ feat(travel-goods-site): 記事構成プラグイン 6 形式を実装
 - [ ] 商品集合と比較軸が同一で `'same-products-and-axis'` を返す失敗テストを書く（4 分）
 - [ ] 商品が同じでも比較軸が違えば重複でない失敗テストを書く（3 分）
 - [ ] テストを実行し失敗を確認する（1 分）
-- [ ] `intent.ts` を実装する（10 分）
+- [ ] `buildIntentKey` を実装する（4 分）
+- [ ] `triGramJaccard` を実装する（4 分）
+- [ ] `checkDuplicate` の 3 判定を実装する（5 分）
 - [ ] テストが成功することを確認する（1 分）
 
 ### 最初に失敗するテスト
@@ -779,7 +786,12 @@ feat(travel-goods-site): intentKey の組み立てと 3 種の重複判定を追
 - [ ] `runArticleChecks` の引数に AI 関連のものが無いことを型で確認する失敗テストを書く（3 分）
 - [ ] 既存の公開 7 記事が 14 検査を通る失敗テストを書く（実データでの回帰）（5 分）
 - [ ] テストを実行し失敗を確認する（1 分）
-- [ ] `article-checks.ts` を実装する（15 分）
+- [ ] `ARTICLE_CHECK_IDS` と各検査の関数シグネチャを書く（4 分）
+- [ ] 数値・識別子・出典の 3 検査を実装する（5 分）
+- [ ] 表現の 3 検査（実体験・最上級・未記入）を実装する（4 分）
+- [ ] 重複・商品数・公開状態の 4 検査を実装する（5 分）
+- [ ] `evaluatePublication` とプラグイン `validate` の 2 検査を実装する（4 分）
+- [ ] `runArticleChecks` / `isPublishable` を組み立てる（3 分）
 - [ ] テストが成功することを確認する（1 分）
 
 ### 最初に失敗するテスト
@@ -851,10 +863,10 @@ feat(travel-goods-site): 記事の決定的 14 検査を追加
 
 ### Consumes / Produces
 
-- Consumes: `getPlugin`, `eligiblePlugins`, `runArticleChecks`, `isPublishable`, `buildIntentKey`, `checkDuplicate`, `readQueue`, `enqueue`（計画1 Task 3）
+- Consumes: `getPlugin`, `eligiblePlugins`, `runArticleChecks`, `isPublishable`, `buildIntentKey`, `checkDuplicate`, `readQueue` / `enqueue`（計画1 Task 4）、**`readSwitches` / `Switches`（計画3 Task 1）**
 - Produces:
   - `export type BuiltArticle = { meta: ArticleMeta; body: string }`
-  - `export function buildArticle(plugin: ArticleFormatPlugin, ctx: ArticleContext, products: Product[], catalog: Catalog, today: string): BuiltArticle`
+  - `export function buildArticle(plugin: ArticleFormatPlugin, ctx: ArticleContext, products: readonly Product[], catalog: Catalog, today: string, status: 'published' | 'review'): BuiltArticle`
   - `export const SELECTIONS_WINDOW = 20`
   - `export const SELECTIONS_MAX_IN_WINDOW = 8`
   - `export function selectionsShareExceeded(recent: readonly Article[]): boolean`（直近 20 本のうち `selections` が **8 本以上**なら `true`）
@@ -862,9 +874,36 @@ feat(travel-goods-site): 記事の決定的 14 検査を追加
   - `export function jstWeekStart(isoDate: string): string`
   - `export function generatedThisWeek(articles: readonly Article[], today: string): number`
   - `export function remainingThisWeek(articles: readonly Article[], today: string): number`
+  - `export type ArticleGate = { run: true } | { run: false; reason: 'automation-disabled' | 'generate-disabled' }`
+  - `export function gateArticleGeneration(sw: Switches): ArticleGate`
+  - `export function articleStatusFor(sw: Switches): 'published' | 'review'`
   - CLI: `npm run article:generate -- [--apply] [--limit N] [--dataset production]`
 
 ### 仕様（設計書 7.1・7.2・7.6 に対応）
+
+#### 記事側 2 スイッチの結線
+
+| スイッチ | 値 | 動作 |
+|---|---|---|
+| `AUTOMATION_ENABLED` | `false` | `gateArticleGeneration` が `{ run: false, reason: 'automation-disabled' }`。何もしない |
+| `AUTO_GENERATE_ARTICLES` | `false` | `{ run: false, reason: 'generate-disabled' }`。**`buildArticle` を呼ばず、候補を 1 件も作らない** |
+| `AUTO_PUBLISH_ARTICLES` | `false` | 生成はするが **`meta.status` を `'review'` にする**。14 検査は実行して結果を記録する |
+| `AUTO_PUBLISH_ARTICLES` | `true` | `meta.status` は `'published'` |
+
+```ts
+export function gateArticleGeneration(sw: Switches): ArticleGate {
+  if (!sw.automationEnabled) return { run: false, reason: 'automation-disabled' };
+  if (!sw.autoGenerateArticles) return { run: false, reason: 'generate-disabled' };
+  return { run: true };
+}
+
+export function articleStatusFor(sw: Switches): 'published' | 'review' {
+  return sw.autoPublishArticles ? 'published' : 'review';
+}
+```
+
+**`buildArticle` は `status` を引数で受け取り、`'published'` を固定しない。**
+シグネチャは `buildArticle(plugin, ctx, products, catalog, today, status)` とする。
 
 - **既定は dry-run。** `--apply` を付けたときだけ `datasets/production/articles/<slug>.md` を作る。
 - 本文は固定文＋比較表。数値は `Fact.value` をそのまま。`null` は「公表なし」。
@@ -918,6 +957,9 @@ export function remainingThisWeek(articles: readonly Article[], today: string): 
 
 ### ステップ
 
+- [ ] `gateArticleGeneration` の 3 ケースを検査する失敗テストを書く（4 分）
+- [ ] `articleStatusFor` が `published` / `review` を切り替える失敗テストを書く（3 分）
+- [ ] `buildArticle` が `status` を引数で受け、`published` を固定しない失敗テストを書く（3 分）
 - [ ] `buildArticle` の出力が `findUnsafeMarkdown` で問題なしになる失敗テストを書く（3 分）
 - [ ] 本文中の数値がすべて `Fact.value` と文字列一致する失敗テストを書く（4 分）
 - [ ] `capacityL.value === null` の商品で本文に「公表なし」が出る失敗テストを書く（3 分）
@@ -932,33 +974,180 @@ export function remainingThisWeek(articles: readonly Article[], today: string): 
 - [ ] 同じ入力で 2 回 `buildArticle` を呼ぶと同一の本文になる（決定的）失敗テストを書く（3 分）
 - [ ] CLI を `--dry-run`（既定）で実行してもファイルが増えない失敗テストを書く（一時ディレクトリで実行）（5 分）
 - [ ] テストを実行し失敗を確認する（1 分）
-- [ ] `article-build.ts` と `article-generate.ts` を実装し、`package.json` に `"article:generate": "tsx scripts/article-generate.ts"` を追加する（15 分）
+- [ ] `gateArticleGeneration` と `articleStatusFor` を実装する（4 分）
+- [ ] `jstWeekStart` / `generatedThisWeek` / `remainingThisWeek` を実装する（5 分）
+- [ ] `selectionsShareExceeded` を実装する（3 分）
+- [ ] `buildArticle` の frontmatter 組み立てを実装する（5 分）
+- [ ] `buildArticle` の比較表と出典一覧を実装する（5 分）
+- [ ] `scripts/article-generate.ts` の引数解析とゲート判定を実装する（5 分）
+- [ ] `scripts/article-generate.ts` の生成ループと dry-run 出力を実装する（5 分）
+- [ ] `package.json` に `"article:generate": "tsx scripts/article-generate.ts"` を追加する（2 分）
 - [ ] テストが成功することを確認する（1 分）
 
 ### 最初に失敗するテスト
 
 ```ts
-import { buildArticle, selectionsShareExceeded } from '../src/lib/automation/article-build';
+// tests/automation-article-build.test.ts
+import { describe, expect, it } from 'vitest';
+import {
+  ARTICLES_PER_WEEK,
+  SELECTIONS_MAX_IN_WINDOW,
+  articleStatusFor,
+  buildArticle,
+  gateArticleGeneration,
+  generatedThisWeek,
+  jstWeekStart,
+  remainingThisWeek,
+  selectionsShareExceeded,
+} from '../src/lib/automation/article-build';
+import { comparisonPlugin } from '../src/lib/article-formats/comparison';
+import type { ArticleContext } from '../src/lib/article-formats/types';
+import { readSwitches, type Switches } from '../src/lib/automation/switches';
 import { findUnsafeMarkdown } from '../src/lib/catalog/validate';
+import type { Article, Fact } from '../src/lib/catalog/types';
+import { makeArticle, makeCatalog, makeProduct } from './factories';
 
-it('生成した本文に生 HTML が混ざらない', () => {
-  const built = buildArticle(comparisonPlugin, ctx, products, catalog, '2026-09-02');
-  expect(findUnsafeMarkdown(built.body)).toEqual([]);
+const allOn: Switches = readSwitches({
+  AUTOMATION_ENABLED: 'true',
+  AUTO_GENERATE_ARTICLES: 'true',
+  AUTO_PUBLISH_ARTICLES: 'true',
 });
 
-it('自動レビューの reviewer 形式で出力する', () => {
-  const built = buildArticle(comparisonPlugin, ctx, products, catalog, '2026-09-02');
-  expect(built.meta.reviewer).toBe('automation:comparison@1');
-  expect(built.meta.reviewMethod).toBe('derived-from-verified-facts');
+const ctx: ArticleContext = {
+  category: 'suitcases',
+  axis: 'weight',
+  tripNights: null,
+  domestic: null,
+  transport: null,
+  purpose: null,
+};
+
+const weight = (value: number): Fact<number> => ({
+  value, sourceId: 'src-fixture-ace-06936', checkedAt: '2026-08-31',
 });
 
-it('○選が直近 20 本中 8 本以上あれば抑制する', () => {
-  // generated() は本 Task のテスト冒頭で定義した fixture ヘルパー
-  const with8 = [...generated(8, '2026-09-01', 'selections'), ...generated(12, '2026-09-01', 'comparison')];
-  const with7 = [...generated(7, '2026-09-01', 'selections'), ...generated(13, '2026-09-01', 'comparison')];
-  expect(with8).toHaveLength(20);
-  expect(selectionsShareExceeded(with8)).toBe(true);
-  expect(selectionsShareExceeded(with7)).toBe(false);
+const products = [
+  makeProduct({ id: 'p-a', weightG: weight(2900) }),
+  makeProduct({ id: 'p-b', weightG: weight(3400) }),
+];
+const catalog = makeCatalog({ products, articles: [], merchantLinks: [] });
+
+/** 自動生成記事を n 本作る。publishedAt と formatId を指定できる。 */
+function generated(
+  n: number,
+  publishedAt: string,
+  formatId: 'selections' | 'comparison' = 'comparison',
+): Article[] {
+  return Array.from({ length: n }, (_, i) =>
+    makeArticle({
+      slug: `generated-${formatId}-${publishedAt}-${i}`,
+      intentKey: `generated-${formatId}-${i}`,
+      publishedAt,
+      formatId,
+      formatVersion: 1,
+      reviewMethod: 'derived-from-verified-facts',
+      reviewer: `automation:${formatId}@1`,
+    }));
+}
+
+describe('記事側スイッチの結線', () => {
+  it('AUTOMATION_ENABLED が未設定なら生成しない', () => {
+    expect(gateArticleGeneration(readSwitches({})))
+      .toEqual({ run: false, reason: 'automation-disabled' });
+  });
+
+  it('AUTO_GENERATE_ARTICLES=false なら候補を 1 件も作らない', () => {
+    const sw = readSwitches({ AUTOMATION_ENABLED: 'true', AUTO_GENERATE_ARTICLES: 'false' });
+    expect(gateArticleGeneration(sw)).toEqual({ run: false, reason: 'generate-disabled' });
+  });
+
+  it('両方有効なら生成する', () => {
+    expect(gateArticleGeneration(allOn)).toEqual({ run: true });
+  });
+
+  it('AUTO_PUBLISH_ARTICLES=false では review、true では published', () => {
+    const off = readSwitches({
+      AUTOMATION_ENABLED: 'true', AUTO_GENERATE_ARTICLES: 'true', AUTO_PUBLISH_ARTICLES: 'false',
+    });
+    expect(articleStatusFor(off)).toBe('review');
+    expect(articleStatusFor(allOn)).toBe('published');
+  });
+
+  it('status は引数で渡され、published を固定しない', () => {
+    const asReview = buildArticle(comparisonPlugin, ctx, products, catalog, '2026-09-02', 'review');
+    expect(asReview.meta.status).toBe('review');
+    const asPublished = buildArticle(comparisonPlugin, ctx, products, catalog, '2026-09-02', 'published');
+    expect(asPublished.meta.status).toBe('published');
+  });
+});
+
+describe('本文の組み立て', () => {
+  it('生成した本文に生 HTML が混ざらない', () => {
+    const built = buildArticle(comparisonPlugin, ctx, products, catalog, '2026-09-02', 'published');
+    expect(findUnsafeMarkdown(built.body)).toEqual([]);
+  });
+
+  it('自動レビューの reviewer 形式で出力する', () => {
+    const built = buildArticle(comparisonPlugin, ctx, products, catalog, '2026-09-02', 'published');
+    expect(built.meta.reviewer).toBe('automation:comparison@1');
+    expect(built.meta.reviewMethod).toBe('derived-from-verified-facts');
+    expect(built.meta.formatId).toBe('comparison');
+    expect(built.meta.formatVersion).toBe(1);
+  });
+
+  it('同じ入力なら同じ本文になる', () => {
+    const first = buildArticle(comparisonPlugin, ctx, products, catalog, '2026-09-02', 'published');
+    const second = buildArticle(comparisonPlugin, ctx, products, catalog, '2026-09-02', 'published');
+    expect(second.body).toBe(first.body);
+  });
+});
+
+describe('週 2 本の上限（JST 週単位）', () => {
+  it('週の始まりは JST 月曜', () => {
+    expect(jstWeekStart('2026-09-02')).toBe('2026-08-31'); // 水
+    expect(jstWeekStart('2026-08-31')).toBe('2026-08-31'); // 月
+    expect(jstWeekStart('2026-09-06')).toBe('2026-08-31'); // 日
+    expect(jstWeekStart('2026-09-07')).toBe('2026-09-07'); // 翌月
+  });
+
+  it('火曜に 2 本作ったら金曜は 0 本', () => {
+    const tuesday = generated(2, '2026-09-01');
+    expect(generatedThisWeek(tuesday, '2026-09-04')).toBe(2);
+    expect(remainingThisWeek(tuesday, '2026-09-04')).toBe(0);
+  });
+
+  it('火曜に 1 本なら金曜は 1 本まで', () => {
+    expect(remainingThisWeek(generated(1, '2026-09-01'), '2026-09-04')).toBe(1);
+  });
+
+  it('同じ日に何度再実行しても上限を超えない', () => {
+    const already = generated(ARTICLES_PER_WEEK, '2026-09-01');
+    expect(remainingThisWeek(already, '2026-09-01')).toBe(0);
+    expect(remainingThisWeek(already, '2026-09-01')).toBe(0);
+  });
+
+  it('週が変われば上限が戻る', () => {
+    expect(remainingThisWeek(generated(2, '2026-09-04'), '2026-09-07')).toBe(ARTICLES_PER_WEEK);
+  });
+
+  it('人が書いた記事は週の本数に数えない', () => {
+    const human = [makeArticle({ slug: 'human-1', intentKey: 'human-1', publishedAt: '2026-09-01' })];
+    expect(generatedThisWeek(human, '2026-09-02')).toBe(0);
+  });
+});
+
+describe('○選の割合の上限', () => {
+  it('直近 20 本中 8 本以上あれば抑制する', () => {
+    const with8 = [...generated(8, '2026-09-01', 'selections'), ...generated(12, '2026-09-01', 'comparison')];
+    expect(with8).toHaveLength(20);
+    expect(SELECTIONS_MAX_IN_WINDOW).toBe(8);
+    expect(selectionsShareExceeded(with8)).toBe(true);
+  });
+
+  it('7 本なら抑制しない', () => {
+    const with7 = [...generated(7, '2026-09-01', 'selections'), ...generated(13, '2026-09-01', 'comparison')];
+    expect(selectionsShareExceeded(with7)).toBe(false);
+  });
 });
 ```
 
@@ -1037,7 +1226,9 @@ feat(travel-goods-site): 記事本文の決定的な組み立てと生成 CLI �
 - [ ] 自動非公開が `status: 'review'` にする（削除しない）失敗テストを書く（3 分）
 - [ ] CLI が既定 dry-run でファイルを変更しない失敗テストを書く（4 分）
 - [ ] テストを実行し失敗を確認する（1 分）
-- [ ] `article-recheck.ts`（lib と script）を実装し `package.json` に追加する（10 分）
+- [ ] `planRecheck` の legacy 判定を実装する（4 分）
+- [ ] `planRecheck` の `unpublish` と `failedChecks` を実装する（4 分）
+- [ ] `scripts/article-recheck.ts` と `package.json` の追加（4 分）
 - [ ] テストが成功することを確認する（1 分）
 
 ### 最初に失敗するテスト

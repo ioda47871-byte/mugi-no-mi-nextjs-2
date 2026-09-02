@@ -138,7 +138,9 @@ travel-goods-site/scripts/
 - [ ] `emptyReport` の出力に違反が 0 件である失敗テストを書く（3 分）
 - [ ] 分類コード（`no-official-page` など英小文字ハイフン）は違反にならない失敗テストを書く（3 分）
 - [ ] テストを実行し失敗を確認する（1 分）
-- [ ] `observe.ts` と `redact.ts` を実装する（10 分）
+- [ ] `ObservationReport` の型と `emptyReport` を実装する（5 分）
+- [ ] `artifactName` と `REPORT_ARTIFACT_PREFIX` を実装する（2 分）
+- [ ] `findRedactionViolations` の再帰走査を実装する（5 分）
 - [ ] テストが成功することを確認する（1 分）
 
 ### 最初に失敗するテスト
@@ -238,7 +240,11 @@ feat(travel-goods-site): 観測レポートの型と伏せ字検査を追加
 - [ ] `availabilityFieldPresent` がモックの応答に応じて `true` / `false` になる失敗テストを書く（4 分）
 - [ ] `AUTOMATION_ENABLED` が何であっても書き込まない失敗テストを書く（3 分）
 - [ ] テストを実行し失敗を確認する（1 分）
-- [ ] `automation-dry-run.ts` を実装する（18 分）
+- [ ] 引数解析と `--offline` の分岐を実装する（4 分）
+- [ ] リンク点検の段を実装する（5 分）
+- [ ] 商品判定の段を実装する（5 分）
+- [ ] 記事候補の段を実装する（5 分）
+- [ ] レポート組み立てと `findRedactionViolations` の終了コード 3 を実装する（4 分）
 - [ ] テストが成功することを確認する（1 分）
 
 ### 最初に失敗するテスト
@@ -344,7 +350,9 @@ feat(travel-goods-site): 通しの dry-run 実行系を追加
 - [ ] `manufacturerSuccessRate` が `succeeded / attempted` を返し、`attempted: 0` なら `0` を返す失敗テストを書く（4 分）
 - [ ] `availabilityFieldPresent` が 7 日すべて `true` のときだけ `true` になる失敗テストを書く（3 分）
 - [ ] テストを実行し失敗を確認する（1 分）
-- [ ] `summarize.ts` と CLI を実装する（12 分）
+- [ ] `pickLatestPerDate` を実装する（4 分）
+- [ ] `summarize` の欠損判定と `complete` を実装する（5 分）
+- [ ] `scripts/summarize-observation.ts` を実装する（5 分）
 - [ ] テストが成功することを確認する（1 分）
 
 ### 最初に失敗するテスト
@@ -696,7 +704,10 @@ defaults:
 - [ ] `--force` を含まない失敗テストを書く（2 分）
 - [ ] 書き込み系のコマンド（`git push`、`--apply`）を含まない失敗テストを書く（3 分）
 - [ ] テストを実行し失敗を確認する（1 分）
-- [ ] `automation-observe.yml` を書く（15 分）
+- [ ] 共通ヘッダと `permissions`（`actions: read`）を書く（4 分）
+- [ ] 日次ジョブ（dry-run と upload-artifact）を書く（5 分）
+- [ ] 集計ジョブの run 列挙と artifact 選別を書く（5 分）
+- [ ] 欠損日の Issue 記録を書く（3 分）
 - [ ] テストが成功することを確認する（1 分）
 
 ### 最初に失敗するテスト
@@ -796,7 +807,10 @@ schedule は持たない。段階1 の開始は人が別 PR で行う。
 - [ ] `.github/workflows/` の `automation-*` が **6 本**ある失敗テストを書く（3 分）
 - [ ] `automation-revert.yml` が存在せず、revert が `automation-commit.yml` の job である失敗テストを書く（3 分）
 - [ ] テストを実行し失敗を確認する（1 分）
-- [ ] `automation-runbook.md` を書く（15 分）
+- [ ] 段階0 の完了確認コマンド一覧を書く（4 分）
+- [ ] 段階1 の開始手順と完了判定を書く（4 分）
+- [ ] 停止のしかたと circuit breaker の解除手順を書く（4 分）
+- [ ] `RECALL_SOURCES` と `OFFICIAL_FETCH_POLICIES` の承認手順を書く（5 分）
 - [ ] テストが成功することを確認する（1 分）
 
 ### 最初に失敗するテスト
@@ -908,7 +922,9 @@ docs(travel-goods-site): 自動運用の運用手順書と段階0 のスモー�
 
 ### ステップ
 
-- [ ] `automation-e2e-fixture.ts` を書く（`linkcheck-fixture.ts` を雛形に、自動公開商品 2 件・`hidden` リンク 1 件・生成記事 1 本・非公開化した記事 1 本を作る）（12 分）
+- [ ] `linkcheck-fixture.ts` を雛形にデータセット複製を書く（4 分）
+- [ ] 自動公開商品 2 件と `hidden` リンク 1 件を作る（5 分）
+- [ ] 生成記事 1 本と非公開化した記事 1 本を作る（5 分）
 - [ ] ケース1（CTA の href 完全一致）の失敗テストを書く（4 分）
 - [ ] ケース2（`hidden` は CTA を出さない）の失敗テストを書く（4 分）
 - [ ] ケース3（比較表の数値一致）の失敗テストを書く（5 分）
@@ -916,7 +932,8 @@ docs(travel-goods-site): 自動運用の運用手順書と段階0 のスモー�
 - [ ] `playwright.config.ts` に `automation` データセットの分岐を足す（4 分）
 - [ ] `package.json` に `test:e2e:automation` を足す（2 分）
 - [ ] テストを実行し失敗を確認する（2 分）
-- [ ] fixture のデータを調整して 4 ケースを通す（10 分）
+- [ ] ケース1・2（CTA の href と hidden）を通す（5 分）
+- [ ] ケース3・4（比較表の数値と非公開記事）を通す（5 分）
 - [ ] **本番データセットに差分が出ていないことを確認する**（2 分）
 
 ### 最初に失敗するテスト

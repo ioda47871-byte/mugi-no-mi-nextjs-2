@@ -359,7 +359,9 @@ travel-goods-site/automation/link-health.json
 - [ ] `checkResetPaths` が `closed` → `closed` で `'wrong-transition'` を返す失敗テストを書く（3 分）
 - [ ] `forbidsClosedTransition` が `open` → `closed` で `true`、`closed` → `open` で `false` を返す失敗テストを書く（3 分）
 - [ ] テストを実行し失敗を確認する（1 分）
-- [ ] `changed-paths.ts` と CLI を実装し `package.json` に追加する（10 分）
+- [ ] `ALLOWED_AUTOMATION_PATHS` と `checkChangedPaths` を実装する（4 分）
+- [ ] `checkResetPaths` と `forbidsClosedTransition` を実装する（5 分）
+- [ ] `scripts/check-changed-paths.ts` と `package.json` の追加（4 分）
 - [ ] テストが成功することを確認する（1 分）
 
 ### 最初に失敗するテスト
@@ -493,7 +495,10 @@ reset 以外の workflow が closed への遷移を作ったら中止する。
 - [ ] `trip` を 25 回呼んでも履歴が 20 件で切られる失敗テストを書く（4 分）
 - [ ] `isKnownRevertSha` が履歴に無い SHA を拒否する失敗テストを書く（3 分）
 - [ ] テストを実行し失敗を確認する（1 分）
-- [ ] `breaker.ts` と CLI を実装する（12 分）
+- [ ] `evaluateMergeGate` の真理値表を実装する（5 分）
+- [ ] `recentReverts` と 3 日窓を実装する（4 分）
+- [ ] `shouldTrip` / `trip` / `isKnownRevertSha` を実装する（5 分）
+- [ ] `scripts/check-breaker.ts` を実装する（3 分）
 - [ ] テストが成功することを確認する（1 分）
 
 ### 最初に失敗するテスト
@@ -698,7 +703,9 @@ open では通常の自動 PR と自動 revert PR を止める。
 - [ ] `[auto-revert]` を含む subject で `'already-auto-revert'` を返す失敗テストを書く（3 分）
 - [ ] 4 条件すべて満たすと `{ ok: true }` を返す失敗テストを書く（2 分）
 - [ ] テストを実行し失敗を確認する（1 分）
-- [ ] `revert-target.ts` と CLI を実装する（10 分）
+- [ ] `validateRevertTarget` の 4 条件を実装する（5 分）
+- [ ] `isAutoRevertCommit` と `AUTO_REVERT_MARKER` を実装する（3 分）
+- [ ] `scripts/plan-revert.ts`（git 呼び出し）を実装する（5 分）
 - [ ] テストが成功することを確認する（1 分）
 
 ### 最初に失敗するテスト
@@ -939,7 +946,8 @@ defaults:
 - [ ] どの workflow も `--force` を含まない失敗テストを書く（3 分）
 - [ ] テストを実行し失敗を確認する（1 分）
 - [ ] `ensure-daily-branch.sh` を書く（8 分）
-- [ ] `automation-links.yml` を書く（10 分）
+- [ ] `automation-links.yml` の共通ヘッダとスイッチ判定を書く（4 分）
+- [ ] `automation-links.yml` の取得ステップと push を書く（5 分）
 - [ ] `automation-discover.yml` を書く（8 分）
 - [ ] `automation-articles.yml` を書く（8 分）
 - [ ] テストが成功することを確認する（1 分）
@@ -1045,7 +1053,9 @@ AUTOMATION_ENABLED が true でなければ即座に正常終了する。
 - [ ] 全 6 検証コマンドが含まれる失敗テストを書く（4 分）
 - [ ] `--force` を含まない失敗テストを書く（2 分）
 - [ ] テストを実行し失敗を確認する（1 分）
-- [ ] `automation-commit.yml` を書く（15 分）
+- [ ] `automation-commit.yml` の共通ヘッダと `verify-and-merge` job の検証ステップを書く（5 分）
+- [ ] PR 作成と `automation/verify` の付与を書く（5 分）
+- [ ] auto-merge（`enablePullRequestAutoMerge`、`MERGE`）を書く（4 分）
 - [ ] テストが成功することを確認する（1 分）
 
 ### 最初に失敗するテスト
@@ -1175,8 +1185,12 @@ jobs:
 - [ ] `revert` job が `git revert -m 1` を含む失敗テストを書く（2 分）
 - [ ] `--force` を含まない失敗テストを書く（2 分）
 - [ ] テストを実行し失敗を確認する（1 分）
-- [ ] `automation-commit.yml` に `revert` job を足す（14 分）
-- [ ] `automation-reset.yml` を書く（12 分）
+- [ ] `revert` job の `needs` と `if` 条件を書く（3 分）
+- [ ] `plan:revert` の呼び出しと revert ブランチ作成を書く（5 分）
+- [ ] breaker 同梱（例外1）と PR 作成を書く（5 分）
+- [ ] `revert` job の自前検証と status 付与を書く（4 分）
+- [ ] `automation-reset.yml` の入力 3 つと `RESET` 検査を書く（5 分）
+- [ ] `automation-reset.yml` の PR 作成と reset 専用検査を書く（5 分）
 - [ ] テストが成功することを確認する（1 分）
 
 ### 最初に失敗するテスト
@@ -1384,7 +1398,12 @@ export const EXIT_CODE_TIMEOUT = 3;
 - [ ] 保留 9 件で通知せず 10 件で通知する失敗テストを書く（3 分）
 - [ ] `decideNotifications` の入力に AI 関連のフィールドが無いことを型で確認する失敗テストを書く（3 分）
 - [ ] テストを実行し失敗を確認する（1 分）
-- [ ] `deploy-gate.ts` / `notify.ts` / CLI 2 本を実装する（16 分）
+- [ ] `readMergeState` を実装する（3 分）
+- [ ] `readDeployState`（SHA 照合と check 名の絞り込み）を実装する（5 分）
+- [ ] `POLL_INTERVALS_MS` / `POLL_TIMEOUT_MS` / `EXIT_CODE_TIMEOUT` を定義する（3 分）
+- [ ] `scripts/wait-for-deploy.ts` の polling ループを実装する（5 分）
+- [ ] `notify.ts` の 7 条件を実装する（5 分）
+- [ ] `scripts/post-deploy-check.ts` を実装する（5 分）
 - [ ] `automation-commit.yml` に `wait-for-deploy` と `post-deploy-check` の 2 job を足す（8 分）
 - [ ] テストが成功することを確認する（1 分）
 
