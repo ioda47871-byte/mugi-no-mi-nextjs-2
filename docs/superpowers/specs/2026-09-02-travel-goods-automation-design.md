@@ -352,12 +352,15 @@ src/lib/manufacturers/
 3. 型番一致 **かつ** JAN 一致（＝ `matchProduct` が `strong`）
 4. 色・容量・サイズ・セット数のトークンが `variant` と一致し、矛盾する別表記がない
 5. `affiliateUrl` の `pc` から `https://item.rakuten.co.jp/` の URL を取り出せる
-6. **別商品の初期選択がない**。次の 6a または 6b のいずれかで確認する:
-   - **6a（観測。規約確認後）**: Browser Rendering で販売ページを描画し、初期選択が対象バリエーションと一致することを観測する。
+6. **別商品の初期選択がない**。次の **6a または 6b のいずれか**が成立すれば条件6 を満たす:
+   - **6a（実ブラウザ観測。規約確認後）**: Browser Rendering で販売ページを描画し、
+     初期選択が対象バリエーションと一致することを観測する。
      **これは楽天の商品ページを取得する行為であり、17 節 未解決事項1 の解決が前提**である。
-   - **6b（推定。段階2 の既定）**: 販売ページ文言（`itemName`＋`itemCaption`）に、
-     対象バリエーション以外の色・容量・サイズ・セット数の表記が**一切現れない**。
-     すなわち選択式ページである徴候が無い。**これは観測ではなく推定であり、6a より弱い根拠である。**
+   - **6b（楽天 API の販売ページ文言による決定的な推定。段階2 の既定）**:
+     `itemName`＋`itemCaption` に、対象バリエーション以外の色・容量・サイズ・セット数の表記が**一切現れない**。
+     すなわち選択式ページである徴候が無い。**判定自体は決定的だが、6a より弱い根拠である。**
+
+   **6a・6b のどちらの根拠も無ければ S/A にしない**（B 条件2）。
 7. 公式仕様の URL と確認日を `Source`（`provenance: 'direct-fetch'`）として登録できる
 8. リコール・販売停止の対象でない（メーカー公式のリコール告知に該当語がない）
 9. `brand`＋`model`＋`variant` が既存商品と重複しない
@@ -831,12 +834,23 @@ travel-goods-site/automation/
 
 | 資源 | 使えないときの動作 | 判定への影響 |
 |---|---|---|
-| **Browser Run** | 6a（観測）を実行できない | 6b（推定）で判定できる商品は S/A になりうる。6b でも判定できない商品は**すべて B 判定（非公開保留）**。翌日キューで再試行。**観測なしで S にすることはない** |
+| **Browser Run** | 6a（実ブラウザ観測）を実行できない | 6b（楽天 API の販売ページ文言による決定的な推定）が成立する商品は、条件6 を満たし S/A になりうる。6a も 6b も成立しない商品は**すべて B 判定（非公開保留）**。翌日キューで再試行。**6a・6b のどちらの根拠も無いまま S/A にすることはない** |
 | **Workers AI** | 参考所見を生成できない | **なし。** 商品の S/A/B、記事の公開・保留、リンクの交換・非表示はいずれも変わらない。PR/Issue の参考所見欄が空になるだけ（1.3 節） |
 
 この非対称は意図的である。
 Browser Run が担うのは**「別バリエーションを売っていないこと」の確認**という公開の必要条件であり、判定の入力である。
+ただしその確認は 6a（実ブラウザ観測）だけでなく **6b（決定的な推定）でも成立する**ため、
+Browser Run が使えなくても判定経路は残る。
 Workers AI が担うのは**人が読むための所見**であり、判定の入力ではない。
+
+**条件6 の成立要件（10.5 節と 5.5 節で同一）**:
+
+| 根拠 | 内容 | 強さ |
+|---|---|---|
+| **6a** | 実ブラウザでの観測。Browser Rendering で販売ページを描画し、初期選択が対象バリエーションと一致することを確認する | 強い |
+| **6b** | 楽天 API の販売ページ文言（`itemName`＋`itemCaption`）による**決定的な推定**。対象バリエーション以外の色・容量・サイズ・セット数の表記が一切現れないことを確認する | 弱いが決定的 |
+
+**6a または 6b のいずれかが成立すれば条件6 を満たす。どちらも成立しなければ B。**
 
 ---
 
@@ -853,7 +867,7 @@ Workers AI が担うのは**人が読むための所見**であり、判定の�
 | `automation-articles.yml`（新規） | 火・金 JST 06:30 / 手動 | `articles/` | 例外時のみ |
 | `automation-commit.yml`（新規） | 毎日 JST 07:30 / 手動 | 上記の変更をまとめて PR 化・検証・auto-merge | 例外時のみ |
 | `automation-revert.yml`（新規） | 公開後検査の失敗時 / 手動 | revert ブランチと revert PR | **必ず Issue**（12.5 節） |
-| `automation-reset.yml`（新規） | `workflow_dispatch` のみ | `budget.json` の `circuitBreaker` 解除 PR | Issue を更新 |
+| `automation-reset.yml`（新規） | `workflow_dispatch` のみ（入力: 理由 / revert SHA / `RESET`） | `budget.json` の `circuitBreaker` のみ | Issue を更新 |
 
 ### 11.2 スケジュール（cron は UTC）
 
@@ -881,6 +895,14 @@ Workers AI が担うのは**人が読むための所見**であり、判定の�
 
 **検証は 1 日の最後に 1 回だけまとめて実行する。** 各ジョブは作業ブランチへコミットするだけで、
 個別に `main` を更新しない。これにより Pages デプロイが 1 日 1 回に収まる。
+
+### 11.4 上限と繰越
+
+各ジョブは開始時に `budget.json` を読み、当日の残予算を確認する。
+
+- 残予算が 0 なら**正常終了**（失敗にしない）。
+- 処理途中で予算に到達したら、**処理済み分は書き込み、未処理分を `queue.json` へ積んで正常終了**。
+- 翌日のジョブはキューの先頭から処理する。
 
 ### 11.5 日次 workflow の競合対策
 
@@ -925,14 +947,6 @@ concurrency:
 `automation-commit` は、作業ブランチが存在しない日（＝その日の変更が 1 件も無い日）は
 **何もせず正常終了する**。空の PR を作らない。
 
-### 11.4 上限と繰越
-
-各ジョブは開始時に `budget.json` を読み、当日の残予算を確認する。
-
-- 残予算が 0 なら**正常終了**（失敗にしない）。
-- 処理途中で予算に到達したら、**処理済み分は書き込み、未処理分を `queue.json` へ積んで正常終了**。
-- 翌日のジョブはキューの先頭から処理する。
-
 ---
 
 ## 12. 自動 PR・マージ・デプロイ・revert
@@ -944,6 +958,9 @@ concurrency:
 3. 全検証を実行する: `typecheck` / `lint` / 単体テスト / `validate:content:all` / `build:only` / `check:release -- --out out` / 必要な E2E。
 4. PR を自動作成する。
 5. **必須チェックがすべて成功したときだけ**、GitHub の自動マージ（auto-merge）で `main` へ入る。
+   **automation PR の auto-merge 方式は merge commit に固定する。**
+   squash merge と rebase merge は automation PR では使用しない
+   （自動 revert が `git revert -m 1` を使うため、対象が必ず 2 親の merge commit である必要がある。12.5 節）。
 6. Cloudflare Pages が `main` 更新を自動デプロイする。
 7. デプロイ後に公開後検査を行う（12.4 節）。
 
@@ -967,6 +984,26 @@ travel-goods-site/automation/link-health.json
 
 **自動処理によるコード・workflow・設定・記事構成プラグインの変更は禁止する。**
 `src/`、`scripts/`、`.github/`、`package.json`、`tests/`、`docs/` はいずれも許可パスに含まれない。
+
+#### reset PR の専用検査（12.6 節 例外2）
+
+`automation-reset.yml` が作る PR には、上の許可パス検査に加えて次を適用する。
+
+1. 変更ファイルが **`travel-goods-site/automation/budget.json` の 1 件だけ**であること。
+2. その差分が **`circuitBreaker` フィールドの中だけ**に閉じていること
+   （`date`・`rakutenRequests`・`workersAiNeurons`・`browserSeconds`・`pagesDeploysThisMonth` が変わっていない）。
+3. `circuitBreaker.state` の遷移が **`open` → `closed`** であること。
+
+1 つでも満たさなければ **PR を作らずに中止し Issue を上げる**。
+
+#### `circuitBreaker.state` を `closed` へ戻せる経路の限定
+
+**`automation-reset.yml` 以外の workflow が `circuitBreaker.state` を `closed` へ変更することを禁止する。**
+変更パス検査は、`automation-links` / `automation-discover` / `automation-articles` /
+`automation-commit` / `automation-revert` の差分に
+`circuitBreaker.state` の `open` → `closed` 遷移が含まれていたら、**その時点で中止する**。
+
+逆に `closed` → `open` の遷移は、`automation-revert` が 12.6 節 例外1 の条件で行うことを許す。
 
 `datasets/production/candidates/` は許可パスに**含めない**。
 このため自動処理の候補は `automation/queue.json` に保持する（5.5 節）。
@@ -1027,12 +1064,22 @@ revert PR の head SHA に `automation/verify` を付ける（12.5 節）。
 
 `automation-revert.yml`（新規 workflow）が次を順に行う。
 
-1. **対象 SHA の確認**
-   - revert 対象が、その日の `automation-commit` が作ったマージコミットの SHA と一致することを確認する。
-   - 一致しなければ**何もせず Issue を上げて終了する**。人のコミットは決して対象にしない。
+1. **対象 SHA の確認（4 つすべてを満たすこと）**
+   - **(a)** revert 対象が、その日の `automation-commit` が作ったマージコミットの SHA と一致する。
+   - **(b)** そのコミットが **ちょうど 2 つの親を持つ merge commit** である
+     （`git rev-list --parents -n 1 <SHA>` の出力が「SHA + 親2つ」の 3 要素）。
+   - **(c)** **第1親（`<SHA>^1`）が、revert ブランチ作成時に想定する `main` 系統**である
+     （`git merge-base --is-ancestor <SHA>^1 origin/main` が成功する）。
+     `git revert -m 1` はこの第1親を「残す側」として扱うため、ここが `main` 系統でないと誤った方向に revert される。
+   - **(d)** revert 対象が**人の操作系 PR でない**。
+     `automation-reset.yml` が作った reset PR のマージコミット、および人が出した PR のマージコミットは
+     **決して revert 対象にしない**（マージコミットのメッセージに含まれる PR 番号と、その PR の作成元で判定する）。
+   - **(a)〜(d) のいずれかを満たさなければ、revert を実行せず Issue を上げて終了する。**
 2. **緊急 revert ブランチの作成**
    - `automation/revert-YYYY-MM-DD` を、現在の `main` から作る。
    - `git revert -m 1 <対象SHA>` を実行し、**通常 push** する（force push は行わない）。
+   - `-m 1` は手順1(b)(c) で検証した第1親を採用する指定である。
+     対象が merge commit でなければ `git revert -m 1` は失敗するため、手順1 で先に弾く。
 3. **revert PR の作成**
    - base は `main`、head は `automation/revert-YYYY-MM-DD`。
    - タイトルと本文に `[auto-revert]` と対象 SHA、失敗した公開後検査の内容を書く。
@@ -1060,6 +1107,9 @@ revert PR の head SHA に `automation/verify` を付ける（12.5 節）。
 | 件数制限 | **1 日あたり revert は 1 回まで**。同日 2 回目の要求は実行せず Issue に追記する |
 | revert の revert 禁止 | revert コミットには `[auto-revert]` を付ける。**`[auto-revert]` を含むマージコミットに対しては公開後検査を実行しない**ため、revert の revert は構造上起きない |
 | 直接 push の禁止 | `main` へ直接 push しない。必ず revert ブランチ → PR → 必須チェック → auto-merge |
+| 対象の形式 | ちょうど 2 親の merge commit で、第1親が `main` 系統であること（手順1(b)(c)）。満たさなければ実行せず Issue |
+| 人の操作系 PR の除外 | reset PR と人の PR のマージコミットは revert 対象にしない（手順1(d)） |
+| マージ方式 | automation PR の auto-merge は **merge commit に固定**。squash / rebase は使わない（12.1 節） |
 | force push の禁止 | revert ブランチへの push は通常 push のみ |
 | 停止 | 自動 revert が発生したら、**その日の残りの自動処理を停止する**（`queue.json` に持ち越す） |
 | 通知 | **必ず Issue を上げる**（13.2 節） |
@@ -1086,22 +1136,52 @@ revert PR の head SHA に `automation/verify` を付ける（12.5 節）。
 | 事項 | 定め |
 |---|---|
 | 判定 | すべての `automation-*` workflow が実行開始時に `budget.json` を読む |
-| 作動中の動作 | `circuitBreaker.state === "open"` なら、**`automation/verify` を付けず、auto-merge も有効にしない**。検証やデータ生成は行ってよいが、**マージは一切成立しない** |
-| 適用範囲 | 商品・記事・リンクの自動 PR、および自動 revert PR のすべて |
+| 作動中の動作 | `circuitBreaker.state === "open"` なら、**`automation/verify` を付けず、auto-merge も有効にしない**。**下の 2 つの例外を除く** |
+| 適用範囲 | 商品・記事・リンクの自動 PR、および（例外1 に当たらない）自動 revert PR |
 | 書き込み権限 | `budget.json` は自動変更を許可されたパス（12.2 節）に含まれるため、workflow が書き込める。**GitHub Variables を変更する権限は追加しない** |
 | 人の PR | 影響を受けない。`travel-goods-ci.yml` が `automation/verify` を付けるため、通常どおりマージできる |
 | 通知 | 作動時に `automation-revert` ラベルの Issue を更新し、停止状態・発生日・理由・対象 SHA を明記する |
 
+#### 例外1 — breaker を作動させる当の revert PR
+
+`closed` → `open` の遷移を引き起こす **2 回目の revert PR 自身を拒否すると、
+revert も停止状態も `main` へ反映できず、循環する。** これを避けるため次を定める。
+
+| 事項 | 定め |
+|---|---|
+| 対象 | `closed` → `open` の遷移の原因となった **2 回目の revert PR だけ** |
+| 同梱するもの | **revert 内容と `circuitBreaker.state = "open"` への変更を同じ PR に同梱する** |
+| マージ | 通常の全検証と変更パス検査に**成功したときに限り** `automation/verify` を付け、auto-merge を許可する |
+| 適用開始 | **この PR が `main` へ入った後に作られる**自動コンテンツ PR・自動 revert PR から停止を適用する |
+| 判定の根拠 | PR の head に含まれる `budget.json` の遷移が `closed` → `open` であること。`open` → `open` や `open` → `closed` はこの例外に当たらない |
+
+`open` 状態になった後の動作:
+
+- **新しい通常の自動 PR を作らない**（`automation-links` / `automation-discover` / `automation-articles` / `automation-commit`）。
+- **既存の当日ブランチへの追加書き込みも止める。**
+- 行うのは **Issue の更新だけ**（13.2 節）。
+
+#### 例外2 — `automation-reset.yml`（解除 PR）
+
+`open` 状態で解除 PR まで拒否すると、**`workflow_dispatch` からは永久に解除できない。**
+`automation-reset.yml` を breakerの明示的な例外とする。
+
+| 事項 | 定め |
+|---|---|
+| 起動 | **`workflow_dispatch` のみ**。スケジュール起動もイベント起動も持たない |
+| 必須入力 | ① 解除の理由（自由記述、必須）／② 確認した revert SHA（必須。`budget.json` の `revertedShas` に含まれることを検証する）／③ 確認文字列 **`RESET`**（完全一致。異なれば実行しない） |
+| 変更できる範囲 | **`travel-goods-site/automation/budget.json` の `circuitBreaker` フィールドだけ。** 他のフィールド・他のファイルを 1 バイトでも変更していたら中止する（12.2 節の reset 専用検査） |
+| マージ | 通常の全検証と変更パス検査に**成功したときに限り**、`open` 状態でも reset PR へ `automation/verify` を付け、auto-merge できる |
+| 禁止 | **`automation-reset.yml` 以外の workflow から `circuitBreaker.state` を `closed` へ変更することを禁止する。** 他の workflow が `closed` への変更を含む差分を作った場合、変更パス検査で中止する |
+
 **解除の方法（2 通り。どちらも人の明示的な操作）**:
 
-1. **`workflow_dispatch` による解除** — `automation-reset.yml`（新規）を手動起動する。
-   入力に「解除の理由」と「確認した対象 SHA」を必須とし、
-   `budget.json` の `circuitBreaker.state` を `"closed"` に戻す PR を作る。
-   この PR も通常の必須チェックを通ってマージされる。
+1. **`workflow_dispatch` による解除** — `automation-reset.yml` を手動起動する（例外2）。
 2. **人の PR による解除** — 人が直接 `budget.json` を編集する PR を出す。
+   人の PR は breaker の影響を受けないため、通常どおりマージできる。
 
-**自動処理が自分で解除することはない。** `circuitBreaker` を `closed` に戻す変更は、
-`workflow_dispatch` の明示的な起動か人の PR のどちらかからしか生まれない。
+**自動処理が自分の判断で解除することはない。** `circuitBreaker` を `closed` に戻す変更は、
+`workflow_dispatch` の明示的な起動（`RESET` の入力を伴う）か人の PR のどちらかからしか生まれない。
 
 ---
 
@@ -1187,7 +1267,14 @@ GitHub Variables に置く（秘密ではない）。**すべて既定 `false` �
 | 変更パス検査 | 許可パス外の変更を検出して中止する |
 | 予算と繰越 | 上限到達で正常終了し、未処理分がキューに積まれる |
 | 自動 revert の安全装置 | 対象コミットの同一性確認、1 日 1 回制限、`[auto-revert]` のループ防止、**`main` への直接 push を行わないこと** |
-| circuit breaker | 3 日以内 2 回の revert で `state: "open"` になる。open のとき **`automation/verify` を付けず auto-merge も有効にしない**。自動処理が自分で `closed` に戻さない |
+| circuit breaker（基本） | 3 日以内 2 回の revert で `state: "open"` になる。open のとき通常の自動 PR に **`automation/verify` を付けず auto-merge も有効にしない**。open では新しい自動 PR を作らず、当日ブランチへの追加書き込みも止める |
+| circuit breaker（例外1） | **`closed` → `open` の遷移を含む 2 回目の revert PR は、検証成功時に限り `automation/verify` が付き auto-merge できる**。revert 内容と `state: "open"` が同じ PR に同梱されている。この PR がマージされた後の PR から停止が適用される |
+| circuit breaker（例外2） | **`automation-reset.yml` の PR は open 状態でも `automation/verify` が付く**。`workflow_dispatch` 以外では起動しない。理由・revert SHA・確認文字列 `RESET` のいずれかが欠ければ実行しない。`RESET` が完全一致でなければ実行しない |
+| reset PR の変更範囲 | 変更が `budget.json` の `circuitBreaker` だけであること。他フィールド・他ファイルが 1 件でも変わっていたら中止する。遷移が `open` → `closed` であること |
+| `closed` への経路の限定 | **`automation-reset.yml` 以外の workflow の差分に `open` → `closed` の遷移が含まれていたら中止する** |
+| revert 対象の形式 | 対象が**ちょうど 2 親の merge commit**であること。**第1親が `main` 系統**であること。merge commit でなければ revert を実行せず Issue を上げる |
+| revert 対象の除外 | **reset PR と人の PR のマージコミットを revert 対象にしない** |
+| 段階1 の集計 | 同日に複数の成功 run がある場合、**最新の成功 run の artifact だけ**を採用する。7 日分が揃わなければ `complete: false` とし、`missingDates` に欠損日を記録する |
 | 作業ブランチの取得規則 | 当日ブランチがあれば取得、無ければ `main` から作る。**force push を行わない** |
 | **AI 所見の非拘束性** | **Workers AI の出力が「不一致」でも「一致」でも「取得不能」でも、S/A/B 判定・記事の公開可否・リンクの交換結果が変わらないこと**（同じ入力で AI の返答だけを変えて 3 通り試す） |
 
@@ -1229,7 +1316,7 @@ GitHub Variables に置く（秘密ではない）。**すべて既定 `false` �
   - Workers AI の Neurons 消費、Browser Run の秒数
   - メーカーごとの取得成功率（特に `elecom.co.jp` の 403）
   - 記事の重複判定閾値 0.60 の妥当性
-- 完了条件: 誤判定率が許容範囲であることを人が確認する（閾値は 17 節で決める）。
+- 完了条件: **7 日分の artifact が揃っている**（`complete: true`）ことと、誤判定率が許容範囲であることを人が確認する（閾値は 17 節で決める）。
 
 #### 段階1 の測定結果の保存方法
 
@@ -1241,7 +1328,7 @@ GitHub Variables に置く（秘密ではない）。**すべて既定 `false` �
 | 保存先 | GitHub Actions の artifact（`actions/upload-artifact`）。**リポジトリにはコミットしない** |
 | 単位 | 1 日 1 ファイル。`observation-YYYY-MM-DD.json` |
 | 保持期間 | 14 日（7 日分の集計に足り、必要以上に残さない） |
-| 最終日の集計 | 7 日目の実行が直近 7 日分の artifact を取得し、`observation-summary-YYYY-MM-DD.json` として集計結果を保存する |
+| 最終日の集計 | 7 日目の実行が直近 7 日分の artifact を集めて `observation-summary-YYYY-MM-DD.json` を保存する（下記の手順） |
 
 日次レポートの構造（すべて集計値と分類コード。**生データは含めない**）:
 
@@ -1263,6 +1350,45 @@ GitHub Variables に置く（秘密ではない）。**すべて既定 `false` �
   "linkSignals":  { "healthy": 13, "uncertain": 1, "hidden": 0, "replace": 0, "manualHold": 1 },
   "availabilityFieldPresent": true,
   "actionsMinutes": 22
+}
+```
+
+**過去の run から artifact を集める手順**
+
+`actions/download-artifact` の通常利用は**同じ run 内で作られた artifact** を対象とするため、
+過去 7 日分を集めるには GitHub Actions の REST API（または GitHub CLI）で
+**別 run の artifact をダウンロードする**必要がある。集計ジョブは次を行う。
+
+1. **権限**: 集計ジョブに **`actions: read`** を付与する
+   （`permissions: { actions: read, contents: read }`）。
+2. **run の列挙**: 対象 workflow の run を、REST API
+   `GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}/runs`
+   （`status=success`、`created>=<7日前>`）で列挙する。GitHub CLI なら
+   `gh run list --workflow=<name> --status=success --created=<範囲> --json databaseId,createdAt,headSha`。
+3. **artifact の選別**: 各 run の
+   `GET /repos/{owner}/{repo}/actions/runs/{run_id}/artifacts` を引き、
+   **artifact 名 `observation-YYYY-MM-DD` を日付で選別**する。
+   run の実行日ではなく **artifact 名に含まれる日付**で対応づける
+   （再実行やタイムゾーンのずれで run の日付と観測日がずれるため）。
+4. **同日の重複**: 同じ日付の artifact が複数の成功 run にある場合
+   （再実行など）、**`created_at` が最新の成功 run のものだけを採用する**。
+   古い方は無視し、集計に混ぜない。
+5. **ダウンロード**: `GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}/zip`
+   （GitHub CLI なら `gh run download <run_id> --name observation-YYYY-MM-DD`）で取得し、展開する。
+6. **欠損の扱い**: **7 日分が揃わなければ段階1 完了と判定しない。**
+   欠けている日付を `observation-summary-YYYY-MM-DD.json` の `missingDates` に記録し、
+   併せて `automation-failure` ラベルの Issue に欠損日を書く。
+   揃うまで観測運転を延長する。
+
+```jsonc
+// observation-summary-YYYY-MM-DD.json（抜粋）
+{
+  "window":       { "from": "2026-09-04", "to": "2026-09-10" },
+  "daysExpected": 7,
+  "daysFound":    6,
+  "missingDates": ["2026-09-07"],
+  "complete":     false,          // false のあいだは段階1 を完了としない
+  "sourceRuns":   { "2026-09-04": 1234567890, "2026-09-05": 1234599999 }
 }
 ```
 
@@ -1470,7 +1596,8 @@ travel-goods-site/
   automation-articles.yml    … 火・金。記事企画・生成
   automation-commit.yml      … 日次。検証・PR・auto-merge
   automation-revert.yml      … 公開後検査の失敗時。revert PR を作り自前で検証（12.5 節）
-  automation-reset.yml       … workflow_dispatch のみ。circuit breaker の解除（12.6 節）
+  automation-reset.yml       … workflow_dispatch のみ。circuit breaker の解除（12.6 節 例外2）
+                                入力: 解除理由 / 確認した revert SHA / 確認文字列 RESET
 ```
 
 すべての `automation-*` workflow は共通の concurrency group
