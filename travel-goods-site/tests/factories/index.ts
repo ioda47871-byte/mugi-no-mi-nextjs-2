@@ -22,6 +22,7 @@ import type {
 } from '../../src/lib/catalog/types';
 import type { CatalogInput } from '../../src/lib/catalog/validate';
 import type { TierInput } from '../../src/lib/automation/tier';
+import type { LinkHealthEntry, LinkSignals } from '../../src/lib/automation/state/schema';
 import type { RakutenItem } from '../../src/lib/rakuten/types';
 
 const CHECKED_AT = '2026-08-31';
@@ -247,6 +248,32 @@ export function makeTierInput(over: Partial<TierInput> = {}): TierInput {
     excludedTerm: 'clean',
     officialConsistency: 'consistent',
     recheck: 'matched-previous-day',
+    ...over,
+  };
+}
+
+export function makeLinkSignals(over: Partial<LinkSignals> = {}): LinkSignals {
+  return {
+    itemCodeAlive: true,
+    availability: 1,
+    affiliateTargetChanged: false,
+    httpStatus: null,
+    identifierMatch: 'strong',
+    variantMatch: true,
+    ...over,
+  };
+}
+
+export function makeLinkHealthEntry(over: Partial<LinkHealthEntry> = {}): LinkHealthEntry {
+  return {
+    productId: 'fixture-ace-06936',
+    merchant: 'rakuten',
+    externalProductId: 'testshop:test-item-001',
+    signals: makeLinkSignals(),
+    consecutiveFailures: 0,
+    consecutiveOutOfStock: 0,
+    lastHealthyAt: '2026-09-01',
+    state: 'healthy',
     ...over,
   };
 }
