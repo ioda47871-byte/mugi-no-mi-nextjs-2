@@ -195,6 +195,44 @@ export function extractVariantTokens(variant: string): VariantTokens {
   };
 }
 
+/**
+ * 「構造化表記らしいのに解析できなかった」箇所があるかを見る。
+ *
+ * 数字で始まる連なり（数字・小数点・スラッシュ）の直後に単位（L / mAh / 個セット）が
+ * 来ていれば、それは容量やセット数を書こうとしている箇所である。
+ * その数値部分が正しい形（`\d+(.\d+)?` と、容量なら `/` 区切り）でなければ、
+ * **書いてあるのに読めなかった**ということなので、variant 全体を一致させない。
+ *
+ * 「読めなかった」と「その種類の表記が元から無い」を区別するのが目的。
+ * 後者（色だけの variant など）はここで false になり、従来どおり扱う。
+ *
+ * 現行データの `35L / 01 ブラックヘアライン` の `01` は直後に単位が無いので
+ * 候補にならない。2 桁カラーコードを不正扱いしない。
+ */
+const CAPACITY_L_CANDIDATE = /\d[\d./]*\s*L(?![a-zA-Z])/g;
+const CAPACITY_MAH_CANDIDATE = /\d[\d./]*\s*mAh(?![a-zA-Z])/gi;
+const SET_COUNT_CANDIDATE = /\d[\d./]*個セット/g;
+
+/** 容量として妥当な数値部分（`18/24` のような拡張表記を含む）。 */
+const VALID_CAPACITY_NUMBER = /^\d+(?:\.\d+)?(?:\s*\/\s*\d+(?:\.\d+)?)*$/;
+/** セット数として妥当な数値部分。 */
+const VALID_SET_COUNT_NUMBER = /^\d+$/;
+
+function hasUnparsableStructuredToken(normalizedVariant: string): boolean {
+  const checks: readonly { pattern: RegExp; unit: RegExp; valid: RegExp }[] = [
+    { pattern: CAPACITY_L_CANDIDATE, unit: /\s*L$/i, valid: VALID_CAPACITY_NUMBER },
+    { pattern: CAPACITY_MAH_CANDIDATE, unit: /\s*mAh$/i, valid: VALID_CAPACITY_NUMBER },
+    { pattern: SET_COUNT_CANDIDATE, unit: /個セット$/, valid: VALID_SET_COUNT_NUMBER },
+  ];
+  for (const { pattern, unit, valid } of checks) {
+    for (const match of normalizedVariant.matchAll(pattern)) {
+      const numberPart = match[0].replace(unit, '');
+      if (!valid.test(numberPart)) return true;
+    }
+  }
+  return false;
+}
+
 /** 表示用ラベルの並び。現行データの variant 表記に合わせる。 */
 function labelOf(tokens: VariantTokens): string {
   return [...tokens.sizes, ...tokens.capacities, ...tokens.colors, ...tokens.setCounts].join(' / ');
@@ -238,8 +276,14 @@ export function verifyVariant(variant: string, listingText: string): VariantVerd
     ...setCountsIn(normalizedListing).filter((v) => !ownSetCounts.has(v)),
   ];
 
-  // トークンが 1 つも取れなければ、何にでも一致してしまうので一致にしない
-  const matched = all.length > 0 && missing.length === 0 && conflicting.length === 0;
+  // トークンが 1 つも取れなければ、何にでも一致してしまうので一致にしない。
+  // 構造化表記が書いてあるのに読めなかった variant も一致にしない
+  // （色だけが一致して別容量の商品にリンクするのを防ぐ）。
+  const matched =
+    all.length > 0 &&
+    missing.length === 0 &&
+    conflicting.length === 0 &&
+    !hasUnparsableStructuredToken(normalizeVariantText(variant));
 
   return {
     matched,

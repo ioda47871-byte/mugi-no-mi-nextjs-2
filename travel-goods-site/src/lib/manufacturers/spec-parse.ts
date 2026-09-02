@@ -38,14 +38,37 @@ function finitePositive(value: number): number | null {
   return Number.isFinite(value) && value > 0 ? value : null;
 }
 
-/** 「約」「,」を落とし、前後の空白を取る。 */
-function clean(raw: string): string {
-  return raw.replace(/,/g, '').replace(/約/g, '').trim();
+/**
+ * 入力を検証してから正規化する。**不正表記を削除してから解析しない。**
+ *
+ * 落とすだけの実装（`replace(/約/g,'')` `replace(/,/g,'')`）は、
+ * 壊れた表記を正常値へ「直して」しまう。
+ *   `3約0L`     → 30L   （書いていない値を作る）
+ *   `1,2,5,0g`  → 1250g （区切りとして成立していない）
+ * そこで、許可された文法（先頭の「約」と 3 桁区切りのカンマ）だけを認め、
+ * それ以外は null を返して呼び出し側で unit-unparseable に倒す。
+ */
+function clean(raw: string): string | null {
+  let text = raw.trim();
+
+  // 「約」は入力全体の先頭に 1 つだけ許可する
+  if (text.startsWith('約')) text = text.slice(1).trim();
+  if (text.includes('約')) return null;
+
+  // カンマは 3 桁区切りとしてのみ許可する
+  for (const match of text.matchAll(/[\d,]+/g)) {
+    const run = match[0];
+    if (!run.includes(',')) continue;
+    if (!/^\d{1,3}(?:,\d{3})+$/.test(run)) return null;
+  }
+  return text.replace(/,/g, '');
 }
 
 /** 単位付きの値を、単位に完全一致させてから厳密パースする。 */
 function parseWithUnit(raw: string, unit: string, flags = ''): number | null {
-  const match = new RegExp(`^(${NUMBER_SOURCE})\\s*${unit}$`, flags).exec(clean(raw));
+  const text = clean(raw);
+  if (text === null) return null;
+  const match = new RegExp(`^(${NUMBER_SOURCE})\\s*${unit}$`, flags).exec(text);
   const captured = match?.[1];
   return captured === undefined ? null : parsePositiveNumber(captured);
 }
@@ -85,21 +108,31 @@ export function parseWeightG(raw: string): number | null {
 const SIZE_LABEL = '[WHD]';
 const SIZE_SEPARATOR = '\\s*[×xX]\\s*';
 const SIZE_UNIT = '(mm|cm)';
-/** 単位の直後に英数字が続く形（cm2・mmX）を拒否する。 */
-const SIZE_TAIL = '(?![0-9A-Za-z])';
+/**
+ * 寸法表記の直後に置いてよい文字。
+ *
+ * 終端・空白・注記の開始記号だけを認める。
+ * `(?![0-9A-Za-z])` だけでは Unicode の単位記号や日本語が通ってしまい、
+ * `cm²` `cmセンチ` `cm㎝` を受理してしまう。
+ */
+const SIZE_END = '(?=$|[\\s（(［\\[【※/、,。])';
 
 /** A: 末尾に単位が 1 つ。 */
 const SIZE_TRAILING_UNIT = new RegExp(
   `(${SIZE_LABEL})(${NUMBER_SOURCE})${SIZE_SEPARATOR}` +
     `(${SIZE_LABEL})(${NUMBER_SOURCE})${SIZE_SEPARATOR}` +
-    `(${SIZE_LABEL})(${NUMBER_SOURCE})\\s*${SIZE_UNIT}${SIZE_TAIL}`,
+    `(${SIZE_LABEL})(${NUMBER_SOURCE})\\s*${SIZE_UNIT}${SIZE_END}`,
 );
 
-/** B: 3 要素すべてに単位。 */
+/**
+ * B: 3 要素すべてに単位。
+ * 途中の単位の直後は区切り（`×`）でなければならず、`SIZE_SEPARATOR` がそれを強制する。
+ * `cm²×` や `cmセンチ×` はここで一致しない。末尾だけ `SIZE_END` で閉じる。
+ */
 const SIZE_EACH_UNIT = new RegExp(
-  `(${SIZE_LABEL})(${NUMBER_SOURCE})\\s*${SIZE_UNIT}${SIZE_TAIL}${SIZE_SEPARATOR}` +
-    `(${SIZE_LABEL})(${NUMBER_SOURCE})\\s*${SIZE_UNIT}${SIZE_TAIL}${SIZE_SEPARATOR}` +
-    `(${SIZE_LABEL})(${NUMBER_SOURCE})\\s*${SIZE_UNIT}${SIZE_TAIL}`,
+  `(${SIZE_LABEL})(${NUMBER_SOURCE})\\s*${SIZE_UNIT}${SIZE_SEPARATOR}` +
+    `(${SIZE_LABEL})(${NUMBER_SOURCE})\\s*${SIZE_UNIT}${SIZE_SEPARATOR}` +
+    `(${SIZE_LABEL})(${NUMBER_SOURCE})\\s*${SIZE_UNIT}${SIZE_END}`,
 );
 
 /** 文字列中の「ラベル＋数字」の出現数。3 でなければ組を決められない。 */
@@ -107,6 +140,7 @@ const SIZE_LABEL_OCCURRENCE = /[WHD]\d/g;
 
 export function parseLabeledSizeMm(raw: string): [number, number, number] | null {
   const text = clean(raw);
+  if (text === null) return null;
 
   // 寸法セットが複数ある、ラベルが欠けている、といった曖昧な入力を先に落とす
   if ([...text.matchAll(SIZE_LABEL_OCCURRENCE)].length !== 3) return null;

@@ -205,6 +205,9 @@ describe('不正な数値トークンの途中から切り出さない', () => {
     const v = verifyVariant('30.5.6L / ブラック', 'ポーチ 30.5.6L ブラック');
     expect(v.missing).toEqual([]);
     expect(v.conflicting).toEqual([]);
+    // 解釈できない構造化表記が残っているので、色が一致しても一致にしない
+    expect(v.matched).toBe(false);
+    expect(v.matchedVariantLabel).toBeNull();
   });
 
   it('拡張容量の途中に不正な数値があれば取り出さない', () => {
@@ -335,6 +338,54 @@ describe('色名をマーケティング文言から拾わない', () => {
   it('カタカナが直前に続く場合も色として拾わない', () => {
     const v = verifyVariant('30L / ネイビー', 'リュック 30L ミッドナイトネイビー');
     expect(v.matched).toBe(false);
+  });
+});
+
+describe('解釈できない target variant を色だけで一致させない', () => {
+  it('30.5.6L / ブラック は色が一致しても matched: false', () => {
+    const v = verifyVariant('30.5.6L / ブラック', 'ポーチ 30.5.6L ブラック');
+    expect(v.matched).toBe(false);
+    expect(v.matchedVariantLabel).toBeNull();
+  });
+
+  it('不正な mAh・セット数でも同じ', () => {
+    for (const variant of ['1.2.3mAh / ブラック', '1.3個セット / ブラック', '18/24.5.6L / ブラック']) {
+      const v = verifyVariant(variant, `ポーチ ${variant.replace(' / ', ' ')}`);
+      expect(v.matched).toBe(false);
+      expect(v.matchedVariantLabel).toBeNull();
+    }
+  });
+
+  it('別の色トークンが一致していても false', () => {
+    const v = verifyVariant('30.5.6L / ブラック', 'ポーチ ブラック 大容量');
+    expect(v.matched).toBe(false);
+  });
+
+  it('正常な構造化表記は従来どおり一致する', () => {
+    expect(verifyVariant('5.6L / ブラック', 'ポーチ 5.6L ブラック').matched).toBe(true);
+    expect(verifyVariant('2.3mAh / ブラック', 'バッテリー 2.3mAh ブラック').matched).toBe(true);
+    expect(verifyVariant('3個セット / ブラック', '圧縮袋 3個セット ブラック').matched).toBe(true);
+    expect(verifyVariant('18/24L / 01 ブラック', 'スーツケース 18/24L 01 ブラック').matched).toBe(true);
+  });
+
+  it('現行データの 2 桁カラーコードを不正扱いしない', () => {
+    for (const variant of [
+      '35L / 01 ブラックヘアライン',
+      '18/24L / 01 ブラック',
+      '32L / 03 ブルーグリーン',
+      'Lサイズ 16L / 03 ダークネイビー',
+      '10000mAh / ブラック',
+    ]) {
+      const listing = `商品 ${variant.replace(/ \/ /g, ' ')}`;
+      expect(verifyVariant(variant, listing).matched).toBe(true);
+    }
+  });
+
+  it('構造化表記が元から無い variant は従来どおり扱う（欠落と混同しない）', () => {
+    // 色だけの variant。取れたトークンが一致すれば matched
+    expect(verifyVariant('ブラック', 'ポーチ ブラック').matched).toBe(true);
+    // トークンが 1 つも取れない variant は従来どおり false
+    expect(verifyVariant('', '何でも書いてある商品ページ').matched).toBe(false);
   });
 });
 

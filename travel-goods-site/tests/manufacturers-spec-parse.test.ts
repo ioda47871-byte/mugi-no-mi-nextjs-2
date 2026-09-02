@@ -215,3 +215,73 @@ describe('日本語・Unicode の寸法単位を単位なしとして受理し�
     expect(parseLabeledSizeMm('W35×H55×D25cm / W40×H60×D30cm')).toBeNull();  // 複数セット
   });
 });
+
+describe('clean() で不正な数値を正常値へ変換しない', () => {
+  it('「約」は入力全体の先頭にある場合だけ許可する', () => {
+    expect(parseWeightG('約2.9kg')).toBe(2900);
+    expect(parseCapacityL('約30L')).toBe(30);
+    expect(parseLabeledSizeMm('約W320×D200×H510mm')).toEqual([320, 510, 200]);
+  });
+
+  it('数字の途中にある「約」は必ず null', () => {
+    expect(parseCapacityL('3約0L')).toBeNull();
+    expect(parseWeightG('2約9kg')).toBeNull();
+    expect(parseCapacityMah('120約00mAh')).toBeNull();
+    expect(parseWatt('6約5W')).toBeNull();
+    expect(parseLabeledSizeMm('W3約5×H55×D25cm')).toBeNull();
+  });
+
+  it('先頭以外に「約」があれば null', () => {
+    expect(parseLabeledSizeMm('W35×H55×約D25cm')).toBeNull();
+    expect(parseWeightG('2.9kg約')).toBeNull();
+  });
+
+  it('カンマは正しい 3 桁区切りだけ許可する', () => {
+    expect(parseWeightG('1,250g')).toBe(1250);
+    expect(parseWeightG('約1,250g')).toBe(1250);
+    expect(parseCapacityMah('12,000mAh')).toBe(12000);
+  });
+
+  it('不正なカンマ区切りは null', () => {
+    expect(parseWeightG('1,2,5,0g')).toBeNull();
+    expect(parseWeightG('12,50g')).toBeNull();
+    expect(parseWeightG('1,,250g')).toBeNull();
+    expect(parseWeightG(',250g')).toBeNull();
+    expect(parseWeightG('1,250,g')).toBeNull();
+    expect(parseCapacityL('1,2,3L')).toBeNull();
+    expect(parseLabeledSizeMm('W1,2,5,0×H55×D25mm')).toBeNull();
+  });
+
+  it('4 桁以上の正しい区切りも読める', () => {
+    expect(parseWeightG('1,000,000g')).toBe(1000000);
+  });
+});
+
+describe('寸法単位の後ろに未対応文字が続く場合を拒否する', () => {
+  it('cm/mm 直後に Unicode 文字・単位記号が直結していたら null', () => {
+    expect(parseLabeledSizeMm('W35×H55×D25cm²')).toBeNull();
+    expect(parseLabeledSizeMm('W35×H55×D25cmセンチ')).toBeNull();
+    expect(parseLabeledSizeMm('W35×H55×D25cm㎝')).toBeNull();
+    expect(parseLabeledSizeMm('W35×H55×D25mm㎜')).toBeNull();
+  });
+
+  it('受理する寸法部分の直後は終端・空白・注記開始記号だけ', () => {
+    expect(parseLabeledSizeMm('W35×H55×D25cm')).toEqual([350, 550, 250]);
+    expect(parseLabeledSizeMm('W35×H55×D25cm（キャスター含む）')).toEqual([350, 550, 250]);
+    expect(parseLabeledSizeMm('W35×H55×D25cm ※実測値')).toEqual([350, 550, 250]);
+    expect(parseLabeledSizeMm('W35cm×H55cm×D25cm')).toEqual([350, 550, 250]);
+  });
+
+  it('既存の拒否条件を維持する', () => {
+    expect(parseLabeledSizeMm('W35in×H55×D25cm')).toBeNull();
+    expect(parseLabeledSizeMm('W35kg×H55×D25cm')).toBeNull();
+    expect(parseLabeledSizeMm('W35インチ×H55×D25cm')).toBeNull();
+    expect(parseLabeledSizeMm('W35センチ×H55×D25cm')).toBeNull();
+    expect(parseLabeledSizeMm('W35㎝×H55×D25cm')).toBeNull();
+    expect(parseLabeledSizeMm('W35cm×H550mm×D25cm')).toBeNull();
+    expect(parseLabeledSizeMm('W35cm×H55×D25')).toBeNull();
+    expect(parseLabeledSizeMm('W35×H55×D25cm2')).toBeNull();
+    expect(parseLabeledSizeMm('W35×H55×D25')).toBeNull();
+    expect(parseLabeledSizeMm('W35×H55×D25（梱包サイズは80cm）')).toBeNull();
+  });
+});
