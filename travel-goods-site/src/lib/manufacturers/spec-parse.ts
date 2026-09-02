@@ -65,34 +65,50 @@ export function parseWeightG(raw: string): number | null {
  * **W・H・D のラベルで読む**（並び順に依存しない）。
  * 返す配列は登録データと同じ [幅, 高さ, 奥行]。
  *
- * 単位は**その寸法表記に直接付いているものだけ**を使う。文字列のどこかにある
- * `mm`/`cm` を借りない。「W35×H55×D25（梱包サイズは80cm）」の 80cm は
- * 梱包の値であって寸法の単位ではないので、この入力は null にする。
+ * 受理するのは次の 2 つだけ。
+ *   A. グループ全体の単位が最後のラベルに 1 つ付く（`W35×H55×D25cm`）
+ *   B. 3 要素すべてに同じ単位が直接付く（`W35cm×H55cm×D25cm`）
  *
- * 1 要素でも読めなければ寸法全体を null。W/H/D で単位が混在しても null。
- * 同じラベルが複数現れて、どの組か決められない場合も安全側で null。
+ * 次はすべて null に倒す。
+ *   - `in` `kg` `m` `cm2` など未対応・不明な単位が付く
+ *   - 一部だけに単位が付き、それがグループ末尾ではない（`W35cm×H55×D25`）
+ *   - `mm` と `cm` の混在
+ *   - 単位が 1 つも無い（`W35×H55×D25（梱包サイズは80cm）` の 80cm を借りない）
+ *   - 同じラベルが複数（寸法セットが複数あって組を決められない）
+ *   - 範囲表記や余分な小数点が続く（`W35〜40` `W1.2.3`）
  */
 export function parseLabeledSizeMm(raw: string): [number, number, number] | null {
   const text = clean(raw);
 
+  type Picked = { value: number; unit: 'mm' | 'cm' | null; at: number };
+
   /**
-   * ラベルの直後の数値と、その数値に続く単位（あれば）を取り出す。
+   * ラベルの直後の数値と、その数値に直接続く単位を取り出す。
    * ラベルが複数回現れたら曖昧なので null。
    */
-  const pick = (label: 'W' | 'H' | 'D'): { value: number; unit: 'mm' | 'cm' | null } | null => {
-    const matches = [...text.matchAll(new RegExp(`${label}(${NUMBER_SOURCE})(mm|cm)?`, 'g'))];
+  const pick = (label: 'W' | 'H' | 'D'): Picked | null => {
+    // 数値の直後に続く英数字の連なりをそのまま捕まえ、単位として妥当かを別に判定する
+    const matches = [...text.matchAll(new RegExp(`${label}(${NUMBER_SOURCE})([0-9A-Za-z]*)`, 'g'))];
     if (matches.length !== 1) return null; // 0 件＝無い、2 件以上＝曖昧
     const match = matches[0];
     if (match === undefined) return null;
     const captured = match[1];
+    const suffix = match[2] ?? '';
     if (captured === undefined) return null;
-    // 「W1.2.3」のように余分な小数点が続く形を弾く
+
+    // 単位は mm / cm のみ。in・kg・cm2・mmX などは不明な単位として拒否する
+    let unit: 'mm' | 'cm' | null;
+    if (suffix === '') unit = null;
+    else if (suffix === 'mm' || suffix === 'cm') unit = suffix;
+    else return null;
+
+    // 範囲表記や余分な小数点が続く形を拒否する（W35〜40、W1.2.3）
     const rest = text.slice(match.index + match[0].length);
-    if (match[2] === undefined && rest.startsWith('.')) return null;
+    if (/^[.〜～~\u2010-\u2015-]/.test(rest)) return null;
+
     const value = parsePositiveNumber(captured);
     if (value === null) return null;
-    const unit = match[2] === 'mm' || match[2] === 'cm' ? match[2] : null;
-    return { value, unit };
+    return { value, unit, at: match.index };
   };
 
   const w = pick('W');
@@ -100,10 +116,27 @@ export function parseLabeledSizeMm(raw: string): [number, number, number] | null
   const d = pick('D');
   if (w === null || h === null || d === null) return null;
 
-  const units = [w.unit, h.unit, d.unit].filter((u): u is 'mm' | 'cm' => u !== null);
-  if (units.length === 0) return null; // 寸法に付いた単位が 1 つも無い
-  const unit = units[0];
-  if (units.some((u) => u !== unit)) return null; // 単位が混在
+  const picked = [w, h, d];
+  const withUnit = picked.filter((p) => p.unit !== null);
+
+  let unit: 'mm' | 'cm';
+  if (withUnit.length === 3) {
+    // B: 3 要素すべてに単位。混在は拒否する
+    const first = withUnit[0]?.unit;
+    if (first === undefined || first === null) return null;
+    if (withUnit.some((p) => p.unit !== first)) return null;
+    unit = first;
+  } else if (withUnit.length === 1) {
+    // A: グループ末尾のラベルにだけ単位が付く形だけを認める
+    const only = withUnit[0];
+    if (only === undefined || only.unit === null) return null;
+    const lastAt = Math.max(...picked.map((p) => p.at));
+    if (only.at !== lastAt) return null;
+    unit = only.unit;
+  } else {
+    // 0 件＝単位なし、2 件＝部分的にしか付いていない
+    return null;
+  }
 
   const scale = unit === 'cm' ? 10 : 1;
   // 換算・丸めの後も正で有限であること（0.01cm → 0、巨大値 → Infinity を弾く）

@@ -2116,13 +2116,19 @@ API 障害を商品消失として数えてしまう。そこで `observationSta
 「以前確定した異常が解消した」を意味しない。`hidden` / `replace` / `manual-hold` は
 API 障害が何日続いても据え置き、緩和するのは `healthy` → `uncertain` だけ。
 
-**`healthy` にするのは `availability === 1` を確認できたときだけ。**
-`availability === null`（在庫情報だけ取れなかった）は `uncertain` にする。
+**`availability === null`（在庫情報だけ取れなかった）は `healthy` にしない。**
+在庫の判断材料が無い日なので `uncertain` にする。
+一方 `availability === 0`（在庫切れと確認できた）は、しきい値に達するまで
+`state` を `healthy` のままにして CTA の表示を維持する。両者を混同しない。
 
 **`lastHealthyAt` を進めるのは `availability === 1` を確認できた日だけ。**
 在庫切れの日は 14 日目まで `state` が `healthy` のままなので、`state` だけを見ると
 在庫切れの日まで健全だったことになってしまう。`state === 'healthy'` に加えて
 `itemCodeAlive && availability === 1` を条件にする。
+
+> `state` と `lastHealthyAt` は別の問いに答える。
+> `state` は「いま CTA を出してよいか」、`lastHealthyAt` は「最後に在庫を確認できたのはいつか」。
+> 在庫切れの 13 日目は前者が `healthy`、後者は据え置き、という状態があり得る。
 
 **`affiliateTargetChanged` は保存するだけにしない。** 紹介URLの `pc` 遷移先が
 変わったリンクは別商品へ飛びうるので、他の信号が正常でも `healthy` にしない。

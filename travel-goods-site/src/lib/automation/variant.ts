@@ -55,6 +55,23 @@ export const EXCLUDED_LISTING_TERMS: readonly string[] = [
   'アウトレット',
 ];
 
+/**
+ * variant 用の正規化。**意味を保つ。**
+ *
+ * `normalizeForMatch` は `.` と `/` を削除するため、容量の意味が変わってしまう。
+ *   30.5L → 305L（別の容量になる）
+ *   18/24L → 1824L（拡張容量の区切りが消える）
+ * そこで全角→半角と大文字化だけを行い、小数点と区切りは残す正規化をここに置く。
+ * 対象と販売ページの両方を同じ経路に通してからトークン化する。
+ */
+function normalizeVariantText(value: string): string {
+  return value
+    .replace(/[Ａ-Ｚａ-ｚ０-９]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0xfee0))
+    .replace(/／/g, '/')
+    .replace(/．/g, '.')
+    .toUpperCase();
+}
+
 /** 「18/24L」のように / でつながった容量も 1 つずつに分ける。 */
 const CAPACITY_L_RE = /(\d+(?:\.\d+)?(?:\s*\/\s*\d+(?:\.\d+)?)*)\s*L(?![a-zA-Z])/g;
 /** モバイルバッテリーの容量。 */
@@ -148,11 +165,14 @@ function colorsIn(text: string): string[] {
 }
 
 export function extractVariantTokens(variant: string): VariantTokens {
+  // 色は表記ゆれを潰すと辞書に当たらなくなるので生文字列から取り出す。
+  // それ以外は意味を保つ正規化を通してから取り出す（全角で境界を迂回させない）。
+  const normalized = normalizeVariantText(variant);
   return {
     colors: colorsIn(variant),
-    sizes: sizesIn(variant),
-    capacities: capacitiesIn(variant),
-    setCounts: setCountsIn(variant),
+    sizes: sizesIn(normalized),
+    capacities: capacitiesIn(normalized),
+    setCounts: setCountsIn(normalized),
   };
 }
 
@@ -164,38 +184,39 @@ function labelOf(tokens: VariantTokens): string {
 export function verifyVariant(variant: string, listingText: string): VariantVerdict {
   const tokens = extractVariantTokens(variant);
   const all = [...tokens.sizes, ...tokens.capacities, ...tokens.colors, ...tokens.setCounts];
-  // 販売ページ側も同じ規則でトークン化してから突き合わせる。
+  // 販売ページ側も対象と**同じトークン化経路**を通してから突き合わせる。
   // substring で照合すると「ブラック」が「ブラックヘアライン」に、
   // 「Lサイズ」が「LLサイズ」に一致してしまう。
   //
-  // 色は表記ゆれを潰すと辞書に当たらなくなる（ダークネイビー → ダクネイビ）ので生文字列から、
-  // それ以外は全角・記号の違いを吸収した文字列から取り出す。
-  const normalizedListing = normalizeForMatch(listingText);
+  // サイズ・容量・セット数のトークンは canonical 表現（30.5L / 2XLサイズ / 3個セット）に
+  // 揃うので、そのまま文字列として比較する。ここで normalizeForMatch を通すと
+  // 30.5L が 305L になり、意味の違う容量を同一視してしまう。
+  const normalizedListing = normalizeVariantText(listingText);
   const listingColors = new Set(colorsIn(listingText).map(normalizeForMatch));
-  const listingSizes = new Set(sizesIn(normalizedListing).map(normalizeForMatch));
-  const listingCapacities = new Set(capacitiesIn(normalizedListing).map(normalizeForMatch));
-  const listingSetCounts = new Set(setCountsIn(normalizedListing).map(normalizeForMatch));
+  const listingSizes = new Set(sizesIn(normalizedListing));
+  const listingCapacities = new Set(capacitiesIn(normalizedListing));
+  const listingSetCounts = new Set(setCountsIn(normalizedListing));
 
-  const notIn = (found: ReadonlySet<string>) => (token: string) =>
-    !found.has(normalizeForMatch(token));
+  const notIn = (found: ReadonlySet<string>) => (token: string) => !found.has(token);
 
   const missing = [
     ...tokens.sizes.filter(notIn(listingSizes)),
     ...tokens.capacities.filter(notIn(listingCapacities)),
-    ...tokens.colors.filter(notIn(listingColors)),
+    // 色だけは表記ゆれを潰した形で突き合わせる（ダークネイビー → ダクネイビ）
+    ...tokens.colors.filter((token) => !listingColors.has(normalizeForMatch(token))),
     ...tokens.setCounts.filter(notIn(listingSetCounts)),
   ];
 
   // 販売ページ側に現れる、対象と異なる色・容量・サイズ・セット数
   const ownColors = new Set(tokens.colors.map(normalizeForMatch));
-  const ownCapacities = new Set(tokens.capacities.map(normalizeForMatch));
-  const ownSizes = new Set(tokens.sizes.map(normalizeForMatch));
-  const ownSetCounts = new Set(tokens.setCounts.map(normalizeForMatch));
+  const ownCapacities = new Set(tokens.capacities);
+  const ownSizes = new Set(tokens.sizes);
+  const ownSetCounts = new Set(tokens.setCounts);
   const conflicting = [
     ...colorsIn(listingText).filter((v) => !ownColors.has(normalizeForMatch(v))),
-    ...capacitiesIn(normalizedListing).filter((v) => !ownCapacities.has(normalizeForMatch(v))),
-    ...sizesIn(normalizedListing).filter((v) => !ownSizes.has(normalizeForMatch(v))),
-    ...setCountsIn(normalizedListing).filter((v) => !ownSetCounts.has(normalizeForMatch(v))),
+    ...capacitiesIn(normalizedListing).filter((v) => !ownCapacities.has(v)),
+    ...sizesIn(normalizedListing).filter((v) => !ownSizes.has(v)),
+    ...setCountsIn(normalizedListing).filter((v) => !ownSetCounts.has(v)),
   ];
 
   // トークンが 1 つも取れなければ、何にでも一致してしまうので一致にしない

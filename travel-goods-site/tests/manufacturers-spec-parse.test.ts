@@ -138,3 +138,36 @@ describe('寸法と無関係な単位を流用しない', () => {
     expect(parseLabeledSizeMm('W35×H55×D25cm（ハンドル・キャスターを含む）')).toEqual([350, 550, 250]);
   });
 });
+
+describe('寸法の不明単位・部分単位を受理しない', () => {
+  it('未対応の単位が付いていれば null', () => {
+    expect(parseLabeledSizeMm('W35in×H55×D25cm')).toBeNull();
+    expect(parseLabeledSizeMm('W35kg×H55×D25cm')).toBeNull();
+    expect(parseLabeledSizeMm('W35m×H55×D25cm')).toBeNull();
+  });
+
+  it('一部だけに単位が付き、それがグループ末尾でなければ null', () => {
+    expect(parseLabeledSizeMm('W35cm×H55×D25')).toBeNull();
+    expect(parseLabeledSizeMm('W35×H55cm×D25')).toBeNull();
+  });
+
+  it('単位の直後に英数字が続けば null', () => {
+    expect(parseLabeledSizeMm('W35×H55×D25cm2')).toBeNull();
+    expect(parseLabeledSizeMm('W35×H55×D25mmX')).toBeNull();
+  });
+
+  it('グループ全体の単位が最後に 1 つ付く形は受理する', () => {
+    expect(parseLabeledSizeMm('W35×H55×D25cm')).toEqual([350, 550, 250]);
+    expect(parseLabeledSizeMm('W320×D200×H510mm')).toEqual([320, 510, 200]);
+  });
+
+  it('3 要素すべてに同じ単位が直接付く形は受理する', () => {
+    expect(parseLabeledSizeMm('W35cm×H55cm×D25cm')).toEqual([350, 550, 250]);
+    expect(parseLabeledSizeMm('W350mm×H550mm×D250mm')).toEqual([350, 550, 250]);
+  });
+
+  it('梱包サイズの単位を借りない（既存の回帰）', () => {
+    expect(parseLabeledSizeMm('W35×H55×D25（梱包サイズは80cm）')).toBeNull();
+    expect(parseLabeledSizeMm('W35×H55×D25cm（梱包サイズは80cm）')).toEqual([350, 550, 250]);
+  });
+});

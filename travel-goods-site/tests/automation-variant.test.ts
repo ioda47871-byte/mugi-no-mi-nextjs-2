@@ -127,6 +127,78 @@ describe('販売ページ文言との照合', () => {
   });
 });
 
+describe('容量の意味を壊してから照合しない', () => {
+  it('30.5L と 305L を同一視しない', () => {
+    const v = verifyVariant('30.5L / ブラック', '305L ブラック');
+    expect(v.matched).toBe(false);
+  });
+
+  it('30.5L 同士は一致する', () => {
+    expect(verifyVariant('30.5L / ブラック', 'リュック 30.5L ブラック').matched).toBe(true);
+  });
+
+  it('18/24L は 18/24L と一致する', () => {
+    const v = verifyVariant('18/24L / 01 ブラック', 'スーツケース 18/24L 01 ブラック');
+    expect(v.missing).toEqual([]);
+    expect(v.conflicting).toEqual([]);
+    expect(v.matched).toBe(true);
+  });
+
+  it('18/24L は 18L/24L とも一致する', () => {
+    expect(verifyVariant('18/24L / 01 ブラック', 'スーツケース 18L/24L 01 ブラック').matched).toBe(true);
+  });
+
+  it('全角の３０．５Ｌ を 30.5L として扱う', () => {
+    expect(extractVariantTokens('３０．５Ｌ / ブラック').capacities).toEqual(['30.5L']);
+    expect(verifyVariant('30.5L / ブラック', 'リュック ３０．５Ｌ ブラック').matched).toBe(true);
+  });
+
+  it('30.5L のページに 305L が併記されていれば conflicting', () => {
+    const v = verifyVariant('30.5L / ブラック', 'リュック 30.5L と 305L の 2 種 ブラック');
+    expect(v.conflicting).toContain('305L');
+    expect(v.matched).toBe(false);
+  });
+
+  it('mAh の既存挙動を壊さない', () => {
+    expect(extractVariantTokens('10000mAh / ブラック').capacities).toEqual(['10000mAh']);
+    expect(verifyVariant('10000mAh / ブラック', 'モバイルバッテリー 10000mAh ブラック').matched).toBe(true);
+    expect(verifyVariant('10000mAh / ブラック', 'モバイルバッテリー 20000mAh ブラック').matched).toBe(false);
+  });
+});
+
+describe('全角文字でサイズ境界を迂回させない', () => {
+  it('２XLサイズ を XLサイズ に縮めない', () => {
+    expect(extractVariantTokens('２XLサイズ').sizes).toEqual(['2XLサイズ']);
+    expect(verifyVariant('２XLサイズ / ブラック', 'XLサイズ ブラック').matched).toBe(false);
+  });
+
+  it('２XL target は 2XL listing と一致する', () => {
+    expect(verifyVariant('２XLサイズ / ブラック', '2XLサイズ ブラック').matched).toBe(true);
+  });
+
+  it('ＸLサイズ を Lサイズ に縮めない', () => {
+    expect(extractVariantTokens('ＸLサイズ').sizes).toEqual(['XLサイズ']);
+    expect(verifyVariant('ＸLサイズ / ブラック', 'Lサイズ ブラック').matched).toBe(false);
+  });
+
+  it('ＸL target は XL listing と一致する', () => {
+    expect(verifyVariant('ＸLサイズ / ブラック', 'XLサイズ ブラック').matched).toBe(true);
+  });
+
+  it('全角 Ｓ / Ｍ / Ｌ の正常ケース', () => {
+    expect(extractVariantTokens('Ｓサイズ').sizes).toEqual(['Sサイズ']);
+    expect(extractVariantTokens('Ｍサイズ').sizes).toEqual(['Mサイズ']);
+    expect(extractVariantTokens('Ｌサイズ').sizes).toEqual(['Lサイズ']);
+    expect(verifyVariant('Ｌサイズ / ブラック', 'ポーチ Lサイズ ブラック').matched).toBe(true);
+  });
+
+  it('全角でも XS / LL / 2M / SL は拒否する', () => {
+    for (const text of ['ＸSサイズ', 'ＬLサイズ', '２Mサイズ', 'ＳLサイズ']) {
+      expect(extractVariantTokens(text).sizes).toEqual([]);
+    }
+  });
+});
+
 describe('サイズトークンの境界', () => {
   it('Lサイズ は LLサイズ に一致しない', () => {
     const v = verifyVariant('Lサイズ 16L / 03 ダークネイビー', 'ポーチ LLサイズ 16L 03 ダークネイビー');
