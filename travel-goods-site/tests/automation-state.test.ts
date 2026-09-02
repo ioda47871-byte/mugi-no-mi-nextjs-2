@@ -7,6 +7,7 @@ import {
   readBudget,
   readLinkHealth,
   readQueue,
+  serializeBudget,
   serializeLinkHealth,
   serializeQueue,
   writeIfChanged,
@@ -22,6 +23,7 @@ import {
   type LinkHealthFile,
   type QueueEntry,
   type QueueFile,
+  type RevertRecord,
 } from '../src/lib/automation/state/schema';
 
 function budgetFixture(over: Partial<BudgetFile> = {}): BudgetFile {
@@ -297,5 +299,92 @@ describe('状態ファイルの読み書き（安定シリアライズ）', () =
       version: 1, entries: [{ kind: 'unknown-kind', targetId: 't1', queuedAt: '2026-09-02', attempts: 0, lastReason: 'x', payload: {} }],
     }));
     expect(() => readQueue(dir)).toThrow();
+  });
+});
+
+// ------------------------------------------- Task 3 追補: revert 履歴の並び順
+
+describe('serializeBudget は revert 履歴を新しい順に保つ', () => {
+  const SHA_A = 'a'.repeat(40);
+  const SHA_B = 'b'.repeat(40);
+  const SHA_C = 'c'.repeat(40);
+
+  function budgetWith(revertHistory: RevertRecord[]): BudgetFile {
+    return {
+      version: 1,
+      date: '2026-09-03',
+      rakutenRequests: 0,
+      workersAiNeurons: 0,
+      browserSeconds: 0,
+      pagesDeploysThisMonth: 0,
+      circuitBreaker: {
+        state: 'open',
+        trippedOn: '2026-09-03',
+        reason: '3日以内に2回の自動revert',
+        revertHistory,
+      },
+    };
+  }
+
+  function historyOf(json: string): RevertRecord[] {
+    return (JSON.parse(json) as BudgetFile).circuitBreaker.revertHistory;
+  }
+
+  it('入力順が混在していても revertedOn 降順で出す', () => {
+    const json = serializeBudget(budgetWith([
+      { sha: SHA_A, revertedOn: '2026-09-01' },
+      { sha: SHA_C, revertedOn: '2026-09-03' },
+      { sha: SHA_B, revertedOn: '2026-09-02' },
+    ]));
+    expect(historyOf(json).map((r) => r.revertedOn)).toEqual([
+      '2026-09-03', '2026-09-02', '2026-09-01',
+    ]);
+  });
+
+  it('入力配列の順番を変えても出力バイト列が同じ', () => {
+    const a = serializeBudget(budgetWith([
+      { sha: SHA_A, revertedOn: '2026-09-01' },
+      { sha: SHA_C, revertedOn: '2026-09-03' },
+      { sha: SHA_B, revertedOn: '2026-09-02' },
+    ]));
+    const b = serializeBudget(budgetWith([
+      { sha: SHA_B, revertedOn: '2026-09-02' },
+      { sha: SHA_A, revertedOn: '2026-09-01' },
+      { sha: SHA_C, revertedOn: '2026-09-03' },
+    ]));
+    expect(a).toBe(b);
+  });
+
+  it('同日の複数 SHA は sha 昇順', () => {
+    const json = serializeBudget(budgetWith([
+      { sha: SHA_C, revertedOn: '2026-09-02' },
+      { sha: SHA_A, revertedOn: '2026-09-02' },
+      { sha: SHA_B, revertedOn: '2026-09-02' },
+    ]));
+    expect(historyOf(json).map((r) => r.sha)).toEqual([SHA_A, SHA_B, SHA_C]);
+  });
+
+  it('読み戻した revertHistory[0] が最新日（trip の先頭追加と整合する）', () => {
+    const json = serializeBudget(budgetWith([
+      { sha: SHA_A, revertedOn: '2026-09-01' },
+      { sha: SHA_C, revertedOn: '2026-09-03' },
+      { sha: SHA_B, revertedOn: '2026-09-02' },
+    ]));
+    const history = historyOf(json);
+    expect(history[0]).toEqual({ sha: SHA_C, revertedOn: '2026-09-03' });
+    // schema.ts の「新しい順」コメントと、workflows Task 3 の
+    // trip() が先頭へ足して slice(0, REVERT_HISTORY_LIMIT) する契約に一致する
+  });
+
+  it('保持上限まで埋まった履歴を読み戻しても最古が末尾に来る', () => {
+    const full: RevertRecord[] = Array.from({ length: REVERT_HISTORY_LIMIT }, (_, i) => ({
+      sha: String(i).padStart(40, '0'),
+      revertedOn: `2026-09-${String(i + 1).padStart(2, '0')}`,
+    }));
+    // 入力を古い順にしても、出力は新しい順になる
+    const history = historyOf(serializeBudget(budgetWith(full)));
+    expect(history).toHaveLength(REVERT_HISTORY_LIMIT);
+    expect(history[0]?.revertedOn).toBe('2026-09-20');
+    expect(history[REVERT_HISTORY_LIMIT - 1]?.revertedOn).toBe('2026-09-01');
   });
 });

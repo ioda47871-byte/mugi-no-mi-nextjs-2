@@ -49,10 +49,20 @@ export function serializeQueue(file: QueueFile): string {
   return stableStringify({ ...file, entries });
 }
 
-/** 配列は circuitBreaker.revertHistory だけ。revertedOn 昇順で並べる。 */
+/**
+ * 配列は circuitBreaker.revertHistory だけ。
+ * revertedOn 降順（新しい順）、同日は sha 昇順で並べる。
+ *
+ * 「新しい順」は schema.ts の型コメントで定めた契約であり、
+ * circuit breaker の trip() が新しい RevertRecord を配列の先頭へ足して
+ * slice(0, REVERT_HISTORY_LIMIT) で切ることを前提にしている。
+ * ここを昇順で書き出すと、読み戻した履歴が古い順になり、
+ * 上限まで埋まった状態で trip() したとき最古ではなく直前の新しい履歴が落ちる。
+ * 同日は sha 昇順にして、入力順に依存しない決定的な出力を保つ。
+ */
 export function serializeBudget(file: BudgetFile): string {
   const revertHistory = [...file.circuitBreaker.revertHistory].sort(
-    (a, b) => a.revertedOn.localeCompare(b.revertedOn) || a.sha.localeCompare(b.sha),
+    (a, b) => b.revertedOn.localeCompare(a.revertedOn) || a.sha.localeCompare(b.sha),
   );
   return stableStringify({ ...file, circuitBreaker: { ...file.circuitBreaker, revertHistory } });
 }
