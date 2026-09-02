@@ -625,7 +625,7 @@ it('日付が変わると消費値は 0 に戻り、circuitBreaker は引き継�
   fs.writeFileSync(path.join(dir, 'automation/budget.json'), JSON.stringify({
     version: 1, date: '2026-09-01', rakutenRequests: 30, workersAiNeurons: 100,
     browserSeconds: 60, pagesDeploysThisMonth: 5,
-    circuitBreaker: { state: 'open', trippedOn: '2026-09-01', reason: 'x', revertedShas: ['a'] },
+    circuitBreaker: { state: 'open', trippedOn: '2026-09-01', reason: 'x', revertHistory: [{ sha: 'a'.repeat(40), revertedOn: '2026-09-01' }] },
   }));
   const budget = readBudget(dir, '2026-09-02');
   expect(budget.rakutenRequests).toBe(0);
@@ -712,7 +712,7 @@ import { canSpend, spend, DAILY_LIMITS } from '../src/lib/automation/budget';
 const budget = {
   version: 1 as const, date: '2026-09-02', rakutenRequests: 28, workersAiNeurons: 0,
   browserSeconds: 0, pagesDeploysThisMonth: 0,
-  circuitBreaker: { state: 'closed' as const, trippedOn: null, reason: null, revertedShas: [] },
+  circuitBreaker: { state: 'closed' as const, trippedOn: null, reason: null, revertHistory: [] },
 };
 
 it('残量ちょうどは使えるが、1 超過は使えない', () => {
@@ -2148,7 +2148,7 @@ feat(travel-goods-site): カテゴリ拡張の判定を追加
 
 ---
 
-## Task 13: 統合 CLI（探索から書き込みまでを結ぶ）
+## Task 13: 公式 Source の解決と安全な取得
 
 ### 対象ファイル
 
@@ -2156,11 +2156,1001 @@ feat(travel-goods-site): カテゴリ拡張の判定を追加
 |---|---|
 | 作成 | `travel-goods-site/src/lib/automation/sync/resolve-official.ts` |
 | 作成 | `travel-goods-site/src/lib/automation/sync/fetch-official.ts` |
-| 作成 | `travel-goods-site/src/lib/automation/sync/pipeline.ts` |
+| 作成 | `travel-goods-site/src/lib/automation/sync/recall.ts` |
+| 作成 | `travel-goods-site/tests/automation-resolve-official.test.ts` |
+| 作成 | `travel-goods-site/tests/automation-recall.test.ts` |
+
+### Consumes / Produces
+
+- Consumes: `Product`, `Source`, `Fact` from `@/lib/catalog/types`、`adapterFor`, `normalizeBrand`, `UrlResolution` from `@/lib/manufacturers/registry`
+- Produces:
+  - `resolve-official.ts`
+    - `export function factSourceIds(product: Product): string[]`（**その商品の Facts が参照する `sourceId` だけ**）
+    - `export function resolveOfficialUrl(product: Product, sources: readonly Source[]): UrlResolution`
+  - `fetch-official.ts`
+    - `export type OfficialFetchOutcome = { status: 'ok'; html: string } | { status: 'robots-denied' | 'http-blocked' | 'failed'; httpStatus: number | null }`
+    - `export type OfficialFetcher = (url: string) => Promise<OfficialFetchOutcome>`
+    - `export function createOfficialFetcher(options: { allowedHosts: readonly string[]; minIntervalMs: number; timeoutMs: number }): OfficialFetcher`
+  - `recall.ts`
+    - `export type RecallSource = { manufacturerId: ManufacturerId; url: string; approved: boolean }`
+    - `export const RECALL_SOURCES: readonly RecallSource[]`
+    - `export type RecallChecker = (manufacturerId: ManufacturerId, model: string) => Promise<RecallStatus>`
+    - `export function createRecallChecker(deps: { fetchPage: OfficialFetcher; sources: readonly RecallSource[] }): RecallChecker`
+    - `export const phase0RecallChecker: RecallChecker`（**常に `'unavailable'`**）
+    - `export const RECALL_TERMS: readonly string[]`
+
+### 仕様
+
+#### `resolveOfficialUrl` は**その商品の Facts が参照する Source だけ**を候補にする
+
+カタログ全体の `Source` から任意に選ばない。同じホストの無関係な `Source` が
+先頭にあっても選ばない。手順は次のとおり。
+
+1. `factSourceIds(product)` で、`weightG` / `outerSizeMm` / `bodySizeMm` / `capacityL` /
+   `alternateMeasurements[].sizeMm` / `alternateMeasurements[].capacityL` / `specs[*]` の
+   `sourceId` を重複なく集める。
+2. その ID の `Source` だけを取り出し、**`automatedFetch === 'allowed'`** のものに絞る。
+3. 残ったものの先頭（`sources` の登録順）を `{ ok: true, basis: 'existing-source' }` で返す。
+4. 0 件なら、アダプターの `findProductUrl(model, variant, [])` を使う（`basis: 'deterministic-rule'`）。
+5. それも失敗なら `{ ok: false, reason: 'no-existing-source' }`。
+
+#### `RecallChecker`（リコール確認）
+
+「語検査」だけでは実装できないため、**確認先を明示的に持つ**。
+
+```ts
+export const RECALL_TERMS = [
+  'リコール', '回収', '使用中止', '自主回収', '無償交換のお知らせ', '販売終了のお知らせ',
+] as const;
+
+/**
+ * メーカー別の確認先。approved は「このURLを自動取得してよいと人が確認した」ことを表す。
+ * 段階0 では全件 false。承認は人がコード PR で行う。
+ */
+export const RECALL_SOURCES: readonly RecallSource[] = [
+  { manufacturerId: 'ace',            url: 'https://www.ace.jp/information/', approved: false },
+  { manufacturerId: 'proteca',        url: 'https://www.ace.jp/information/', approved: false },
+  { manufacturerId: 'world-traveler', url: 'https://www.ace.jp/information/', approved: false },
+  { manufacturerId: 'elecom',         url: 'https://www.elecom.co.jp/news/important/', approved: false },
+  { manufacturerId: 'anker',          url: 'https://www.ankerjapan.com/pages/support', approved: false },
+];
+```
+
+判定:
+
+| 状況 | 返す値 |
+|---|---|
+| 確認先が `approved: false`、または該当メーカーの確認先が無い | **`'unavailable'`** |
+| 取得が `robots-denied` / `http-blocked` / `failed` | **`'unavailable'`** |
+| 取得できて、本文に `RECALL_TERMS` のいずれかと `model` の両方が現れる | `'hit'` |
+| 取得できて、該当が無い | `'clear'` |
+
+**段階0 では `phase0RecallChecker` を使う。これは常に `'unavailable'` を返す。**
+`decideTier` の `recall-unavailable` ブロッカーにより、**段階0 のすべての商品が B 判定になる。**
+これは安全側の既定であり、確認先を承認するまで自動公開しないことを意味する。
+
+> 段階2 で S 判定を出すには、**人が `RECALL_SOURCES` の `approved` を `true` にするコード PR** が必要。
+> `automation-runbook.md`（計画4 Task 6）にこの手順を書く。
+
+### ステップ
+
+- [ ] `factSourceIds` が Facts の `sourceId` だけを集める失敗テストを書く（4 分）
+- [ ] `resolveOfficialUrl` が**無関係な同一ホストの Source を選ばない**失敗テストを書く（5 分）
+- [ ] `automatedFetch !== 'allowed'` の Source を候補にしない失敗テストを書く（4 分）
+- [ ] Facts が Source を参照していないとき、アダプターの規則にフォールバックする失敗テストを書く（4 分）
+- [ ] `createOfficialFetcher` が許可ホスト外の URL を取得せず `'failed'` を返す失敗テストを書く（4 分）
+- [ ] `phase0RecallChecker` が常に `'unavailable'` を返す失敗テストを書く（3 分）
+- [ ] `createRecallChecker` が `approved: false` の確認先で `'unavailable'` を返す失敗テストを書く（4 分）
+- [ ] 承認済みかつ取得成功かつ語＋型番一致で `'hit'`、非一致で `'clear'` を返す失敗テストを書く（5 分）
+- [ ] 承認済みでも取得失敗なら `'unavailable'` を返す失敗テストを書く（3 分）
+- [ ] テストを実行し失敗を確認する（1 分）
+- [ ] 3 ファイルを実装する（16 分）
+- [ ] テストが成功することを確認する（1 分）
+
+### 最初に失敗するテスト
+
+```ts
+// tests/automation-resolve-official.test.ts
+import { describe, expect, it } from 'vitest';
+import { factSourceIds, resolveOfficialUrl } from '../src/lib/automation/sync/resolve-official';
+import { createOfficialFetcher } from '../src/lib/automation/sync/fetch-official';
+import { makeFact, makeProduct, makeSource } from './factories';
+
+const ownSource = makeSource({
+  id: 'src-own',
+  url: 'https://store.ace.jp/shop/g/g06936-01/',
+  automatedFetch: 'allowed',
+});
+const unrelatedSameHost = makeSource({
+  id: 'src-unrelated',
+  url: 'https://store.ace.jp/shop/g/g99999-99/',
+  automatedFetch: 'allowed',
+});
+const product = makeProduct({
+  weightG: makeFact(2900, { sourceId: 'src-own' }),
+  outerSizeMm: makeFact<[number, number, number]>([350, 550, 250], { sourceId: 'src-own' }),
+  capacityL: makeFact(35, { sourceId: 'src-own' }),
+});
+
+describe('公式 Source の解決', () => {
+  it('Facts が参照する sourceId だけを集める', () => {
+    expect(factSourceIds(product)).toEqual(['src-own']);
+  });
+
+  it('無関係な同一ホストの Source が先にあっても選ばない', () => {
+    const result = resolveOfficialUrl(product, [unrelatedSameHost, ownSource]);
+    expect(result).toEqual({
+      ok: true, url: 'https://store.ace.jp/shop/g/g06936-01/', basis: 'existing-source',
+    });
+  });
+
+  it('automatedFetch が allowed でない Source は候補にしない', () => {
+    const notAllowed = makeSource({ id: 'src-own', automatedFetch: 'unverified' });
+    const result = resolveOfficialUrl(product, [notAllowed]);
+    // 既存 Source が使えないので、アダプターの決定的規則へフォールバックする
+    expect(result).toEqual({
+      ok: true, url: 'https://store.ace.jp/shop/g/g06936-01/', basis: 'deterministic-rule',
+    });
+  });
+
+  it('Facts に sourceId が無く規則も使えなければ失敗を返す', () => {
+    const bare = makeProduct({
+      model: 'A110DN11',
+      brand: 'アンカー・ジャパン（Anker）',
+      variant: '10000mAh / ブラック',
+      weightG: makeFact<number>(null),
+      outerSizeMm: makeFact<[number, number, number]>(null),
+      capacityL: makeFact<number>(null),
+    });
+    expect(resolveOfficialUrl(bare, [])).toEqual({ ok: false, reason: 'model-shape-unsupported' });
+  });
+});
+
+describe('安全な取得', () => {
+  it('許可ホスト外は取得しない', async () => {
+    const fetcher = createOfficialFetcher({
+      allowedHosts: ['store.ace.jp'], minIntervalMs: 0, timeoutMs: 1000,
+    });
+    const outcome = await fetcher('https://example.invalid/page');
+    expect(outcome).toEqual({ status: 'failed', httpStatus: null });
+  });
+});
+```
+
+```ts
+// tests/automation-recall.test.ts
+import { describe, expect, it } from 'vitest';
+import {
+  RECALL_SOURCES,
+  createRecallChecker,
+  phase0RecallChecker,
+} from '../src/lib/automation/sync/recall';
+import type { OfficialFetcher } from '../src/lib/automation/sync/fetch-official';
+
+const okPage = (html: string): OfficialFetcher => async () => ({ status: 'ok', html });
+const blocked: OfficialFetcher = async () => ({ status: 'http-blocked', httpStatus: 403 });
+
+describe('リコール確認', () => {
+  it('段階0 は常に unavailable', async () => {
+    expect(await phase0RecallChecker('ace', 'クレスタ2 06936')).toBe('unavailable');
+  });
+
+  it('段階0 の確認先はすべて未承認', () => {
+    expect(RECALL_SOURCES.every((s) => s.approved === false)).toBe(true);
+    expect(RECALL_SOURCES).toHaveLength(5);
+  });
+
+  it('未承認の確認先では取得せず unavailable', async () => {
+    const checker = createRecallChecker({
+      fetchPage: okPage('リコールのお知らせ クレスタ2 06936'),
+      sources: RECALL_SOURCES,
+    });
+    expect(await checker('ace', 'クレスタ2 06936')).toBe('unavailable');
+  });
+
+  it('承認済み・取得成功・語と型番の両方が一致すれば hit', async () => {
+    const checker = createRecallChecker({
+      fetchPage: okPage('無償交換のお知らせ 対象: クレスタ2 06936'),
+      sources: [{ manufacturerId: 'ace', url: 'https://www.ace.jp/information/', approved: true }],
+    });
+    expect(await checker('ace', 'クレスタ2 06936')).toBe('hit');
+  });
+
+  it('承認済み・取得成功・該当が無ければ clear', async () => {
+    const checker = createRecallChecker({
+      fetchPage: okPage('新商品のお知らせ'),
+      sources: [{ manufacturerId: 'ace', url: 'https://www.ace.jp/information/', approved: true }],
+    });
+    expect(await checker('ace', 'クレスタ2 06936')).toBe('clear');
+  });
+
+  it('承認済みでも取得できなければ unavailable', async () => {
+    const checker = createRecallChecker({
+      fetchPage: blocked,
+      sources: [{ manufacturerId: 'ace', url: 'https://www.ace.jp/information/', approved: true }],
+    });
+    expect(await checker('ace', 'クレスタ2 06936')).toBe('unavailable');
+  });
+
+  it('確認先が無いメーカーは unavailable', async () => {
+    const checker = createRecallChecker({ fetchPage: okPage('x'), sources: [] });
+    expect(await checker('anker', 'A1335011')).toBe('unavailable');
+  });
+});
+```
+
+### テスト実行コマンド
+
+```bash
+cd travel-goods-site && npx vitest run tests/automation-resolve-official.test.ts tests/automation-recall.test.ts
+```
+
+### 期待する失敗内容
+
+```
+Error: Failed to load url ../src/lib/automation/sync/resolve-official
+```
+
+### 最小実装
+
+`factSourceIds` は `Fact` を持つフィールドを列挙して `sourceId` を集め、`null` を除く。
+`createOfficialFetcher` は `new URL(url).hostname` が `allowedHosts` に無ければ
+**取得せずに** `{ status: 'failed', httpStatus: null }` を返す。
+`createRecallChecker` は `sources.find((s) => s.manufacturerId === id && s.approved)` が
+無ければ即 `'unavailable'`。
+
+### 成功確認コマンド
+
+```bash
+cd travel-goods-site && npx vitest run tests/automation-resolve-official.test.ts tests/automation-recall.test.ts && npm run typecheck && npm run lint
+```
+
+### コミット
+
+```
+feat(travel-goods-site): 公式 Source の解決・安全な取得・リコール確認を追加
+
+resolveOfficialUrl はその商品の Facts が参照する sourceId だけを候補にし、
+無関係な同一ホストの Source を選ばない。
+RecallChecker はメーカー別の承認済み確認先を持ち、未承認・取得不能は unavailable。
+段階0 は常に unavailable を返すため、すべての商品が B 判定になる（安全側の既定）。
+```
+
+---
+
+## Task 14: 既存商品の link audit と再確認
+
+### 対象ファイル
+
+| 種別 | パス |
+|---|---|
+| 作成 | `travel-goods-site/src/lib/automation/sync/existing.ts` |
+| 作成 | `travel-goods-site/tests/automation-existing.test.ts` |
+| 変更 | `travel-goods-site/tests/factories/index.ts`（`makePipelineDeps` を追加） |
+
+### Consumes / Produces
+
+- Consumes: `decideTier`（Task 9）、`nextLinkState` / `decideReplacement`（Task 10）、`verifyVariant` / `hasExcludedTerm`（Task 5）、`resolveOfficialUrl` / `RecallChecker`（Task 13）、`matchProduct` / `pickBestMatch` / `searchKeywordsFor` / `isHumanVerifiedLink`（既存）、`itemPageUrlFromAffiliateUrl`（既存）
+- Produces:
+  - `export type PipelineDeps = { search: (keyword: string) => Promise<RakutenItem[]>; fetchOfficial: OfficialFetcher; checkRecall: RecallChecker; today: string }`
+  - `export type ExistingOutcome = { productId: string; tier: Tier; blockers: BlockerCode[]; signals: LinkSignals; linkState: LinkState; replacement: ReplacementDecision; matchedVariantLabel: string | null; extractedSpec: ExtractedSpec | null; officialUrl: string | null; officialRangeHash: string | null }`
+  - `export async function runExistingProduct(product: Product, catalog: Catalog, deps: PipelineDeps): Promise<ExistingOutcome>`
+
+### 仕様
+
+- **書き込まない。** 判定結果だけを返す。書き込み計画は Task 16 が作る。
+- `LinkSignals.httpStatus` は**常に `null`**（段階0 の制約）。
+- `initialSelection` は `'6b-inferred'`（`verifyVariant` が `matched` かつ `conflicting` が空）か `'none'`。
+  **`'6a-observed'` を返す経路を作らない。**
+- 楽天API は 1 商品あたり最大 2 クエリ（JAN → 型番）。
+
+### ステップ
+
+- [ ] `makePipelineDeps` を factory に足す（4 分）
+- [ ] 正常な入力で `blockers` が `recall-unavailable` だけになる失敗テストを書く（段階0 の既定）（5 分）
+- [ ] `checkRecall` を `'clear'` にすると `tier: 'S'` になる失敗テストを書く（4 分）
+- [ ] `fetchOfficial` が `robots-denied` を返すと `official-robots-denied` が立つ失敗テストを書く（3 分）
+- [ ] `httpStatus` が常に `null` である失敗テストを書く（3 分）
+- [ ] `initialSelection` が `'6a-observed'` にならない（`matchedVariantLabel` が推定由来）失敗テストを書く（4 分）
+- [ ] `matchedVariantLabel` が販売ページ文言から抽出した値である失敗テストを書く（4 分）
+- [ ] 目視確認済みリンクの `replacement` が `pr-only` になる失敗テストを書く（4 分）
+- [ ] テストを実行し失敗を確認する（1 分）
+- [ ] `existing.ts` を実装する（14 分）
+- [ ] テストが成功することを確認する（1 分）
+
+### 最初に失敗するテスト
+
+```ts
+// tests/automation-existing.test.ts
+import { describe, expect, it } from 'vitest';
+import { runExistingProduct } from '../src/lib/automation/sync/existing';
+import { makeCatalog, makeMerchantLink, makePipelineDeps, makeProduct } from './factories';
+
+describe('既存商品の判定', () => {
+  it('段階0 の既定ではリコール未確認で B になる', async () => {
+    const outcome = await runExistingProduct(makeProduct(), makeCatalog(), makePipelineDeps());
+    expect(outcome.tier).toBe('B');
+    expect(outcome.blockers).toEqual(['recall-unavailable']);
+  });
+
+  it('リコールが clear なら S になる', async () => {
+    const deps = makePipelineDeps({ checkRecall: async () => 'clear' });
+    const outcome = await runExistingProduct(makeProduct({ jan: '4549550317535' }), makeCatalog(), deps);
+    expect(outcome.blockers).toEqual([]);
+    expect(outcome.tier).toBe('S');
+  });
+
+  it('robots 拒否は official-robots-denied として立つ', async () => {
+    const deps = makePipelineDeps({
+      checkRecall: async () => 'clear',
+      fetchOfficial: async () => ({ status: 'robots-denied', httpStatus: null }),
+    });
+    const outcome = await runExistingProduct(makeProduct(), makeCatalog(), deps);
+    expect(outcome.tier).toBe('B');
+    expect(outcome.blockers).toContain('official-robots-denied');
+  });
+
+  it('段階0 では httpStatus を取らない', async () => {
+    const outcome = await runExistingProduct(makeProduct(), makeCatalog(), makePipelineDeps());
+    expect(outcome.signals.httpStatus).toBeNull();
+  });
+
+  it('matchedVariant は販売ページ文言から抽出した値', async () => {
+    const deps = makePipelineDeps({ checkRecall: async () => 'clear' });
+    const outcome = await runExistingProduct(makeProduct(), makeCatalog(), deps);
+    expect(outcome.matchedVariantLabel).not.toBeNull();
+    expect(outcome.matchedVariantLabel).toContain('35L');
+    expect(outcome.matchedVariantLabel).toContain('ブラックヘアライン');
+  });
+
+  it('目視確認済みリンクは交換候補にしない', async () => {
+    const link = makeMerchantLink({ status: 'verified', verificationMethod: 'visual' });
+    const catalog = makeCatalog({ merchantLinks: [link] });
+    const deps = makePipelineDeps({
+      checkRecall: async () => 'clear',
+      search: async () => [],
+    });
+    const outcome = await runExistingProduct(makeProduct(), catalog, deps);
+    expect(outcome.replacement.action === 'pr-only' || outcome.replacement.action === 'hold').toBe(true);
+  });
+});
+```
+
+`makePipelineDeps` を `tests/factories/index.ts` に足す。
+
+```ts
+import type { PipelineDeps } from '../../src/lib/automation/sync/existing';
+
+export const OFFICIAL_HTML_FIXTURE = `<table class="spec">
+<tr><th>本体重量</th><td>2.9kg</td></tr>
+<tr><th>外寸</th><td>W35×H55×D25cm（ハンドル・キャスターを含む）</td></tr>
+<tr><th>容量</th><td>35L</td></tr>
+</table>`;
+
+export function makePipelineDeps(over: Partial<PipelineDeps> = {}): PipelineDeps {
+  return {
+    search: async () => [makeRakutenItem()],
+    fetchOfficial: async () => ({ status: 'ok', html: OFFICIAL_HTML_FIXTURE }),
+    checkRecall: async () => 'unavailable',
+    today: '2026-09-02',
+    ...over,
+  };
+}
+```
+
+### テスト実行コマンド
+
+```bash
+cd travel-goods-site && npx vitest run tests/automation-existing.test.ts
+```
+
+### 期待する失敗内容
+
+```
+Error: Failed to load url ../src/lib/automation/sync/existing
+```
+
+### 最小実装
+
+`runExistingProduct` は `TierInput` を組み立てて `decideTier` に渡し、
+並行して `LinkSignals` を作って `nextLinkState` と `decideReplacement` に渡す。
+`fs` を触らない。
+
+### 成功確認コマンド
+
+```bash
+cd travel-goods-site && npx vitest run tests/automation-existing.test.ts && npm run typecheck && npm run lint
+```
+
+### コミット
+
+```
+feat(travel-goods-site): 既存商品の判定とリンク audit を追加
+
+TierInput と LinkSignals を組み立てて判定するだけで、書き込みは行わない。
+段階0 では httpStatus を取らず、初期選択の根拠は 6b だけを使う。
+リコールが確認できない既定では B になる。
+```
+
+---
+
+## Task 15: 楽天検索結果から新規候補を作る
+
+### 対象ファイル
+
+| 種別 | パス |
+|---|---|
+| 作成 | `travel-goods-site/src/lib/automation/sync/candidate.ts` |
+| 作成 | `travel-goods-site/tests/automation-candidate.test.ts` |
+
+### Consumes / Produces
+
+- Consumes: `RakutenItem`、`normalizeBrand` / `adapterFor`、`verifyVariant` / `extractVariantTokens` / `hasExcludedTerm`、`resolveOfficialUrl`、`RecallChecker`、`decideTier`、`CATEGORIES`
+- Produces:
+  - `export type CandidateDraft = { itemCode: string; manufacturerId: ManufacturerId | null; model: string | null; variantLabel: string | null; category: Category | null; janFromListing: string | null; affiliateItemPageUrl: string | null; excludedTerm: ExcludedTermState }`
+  - `export function buildCandidateFromRakutenItem(item: RakutenItem, known: readonly Product[]): CandidateDraft`
+  - `export type CandidateEvaluation = { draft: CandidateDraft; tier: Tier; blockers: BlockerCode[]; spec: ExtractedSpec | null; officialUrl: string | null; officialRangeHash: string | null }`
+  - `export async function evaluateCandidate(draft: CandidateDraft, catalog: Catalog, deps: PipelineDeps): Promise<CandidateEvaluation>`
+  - `export type PromotedProduct = { product: Product; source: Source }`
+  - `export function promoteCandidate(evaluation: CandidateEvaluation, today: string): PromotedProduct | null`
+  - `export function buildProductId(manufacturerId: ManufacturerId, model: string, variantLabel: string): string`
+
+### 仕様（新商品探索の入力から公開・queue まで）
+
+```
+RakutenItem
+  │  buildCandidateFromRakutenItem(item, knownProducts)
+  ▼
+CandidateDraft            … brand / model / variant / category / JAN / 紹介URL を抽出
+  │  evaluateCandidate(draft, catalog, deps)
+  ▼                        … 公式URL解決 → 取得 → 抽出 → リコール確認 → decideTier
+CandidateEvaluation
+  │  promoteCandidate(evaluation, today)
+  ▼
+PromotedProduct | null    … null なら Product を作らず queue に残す
+```
+
+#### `buildCandidateFromRakutenItem` — 捏造しない
+
+| フィールド | 決め方 | 決まらなければ |
+|---|---|---|
+| `manufacturerId` | `itemName` から**既知のブランド表記を完全一致で探す**（`BRAND_LISTING_TOKENS`）。部分一致で推測しない | `null` |
+| `model` | メーカーごとの型番パターン（ACE 系は `/(\d{5})/`、ELECOM は `/\b[A-Z]{2,3}-[A-Z0-9-]{4,}\b/`、Anker は `/\bA\d{6,7}\b/`）で `itemName`＋`itemCaption` から抽出。**2 つ以上見つかったら `null`**（曖昧） | `null` |
+| `variantLabel` | `extractVariantTokens` で色・容量・サイズ・セット数を取り、` / ` で結合。**1 つも取れなければ `null`** | `null` |
+| `category` | `CATEGORY_LISTING_KEYWORDS`（カテゴリ → 必須語）に**ちょうど 1 つ**該当すれば決定。0 個または 2 個以上なら `null` | `null` |
+| `janFromListing` | `/(?<!\d)(\d{13})(?!\d)/` で 13 桁を 1 つだけ見つけたとき | `null` |
+| `affiliateItemPageUrl` | `itemPageUrlFromAffiliateUrl(item.affiliateUrl)` | `null` |
+
+```ts
+/** itemName に完全一致で現れたら、そのメーカーとみなす表記。部分一致では使わない。 */
+export const BRAND_LISTING_TOKENS: readonly { token: string; manufacturerId: ManufacturerId }[] = [
+  { token: 'エース', manufacturerId: 'ace' },
+  { token: 'ace.', manufacturerId: 'ace' },
+  { token: 'プロテカ', manufacturerId: 'proteca' },
+  { token: 'PROTECA', manufacturerId: 'proteca' },
+  { token: 'ワールドトラベラー', manufacturerId: 'world-traveler' },
+  { token: 'エレコム', manufacturerId: 'elecom' },
+  { token: 'ELECOM', manufacturerId: 'elecom' },
+  { token: 'Anker', manufacturerId: 'anker' },
+];
+
+/** カテゴリ判定。ちょうど 1 カテゴリだけ該当したときに採用する。 */
+export const CATEGORY_LISTING_KEYWORDS: Readonly<Record<Category, readonly string[]>> = {
+  suitcases: ['スーツケース', 'キャリーケース'],
+  backpacks: ['リュック', 'バックパック'],
+  pouches: ['ポーチ', 'オーガナイザー'],
+  'power-banks': ['モバイルバッテリー'],
+};
+```
+
+#### `buildProductId` — 決定的な ID
+
+```ts
+export function buildProductId(manufacturerId: ManufacturerId, model: string, variantLabel: string): string {
+  const slug = (v: string) =>
+    v.normalize('NFKC').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  return [manufacturerId, slug(model), slug(variantLabel)].filter((p) => p.length > 0).join('-');
+}
+```
+
+日本語だけの `model` / `variantLabel` は `slug` が空になるため、
+**ID が `manufacturerId` だけになる場合は `promoteCandidate` が `null` を返す**（衝突を作らない）。
+
+#### `promoteCandidate` — Product を捏造しない
+
+次を**すべて**満たすときだけ `PromotedProduct` を返す。1 つでも欠ければ **`null`**。
+
+1. `evaluation.tier` が `'S'` または `'A'`
+2. `draft.manufacturerId` / `draft.model` / `draft.variantLabel` / `draft.category` がすべて非 `null`
+3. `evaluation.officialUrl` と `evaluation.officialRangeHash` が非 `null`
+4. `evaluation.spec` の**必須 Facts**（アダプターの `requiredFields`）がすべて非 `null`
+5. `buildProductId(...)` が `manufacturerId` 以外の要素を含む
+
+`null` のときは呼び出し側（Task 16）が `queue.json` に `kind: 'candidate'` として残す。
+
+作る `Product` は `status: 'review'` で、**`Fact` の `sourceId` は同時に作る `Source` の ID**、
+`checkedAt` は `today`。**取得できなかった項目は `null` のまま**にする。
+
+### ステップ
+
+- [ ] `buildCandidateFromRakutenItem` がブランドを完全一致で判定する失敗テストを書く（4 分）
+- [ ] 型番が 2 つ見つかったら `model` が `null` になる失敗テストを書く（4 分）
+- [ ] カテゴリ語が 2 つ該当したら `category` が `null` になる失敗テストを書く（4 分）
+- [ ] `variantLabel` が 1 つも取れなければ `null` になる失敗テストを書く（3 分）
+- [ ] `buildProductId` が同じ入力で同じ ID を返す失敗テストを書く（3 分）
+- [ ] `promoteCandidate` が B 判定で `null` を返す失敗テストを書く（3 分）
+- [ ] `promoteCandidate` が `model === null` で `null` を返す失敗テストを書く（3 分）
+- [ ] `promoteCandidate` が必須 Facts の欠落で `null` を返す失敗テストを書く（4 分）
+- [ ] `promoteCandidate` が成功したとき `status: 'review'` の Product と Source を返す失敗テストを書く（5 分）
+- [ ] 作られた Product が `productSchema` を通る失敗テストを書く（4 分）
+- [ ] テストを実行し失敗を確認する（1 分）
+- [ ] `candidate.ts` を実装する（18 分）
+- [ ] テストが成功することを確認する（1 分）
+
+### 最初に失敗するテスト
+
+```ts
+// tests/automation-candidate.test.ts
+import { describe, expect, it } from 'vitest';
+import {
+  buildCandidateFromRakutenItem,
+  buildProductId,
+  evaluateCandidate,
+  promoteCandidate,
+} from '../src/lib/automation/sync/candidate';
+import { productSchema } from '../src/lib/catalog/schema';
+import { makeCatalog, makePipelineDeps, makeRakutenItem } from './factories';
+
+describe('楽天検索結果から候補を作る', () => {
+  it('ブランドを完全一致で判定する', () => {
+    const draft = buildCandidateFromRakutenItem(makeRakutenItem(), []);
+    expect(draft.manufacturerId).toBe('ace');
+    expect(draft.model).toBe('06936');
+    expect(draft.category).toBe('suitcases');
+  });
+
+  it('既知のブランド表記が無ければ manufacturerId は null', () => {
+    const item = makeRakutenItem({ itemName: 'ノーブランド スーツケース 35L ブラック' });
+    expect(buildCandidateFromRakutenItem(item, []).manufacturerId).toBeNull();
+  });
+
+  it('型番が 2 つ見つかったら曖昧として null', () => {
+    const item = makeRakutenItem({ itemName: 'エース 06936 と 06937 の 2 点セット スーツケース 35L ブラックヘアライン' });
+    expect(buildCandidateFromRakutenItem(item, []).model).toBeNull();
+  });
+
+  it('カテゴリ語が 2 つ該当したら null', () => {
+    const item = makeRakutenItem({ itemName: 'エース 06936 スーツケース＆リュック 35L ブラックヘアライン' });
+    expect(buildCandidateFromRakutenItem(item, []).category).toBeNull();
+  });
+
+  it('variant のトークンが 1 つも取れなければ null', () => {
+    const item = makeRakutenItem({ itemName: 'エース 06936 スーツケース', itemCaption: '詳細は商品ページをご覧ください' });
+    expect(buildCandidateFromRakutenItem(item, []).variantLabel).toBeNull();
+  });
+
+  it('ID は決定的', () => {
+    expect(buildProductId('ace', '06936', '35L / ブラックヘアライン'))
+      .toBe(buildProductId('ace', '06936', '35L / ブラックヘアライン'));
+    expect(buildProductId('ace', '06936', '35L / ブラックヘアライン')).toMatch(/^ace-06936-35l/);
+  });
+});
+
+describe('候補の昇格', () => {
+  it('B 判定では Product を作らない', async () => {
+    const draft = buildCandidateFromRakutenItem(makeRakutenItem(), []);
+    const evaluation = await evaluateCandidate(draft, makeCatalog(), makePipelineDeps());
+    expect(evaluation.tier).toBe('B'); // 段階0 は recall-unavailable
+    expect(promoteCandidate(evaluation, '2026-09-02')).toBeNull();
+  });
+
+  it('model が決まらなければ Product を作らない', async () => {
+    const item = makeRakutenItem({ itemName: 'エース スーツケース 35L ブラックヘアライン' });
+    const draft = buildCandidateFromRakutenItem(item, []);
+    expect(draft.model).toBeNull();
+    const evaluation = await evaluateCandidate(draft, makeCatalog(), makePipelineDeps({ checkRecall: async () => 'clear' }));
+    expect(promoteCandidate(evaluation, '2026-09-02')).toBeNull();
+  });
+
+  it('必須 Facts が欠けたら Product を作らない', async () => {
+    const draft = buildCandidateFromRakutenItem(makeRakutenItem(), []);
+    const deps = makePipelineDeps({
+      checkRecall: async () => 'clear',
+      fetchOfficial: async () => ({ status: 'ok', html: '<table class="spec"><tr><th>本体重量</th><td>2.9kg</td></tr></table>' }),
+    });
+    const evaluation = await evaluateCandidate(draft, makeCatalog(), deps);
+    expect(promoteCandidate(evaluation, '2026-09-02')).toBeNull();
+  });
+
+  it('すべて揃えば review の Product と Source を作る', async () => {
+    const draft = buildCandidateFromRakutenItem(
+      makeRakutenItem({ itemCaption: '本体重量2.9kg。外寸 幅35×高さ55×奥行25cm。容量35L。JAN 4549550317535' }), []);
+    const evaluation = await evaluateCandidate(
+      draft, makeCatalog(), makePipelineDeps({ checkRecall: async () => 'clear' }));
+    expect(evaluation.tier).toBe('S');
+    const promoted = promoteCandidate(evaluation, '2026-09-02');
+    expect(promoted).not.toBeNull();
+    if (promoted === null) return;
+    expect(promoted.product.status).toBe('review');
+    expect(promoted.product.weightG.sourceId).toBe(promoted.source.id);
+    expect(promoted.source.provenance).toBe('direct-fetch');
+    expect(promoted.source.checkedAt).toBe('2026-09-02');
+    expect(productSchema.safeParse(promoted.product).success).toBe(true);
+  });
+});
+```
+
+### テスト実行コマンド
+
+```bash
+cd travel-goods-site && npx vitest run tests/automation-candidate.test.ts
+```
+
+### 期待する失敗内容
+
+```
+Error: Failed to load url ../src/lib/automation/sync/candidate
+```
+
+### 最小実装
+
+`buildCandidateFromRakutenItem` は `itemName`＋`itemCaption` を正規化した文字列に対して
+上表のパターンを当て、**該当が 1 つのときだけ**値を入れる。
+`promoteCandidate` は 5 条件を順に見て、1 つでも欠ければ `null` を返す。
+
+### 成功確認コマンド
+
+```bash
+cd travel-goods-site && npx vitest run tests/automation-candidate.test.ts && npm run typecheck && npm run lint
+```
+
+### コミット
+
+```
+feat(travel-goods-site): 楽天検索結果から新規候補を作る処理を追加
+
+buildCandidateFromRakutenItem → evaluateCandidate → promoteCandidate の 3 段。
+ブランドは完全一致、型番とカテゴリは該当が 1 つのときだけ採用する。
+model・variant・公式URL・必須 Facts のどれかが決まらなければ
+Product を作らず null を返す。呼び出し側が queue に残す。
+```
+
+---
+
+## Task 16: 書き込み計画を作る純関数（停止スイッチと週上限の結線）
+
+### 対象ファイル
+
+| 種別 | パス |
+|---|---|
+| 作成 | `travel-goods-site/src/lib/automation/sync/write-plan.ts` |
+| 作成 | `travel-goods-site/tests/automation-write-plan.test.ts` |
+
+### Consumes / Produces
+
+- Consumes: `Switches` / `allowsTier`（計画3 Task 1）、`Tier`、`ExistingOutcome`、`CandidateEvaluation`、`PromotedProduct`、`Product`
+- Produces:
+  - `export const PRODUCTS_PER_WEEK = 3`
+  - `export function jstWeekStart(isoDate: string): string`
+  - `export function registeredProductsThisWeek(products: readonly Product[], today: string): number`
+  - `export function remainingProductsThisWeek(products: readonly Product[], today: string): number`
+  - `export type WritePlan = { publishProduct: boolean; writeProductAsReview: boolean; writeSource: boolean; writeMerchantLink: boolean; replaceMerchantLink: boolean; updateLinkHealth: boolean; queue: QueueEntry[] }`
+  - `export function buildWritePlan(input: WritePlanInput): WritePlan`
+  - `export type WritePlanInput = { switches: Switches; tier: Tier; recheck: RecheckState; replacement: ReplacementDecision; isNewProduct: boolean; remainingThisWeek: number; today: string; targetId: string }`
+
+### 仕様
+
+#### 商品の週 3 件上限（JST 月曜始まり）
+
+月曜と木曜に各 `--limit 3` では最大 6 件になる。**週単位で数える。**
+
+```ts
+export const PRODUCTS_PER_WEEK = 3;
+
+/** その週に自動登録された商品の数。 */
+export function registeredProductsThisWeek(products: readonly Product[], today: string): number {
+  const weekStart = jstWeekStart(today);
+  return products.filter((p) => {
+    const registeredAt = p.weightG.checkedAt ?? p.capacityL.checkedAt;
+    return isAutoRegistered(p) && registeredAt !== null && jstWeekStart(registeredAt) === weekStart;
+  }).length;
+}
+
+export function remainingProductsThisWeek(products: readonly Product[], today: string): number {
+  return Math.max(0, PRODUCTS_PER_WEEK - registeredProductsThisWeek(products, today));
+}
+```
+
+- **自動登録の判別**: `isAutoRegistered(p)` は、その商品の Facts が参照する `Source` の
+  `usageNote` に `AUTO_REGISTERED_MARKER`（`'automation:product-discovery'`）が含まれるかで決める。
+  **人が登録した商品は数えない。**
+- **数えるのは公開・保留を問わず「自動登録した商品」**であり、
+  `status` が `published` か `review` かは問わない。
+  ただし **B 判定（Product を作らなかったもの）は数えない**（Product が存在しないため）。
+- 超過分は `queue.json` に `kind: 'candidate'` として残す。
+
+#### 停止スイッチの結線（計画3 Task 1 の動作表を実装する）
+
+```ts
+export function buildWritePlan(input: WritePlanInput): WritePlan {
+  const { switches: sw, tier, recheck, replacement, isNewProduct, remainingThisWeek } = input;
+  const empty: WritePlan = {
+    publishProduct: false, writeProductAsReview: false, writeSource: false,
+    writeMerchantLink: false, replaceMerchantLink: false, updateLinkHealth: false, queue: [],
+  };
+  if (!sw.automationEnabled) return empty;
+  // 以降、スイッチごとに許可を積み上げる
+}
+```
+
+| 条件 | `WritePlan` の値 |
+|---|---|
+| `automationEnabled === false` | すべて `false`、`queue` も空 |
+| `isNewProduct && !sw.autoDiscoverProducts` | すべて `false`、`queue` も空（探索自体を行わない） |
+| `tier === 'B'` | 書き込みなし。`queue` に `kind: 'candidate'` |
+| `tier === 'A'` かつ `recheck !== 'matched-previous-day'` | 書き込みなし。`queue` に `kind: 'tier-a-recheck'` |
+| `allowsTier(sw.autoPublishProducts, tier) === false` | `publishProduct: false`。`queue` に `kind: 'candidate'` |
+| `isNewProduct && remainingThisWeek <= 0` | 書き込みなし。`queue` に `kind: 'candidate'` |
+| 上記をすべて通過 | `publishProduct: true`, `writeSource: true`, `writeMerchantLink: true` |
+| `sw.autoAuditLinks === false` | `updateLinkHealth: false` |
+| `sw.autoReplaceLinks === false` | `replaceMerchantLink: false`（`replacement` の結果は `queue` に記録） |
+
+### ステップ
+
+- [ ] `jstWeekStart` の週境界テストを書く（月・水・日・翌月曜）（4 分）
+- [ ] `registeredProductsThisWeek` が**人が登録した商品を数えない**失敗テストを書く（5 分）
+- [ ] 月曜に 3 件登録したら木曜の残りが 0 になる失敗テストを書く（4 分）
+- [ ] 同日再実行でも残りが増えない失敗テストを書く（3 分）
+- [ ] 週が変われば残りが 3 に戻る失敗テストを書く（3 分）
+- [ ] **B/A 候補（Product を作らなかったもの）を公開件数に数えない**失敗テストを書く（4 分）
+- [ ] `automationEnabled === false` ですべて `false` になる失敗テストを書く（3 分）
+- [ ] 7 スイッチそれぞれを落とすと対応する書き込みが `false` になる **table-driven test** を書く（8 分）
+- [ ] `AUTO_PUBLISH_PRODUCTS=S` で A が `queue` に回る失敗テストを書く（4 分）
+- [ ] `AUTO_PUBLISH_PRODUCTS=S,A` でも**再確認前の A** は公開しない失敗テストを書く（4 分）
+- [ ] 週上限を超えた新商品が `queue` に残る失敗テストを書く（4 分）
+- [ ] テストを実行し失敗を確認する（1 分）
+- [ ] `write-plan.ts` を実装する（14 分）
+- [ ] テストが成功することを確認する（1 分）
+
+### 最初に失敗するテスト
+
+```ts
+// tests/automation-write-plan.test.ts
+import { describe, expect, it } from 'vitest';
+import {
+  PRODUCTS_PER_WEEK,
+  buildWritePlan,
+  jstWeekStart,
+  registeredProductsThisWeek,
+  remainingProductsThisWeek,
+  type WritePlanInput,
+} from '../src/lib/automation/sync/write-plan';
+import { readSwitches, type Switches } from '../src/lib/automation/switches';
+import { makeAutoRegisteredProduct, makeProduct } from './factories';
+
+const allOn: Switches = readSwitches({
+  AUTOMATION_ENABLED: 'true',
+  AUTO_DISCOVER_PRODUCTS: 'true',
+  AUTO_PUBLISH_PRODUCTS: 'S,A',
+  AUTO_GENERATE_ARTICLES: 'true',
+  AUTO_PUBLISH_ARTICLES: 'true',
+  AUTO_AUDIT_LINKS: 'true',
+  AUTO_REPLACE_LINKS: 'true',
+});
+
+function planInput(over: Partial<WritePlanInput> = {}): WritePlanInput {
+  return {
+    switches: allOn,
+    tier: 'S',
+    recheck: 'matched-previous-day',
+    replacement: { action: 'replace-now' },
+    isNewProduct: false,
+    remainingThisWeek: PRODUCTS_PER_WEEK,
+    today: '2026-09-02',
+    targetId: 'fixture-ace-06936',
+    ...over,
+  };
+}
+
+describe('週 3 件の上限（JST 月曜始まり）', () => {
+  it('週の始まりは JST 月曜', () => {
+    expect(jstWeekStart('2026-08-31')).toBe('2026-08-31'); // 月
+    expect(jstWeekStart('2026-09-02')).toBe('2026-08-31'); // 水
+    expect(jstWeekStart('2026-09-06')).toBe('2026-08-31'); // 日
+    expect(jstWeekStart('2026-09-07')).toBe('2026-09-07'); // 翌月
+  });
+
+  it('人が登録した商品は数えない', () => {
+    const human = [makeProduct({ id: 'human-1' }), makeProduct({ id: 'human-2' })];
+    expect(registeredProductsThisWeek(human, '2026-09-02')).toBe(0);
+    expect(remainingProductsThisWeek(human, '2026-09-02')).toBe(PRODUCTS_PER_WEEK);
+  });
+
+  it('月曜に 3 件登録したら木曜は 0 件', () => {
+    const monday = [0, 1, 2].map((i) => makeAutoRegisteredProduct(`auto-${i}`, '2026-08-31'));
+    expect(registeredProductsThisWeek(monday, '2026-09-03')).toBe(3); // 木
+    expect(remainingProductsThisWeek(monday, '2026-09-03')).toBe(0);
+  });
+
+  it('月曜に 1 件なら木曜は 2 件まで', () => {
+    const monday = [makeAutoRegisteredProduct('auto-0', '2026-08-31')];
+    expect(remainingProductsThisWeek(monday, '2026-09-03')).toBe(2);
+  });
+
+  it('同日再実行でも残りが増えない', () => {
+    const today = [0, 1, 2].map((i) => makeAutoRegisteredProduct(`auto-${i}`, '2026-09-03'));
+    expect(remainingProductsThisWeek(today, '2026-09-03')).toBe(0);
+    expect(remainingProductsThisWeek(today, '2026-09-03')).toBe(0);
+  });
+
+  it('週が変われば上限が戻る', () => {
+    const lastWeek = [0, 1, 2].map((i) => makeAutoRegisteredProduct(`auto-${i}`, '2026-09-03'));
+    expect(remainingProductsThisWeek(lastWeek, '2026-09-07')).toBe(PRODUCTS_PER_WEEK);
+  });
+
+  it('Product を作らなかった B/A 候補は件数に入らない', () => {
+    // queue にしか存在しない候補は products に無いので数に入らない
+    const onlyOne = [makeAutoRegisteredProduct('auto-0', '2026-08-31')];
+    expect(registeredProductsThisWeek(onlyOne, '2026-09-02')).toBe(1);
+  });
+});
+
+describe('停止スイッチの結線', () => {
+  it('AUTOMATION_ENABLED=false ではすべて書かない', () => {
+    const plan = buildWritePlan(planInput({ switches: readSwitches({}) }));
+    expect(plan).toEqual({
+      publishProduct: false, writeProductAsReview: false, writeSource: false,
+      writeMerchantLink: false, replaceMerchantLink: false, updateLinkHealth: false, queue: [],
+    });
+  });
+
+  const SWITCH_CASES: readonly {
+    name: string; env: NodeJS.ProcessEnv; over: Partial<WritePlanInput>;
+    check: (plan: ReturnType<typeof buildWritePlan>) => void;
+  }[] = [
+    {
+      name: 'AUTO_DISCOVER_PRODUCTS=false は新商品を扱わない',
+      env: { AUTOMATION_ENABLED: 'true', AUTO_PUBLISH_PRODUCTS: 'S,A', AUTO_DISCOVER_PRODUCTS: 'false' },
+      over: { isNewProduct: true },
+      check: (p) => {
+        expect(p.publishProduct).toBe(false);
+        expect(p.writeSource).toBe(false);
+        expect(p.queue).toEqual([]);
+      },
+    },
+    {
+      name: 'AUTO_PUBLISH_PRODUCTS=off は S も A も公開しない',
+      env: { AUTOMATION_ENABLED: 'true', AUTO_PUBLISH_PRODUCTS: 'off' },
+      over: {},
+      check: (p) => {
+        expect(p.publishProduct).toBe(false);
+        expect(p.queue.map((q) => q.kind)).toContain('candidate');
+      },
+    },
+    {
+      name: 'AUTO_AUDIT_LINKS=false は link-health を書かない',
+      env: { AUTOMATION_ENABLED: 'true', AUTO_PUBLISH_PRODUCTS: 'S,A', AUTO_AUDIT_LINKS: 'false' },
+      over: {},
+      check: (p) => expect(p.updateLinkHealth).toBe(false),
+    },
+    {
+      name: 'AUTO_REPLACE_LINKS=false はリンクを交換しない',
+      env: { AUTOMATION_ENABLED: 'true', AUTO_PUBLISH_PRODUCTS: 'S,A', AUTO_REPLACE_LINKS: 'false' },
+      over: {},
+      check: (p) => expect(p.replaceMerchantLink).toBe(false),
+    },
+  ];
+
+  it.each(SWITCH_CASES)('$name', ({ env, over, check }) => {
+    check(buildWritePlan(planInput({ switches: readSwitches(env), ...over })));
+  });
+
+  it('AUTO_PUBLISH_PRODUCTS=S では A を公開せず再確認キューへ', () => {
+    const sw = readSwitches({ AUTOMATION_ENABLED: 'true', AUTO_PUBLISH_PRODUCTS: 'S' });
+    const plan = buildWritePlan(planInput({ switches: sw, tier: 'A' }));
+    expect(plan.publishProduct).toBe(false);
+    expect(plan.queue.map((q) => q.kind)).toContain('candidate');
+  });
+
+  it('AUTO_PUBLISH_PRODUCTS=S,A でも再確認前の A は公開しない', () => {
+    const plan = buildWritePlan(planInput({ tier: 'A', recheck: 'not-yet' }));
+    expect(plan.publishProduct).toBe(false);
+    expect(plan.queue.map((q) => q.kind)).toContain('tier-a-recheck');
+  });
+
+  it('B 判定は候補キューに残すだけ', () => {
+    const plan = buildWritePlan(planInput({ tier: 'B' }));
+    expect(plan.publishProduct).toBe(false);
+    expect(plan.writeProductAsReview).toBe(false);
+    expect(plan.queue.map((q) => q.kind)).toEqual(['candidate']);
+  });
+
+  it('週上限を超えた新商品はキューに残す', () => {
+    const plan = buildWritePlan(planInput({ isNewProduct: true, remainingThisWeek: 0 }));
+    expect(plan.publishProduct).toBe(false);
+    expect(plan.queue.map((q) => q.kind)).toContain('candidate');
+  });
+});
+```
+
+`makeAutoRegisteredProduct` を `tests/factories/index.ts` に足す。
+
+```ts
+export const AUTO_REGISTERED_MARKER = 'automation:product-discovery';
+
+/** 自動登録された商品（Source の usageNote にマーカーを持つ）。 */
+export function makeAutoRegisteredProduct(id: string, checkedAt: string): Product {
+  return makeProduct({
+    id,
+    weightG: makeFact(2900, { sourceId: `src-${id}`, checkedAt }),
+    outerSizeMm: makeFact<[number, number, number]>([350, 550, 250], { sourceId: `src-${id}`, checkedAt }),
+    capacityL: makeFact(35, { sourceId: `src-${id}`, checkedAt }),
+  });
+}
+
+export function makeAutoRegisteredSource(id: string, checkedAt: string): Source {
+  return makeSource({ id: `src-${id}`, checkedAt, usageNote: AUTO_REGISTERED_MARKER });
+}
+```
+
+> `registeredProductsThisWeek` は `products` と `sources` の両方を見るため、
+> 実装では `(products, sources, today)` の 3 引数にする。
+> テストの `makeAutoRegisteredProduct` と `makeAutoRegisteredSource` を対で渡す。
+
+### テスト実行コマンド
+
+```bash
+cd travel-goods-site && npx vitest run tests/automation-write-plan.test.ts
+```
+
+### 期待する失敗内容
+
+```
+Error: Failed to load url ../src/lib/automation/sync/write-plan
+```
+
+### 最小実装
+
+`buildWritePlan` は上表の条件を**上から順に**評価し、
+最初に該当したところで `WritePlan` を返す（早期 return）。
+`queue` は該当した理由ごとに 1 件だけ積む。
+
+### 成功確認コマンド
+
+```bash
+cd travel-goods-site && npx vitest run tests/automation-write-plan.test.ts && npm run typecheck && npm run lint
+```
+
+### コミット
+
+```
+feat(travel-goods-site): 書き込み計画を作る純関数を追加
+
+7 つの停止スイッチと週 3 件の上限を、書き込み計画そのものに結線する。
+「書いてから消す」のではなく、計画の段階で false にする。
+週の件数は JST 月曜始まりで自動登録済みの商品から数え、
+人が登録した商品と、Product を作らなかった B/A 候補は数えない。
+```
+
+---
+
+## Task 17: dry-run / apply の CLI と状態ファイル更新
+
+### 対象ファイル
+
+| 種別 | パス |
+|---|---|
 | 作成 | `travel-goods-site/scripts/automation-sync.ts` |
+| 作成 | `travel-goods-site/src/lib/automation/sync/apply.ts` |
 | 変更 | `travel-goods-site/package.json`（`automation:sync` を追加） |
-| 作成 | `travel-goods-site/tests/automation-pipeline.test.ts` |
 | 作成 | `travel-goods-site/tests/automation-sync-cli.test.ts` |
+
+### Consumes / Produces
+
+- Consumes: Task 13〜16 のすべて、`readBudget` / `readQueue` / `readLinkHealth` / `writeIfChanged` / `serialize*`（Task 2・3）、`canSpend` / `spend` / `enqueue` / `dequeue`（Task 4）、`readSwitches`（計画3 Task 1）、`inspectCatalog`（既存）
+- Produces:
+  - `apply.ts`: `export function applyWritePlans(datasetDir: string, plans: readonly AppliedChange[]): { written: string[]; skipped: string[] }`
+  - CLI: `npm run automation:sync -- --mode links|discover|recheck [--apply] [--limit N] [--max-requests N] [--offline]`
 
 ### 既存 CLI を拡張するか、新規に作るか
 
@@ -2168,177 +3158,67 @@ feat(travel-goods-site): カテゴリ拡張の判定を追加
 
 | 観点 | 理由 |
 |---|---|
-| 書き込み範囲が違う | 既存は `merchants/` と `datasets/production/candidates/` に書く。自動運用は **`candidates/` に書いてはいけない**（設計書 12.2 の許可パス外） |
-| 判定が違う | 既存は `strong`/`weak` だけで判定する。自動運用は 17 ブロッカーの fail-closed 判定を使う |
-| 既存の手動運用を壊さない | `rakuten-sync.ts` は目視確認リンクの保護など動作が確立しており、人が手で使い続ける |
+| 書き込み範囲が違う | 既存は `datasets/production/candidates/` に書く。自動運用は**許可パス外**なので書けない（設計書 12.2） |
+| 判定が違う | 既存は `strong`/`weak` だけ。自動運用は 17 ブロッカーの fail-closed 判定を使う |
+| 既存の手動運用を壊さない | `rakuten-sync.ts` は動作が確立しており、人が手で使い続ける |
 
 両者は `RakutenClient`・`matchProduct`・`isHumanVerifiedLink` を共有する。
 
-### Consumes / Produces
-
-- Consumes: `RakutenClient`（既存）、`matchProduct` / `pickBestMatch` / `searchKeywordsFor` / `isHumanVerifiedLink`（既存）、`itemPageUrlFromAffiliateUrl`（既存）、`inspectCatalog`（既存）、`normalizeBrand` / `adapterFor`（Task 6〜8）、`verifyVariant` / `hasExcludedTerm`（Task 5）、`decideTier`（Task 9）、`nextLinkState` / `decideReplacement`（Task 10）、`readBudget` / `readQueue` / `readLinkHealth` / `writeIfChanged` / `serialize*`（Task 2・3）、`canSpend` / `spend` / `enqueue` / `dequeue`（Task 4）
-- Produces:
-  - `resolve-official.ts`: `export function resolveOfficialUrl(product: Product, sources: readonly Source[]): UrlResolution`
-  - `fetch-official.ts`:
-    - `export type OfficialFetcher = (url: string) => Promise<OfficialFetchOutcome>`
-    - `export type OfficialFetchOutcome = { status: 'ok'; html: string } | { status: 'robots-denied' | 'http-blocked' | 'failed'; httpStatus: number | null }`
-    - `export function createOfficialFetcher(options: { allowedHosts: readonly string[]; minIntervalMs: number; timeoutMs: number }): OfficialFetcher`
-  - `pipeline.ts`:
-    - `export type PipelineDeps = { search: (keyword: string) => Promise<RakutenItem[]>; fetchOfficial: OfficialFetcher; today: string }`
-    - `export type ProductOutcome = { productId: string; tier: Tier; blockers: BlockerCode[]; link: MerchantLink | null; source: Source | null; spec: ExtractedSpec | null; queue: QueueEntry[] }`
-    - `export async function runProduct(product: Product, catalog: Catalog, deps: PipelineDeps): Promise<ProductOutcome>`
-  - CLI: `npm run automation:sync -- --mode links|discover|recheck [--apply] [--limit N] [--max-requests N] [--offline]`
-
-### CLI の引数と動作
+### CLI の引数
 
 | 引数 | 既定 | 意味 |
 |---|---|---|
-| `--mode links` | ● | 登録済み商品の紹介URL取得とリンク健全性の更新 |
-| `--mode discover` | | 楽天APIで新商品候補を集め、S/A/B 判定まで行う |
-| `--mode recheck` | | 前日に `tier-a-recheck` へ積まれた候補を再取得して突き合わせる |
-| `--apply` | なし（**dry-run**） | 書き込む。`--apply` が無ければ 1 バイトも書かない |
-| `--limit N` | `3` | 1 回で扱う商品の上限（設計書 10.4 の「新商品は週 3 件まで」） |
-| `--max-requests N` | `30` | 楽天APIの上限（設計書 10.2） |
-| `--offline` | なし | 楽天APIとメーカー公式へ接続せず、ループバックのモックと fixture で通す |
+| `--mode links` | ● | 既存商品の判定とリンク健全性（Task 14） |
+| `--mode discover` | | 新商品候補の作成と昇格（Task 15） |
+| `--mode recheck` | | 前日の `tier-a-recheck` を再取得して突き合わせる |
+| `--apply` | なし（**dry-run**） | 書き込む。無ければ 1 バイトも書かない |
+| `--limit N` | `3` | 1 回で扱う対象の上限。実際は `Math.min(limit, remainingProductsThisWeek(...))` |
+| `--max-requests N` | `30` | 楽天API の上限 |
+| `--offline` | なし | 楽天API とメーカー公式へ接続せず、ループバックのモックと fixture で通す |
 
-### 書き込み先（`--apply` のときだけ）
-
-| ファイル | 何を書くか |
-|---|---|
-| `datasets/production/products/<category>.json` | S は `status: 'published'`、A は `status: 'review'` で追記／更新 |
-| `datasets/production/sources.json` | 公式ページの `Source`（`provenance: 'direct-fetch'`、`checkedAt`、`locator`） |
-| `datasets/production/merchants/rakuten.json` | `MerchantLink`。`matchedVariant` は**販売ページ文言から抽出した値**（Task 5） |
-| `automation/queue.json` | B 判定は `kind: 'candidate'`、A 判定は `kind: 'tier-a-recheck'` |
-| `automation/link-health.json` | 6 信号と状態 |
-
-**`datasets/production/candidates/` には書かない。**
-
-書き込み前に必ず `inspectCatalog` を通し、`ok: false` なら**書き込みを中止して終了コード 1**。
-
-### 段階0 の制約（Global Constraints 3・4 の反映）
-
-- **楽天商品ページへの HTTP 取得を行わない。** `LinkSignals.httpStatus` は常に `null`。
-- **Browser Rendering を使わない。** `initialSelection` は `'6b-inferred'` か `'none'` のどちらかで、
-  `'6a-observed'` を返す経路を段階0 では作らない。
-- メーカー公式の取得は、**その商品の出典の `automatedFetch === 'allowed'`** のときだけ行う。
-  `'unverified'` / `'not-allowed'` は `officialFetchStatus: 'robots-denied'` ではなく
-  **取得自体を行わず** `'failed'`（分類コード `source-not-permitted`）として扱う。
-- `robots.txt` を取得し、対象 URL が `Disallow` に該当すれば `'robots-denied'`。
-- 403 / 429 は `'http-blocked'`。**再試行の間隔を短くしない。User-Agent を変えない。**
-
-### workflow からの呼び出し（計画3 が使う）
+### workflow からの呼び出し（計画3 Task 6 が使う）
 
 ```bash
 # automation-links.yml（毎日 JST 06:00）
 npm run automation:sync -- --mode links --apply --limit 15 --max-requests 20
+npm run automation:sync -- --mode recheck --apply --limit 5 --max-requests 5
 
 # automation-discover.yml（月・木 JST 06:30）
 npm run automation:sync -- --mode discover --apply --limit 3 --max-requests 8
-
-# automation-links.yml の後段（毎日）
-npm run automation:sync -- --mode recheck --apply --limit 5 --max-requests 5
 ```
+
+**`--limit 3` を月・木の両方に渡しても、週の合計は 3 件を超えない**（Task 16 の週上限）。
+
+### 書き込み先（`--apply` のときだけ）
+
+| ファイル | 条件 |
+|---|---|
+| `datasets/production/products/<category>.json` | `plan.publishProduct` または `plan.writeProductAsReview` |
+| `datasets/production/sources.json` | `plan.writeSource` |
+| `datasets/production/merchants/rakuten.json` | `plan.writeMerchantLink` または `plan.replaceMerchantLink` |
+| `automation/queue.json` | 常に（`plan.queue` をマージ） |
+| `automation/link-health.json` | `plan.updateLinkHealth` |
+| `automation/budget.json` | 消費があった日だけ |
+
+**`datasets/production/candidates/` には書かない。**
+書き込み前に `inspectCatalog` を通し、`ok: false` なら**中止して終了コード 1**。
 
 ### ステップ
 
-- [ ] `resolveOfficialUrl` が既存 `Source` を優先し、無ければアダプターの規則を使う失敗テストを書く（4 分）
-- [ ] `automatedFetch !== 'allowed'` の出典しか無い商品で、**取得を試みない**失敗テストを書く（4 分）
-- [ ] `createOfficialFetcher` が許可ホスト外の URL を拒否する失敗テストを書く（4 分）
-- [ ] `runProduct` が `deps.fetchOfficial` の戻り値を `TierInput.officialFetchStatus` に写す失敗テストを書く（5 分）
-- [ ] `runProduct` が段階0 では `initialSelection` に `'6a-observed'` を返さない失敗テストを書く（3 分）
-- [ ] S 判定の商品で `link.matchedVariant` が**販売ページ文言から抽出した値**になる失敗テストを書く（5 分）
-- [ ] B 判定の商品が `queue` に `kind: 'candidate'` を積み、`link` が `null` になる失敗テストを書く（4 分）
-- [ ] A 判定の商品が `queue` に `kind: 'tier-a-recheck'` を積む失敗テストを書く（3 分）
-- [ ] CLI が `--apply` なしで 1 バイトも書かない失敗テストを書く（5 分）
-- [ ] CLI が `datasets/production/candidates/` を作らない失敗テストを書く（3 分）
-- [ ] CLI が予算超過で終了コード 0（正常終了）になり、未処理分をキューに積む失敗テストを書く（4 分）
+- [ ] `--apply` なしで 1 バイトも書かない失敗テストを書く（5 分）
+- [ ] `candidates/` を作らない失敗テストを書く（3 分）
+- [ ] 不正な `--mode` が終了コード 2 になる失敗テストを書く（3 分）
+- [ ] `AUTOMATION_ENABLED` 未設定で `--apply` を付けても書かない失敗テストを書く（4 分）
+- [ ] 予算超過で終了コード 0（正常終了）になり、未処理分がキューに積まれる失敗テストを書く（5 分）
+- [ ] `applyWritePlans` が同じ内容なら書き込みを飛ばす失敗テストを書く（4 分）
+- [ ] `inspectCatalog` が失敗する内容では書き込みを中止する失敗テストを書く（5 分）
 - [ ] テストを実行し失敗を確認する（1 分）
-- [ ] `resolve-official.ts` / `fetch-official.ts` / `pipeline.ts` / `automation-sync.ts` を実装する（25 分）
+- [ ] `apply.ts` を実装する（10 分）
+- [ ] `automation-sync.ts` を実装する（14 分）
+- [ ] `package.json` に `automation:sync` を足す（2 分）
 - [ ] テストが成功することを確認する（1 分）
 
 ### 最初に失敗するテスト
-
-```ts
-// tests/automation-pipeline.test.ts
-import { describe, expect, it } from 'vitest';
-import { runProduct, type PipelineDeps } from '../src/lib/automation/sync/pipeline';
-import { resolveOfficialUrl } from '../src/lib/automation/sync/resolve-official';
-import { makeCatalog, makeProduct, makeRakutenItem, makeSource } from './factories';
-
-const okHtml = `<table class="spec">
-<tr><th>本体重量</th><td>2.9kg</td></tr>
-<tr><th>外寸</th><td>W35×H55×D25cm（ハンドル・キャスターを含む）</td></tr>
-<tr><th>容量</th><td>35L</td></tr>
-</table>`;
-
-const deps = (over: Partial<PipelineDeps> = {}): PipelineDeps => ({
-  search: async () => [makeRakutenItem()],
-  fetchOfficial: async () => ({ status: 'ok', html: okHtml }),
-  today: '2026-09-02',
-  ...over,
-});
-
-describe('公式URLの解決', () => {
-  it('既存 Source を優先する', () => {
-    const product = makeProduct();
-    const source = makeSource({ url: 'https://store.ace.jp/shop/g/g06936-01/' });
-    expect(resolveOfficialUrl(product, [source]))
-      .toEqual({ ok: true, url: 'https://store.ace.jp/shop/g/g06936-01/', basis: 'existing-source' });
-  });
-
-  it('automatedFetch が allowed でない出典は使わない', () => {
-    const product = makeProduct();
-    const source = makeSource({ automatedFetch: 'unverified' });
-    expect(resolveOfficialUrl(product, [source])).toEqual({ ok: false, reason: 'no-existing-source' });
-  });
-});
-
-describe('1 商品ぶんのパイプライン', () => {
-  it('段階0 では 6a（実ブラウザ観測）を返さない', async () => {
-    const outcome = await runProduct(makeProduct(), makeCatalog(), deps());
-    expect(outcome.blockers).not.toContain('initial-selection-unknown');
-    expect(outcome.tier === 'S' || outcome.tier === 'A').toBe(true);
-  });
-
-  it('公式が robots で拒否されたら B になる', async () => {
-    const outcome = await runProduct(
-      makeProduct(),
-      makeCatalog(),
-      deps({ fetchOfficial: async () => ({ status: 'robots-denied', httpStatus: null }) }),
-    );
-    expect(outcome.tier).toBe('B');
-    expect(outcome.blockers).toContain('official-robots-denied');
-    expect(outcome.link).toBeNull();
-    expect(outcome.queue.map((q) => q.kind)).toContain('candidate');
-  });
-
-  it('403 は http-blocked として B になる', async () => {
-    const outcome = await runProduct(
-      makeProduct(),
-      makeCatalog(),
-      deps({ fetchOfficial: async () => ({ status: 'http-blocked', httpStatus: 403 }) }),
-    );
-    expect(outcome.blockers).toContain('official-http-blocked');
-  });
-
-  it('matchedVariant は販売ページ文言から抽出した値を使う', async () => {
-    const outcome = await runProduct(makeProduct(), makeCatalog(), deps());
-    if (outcome.link === null) throw new Error('リンクが作られていません');
-    expect(outcome.link.matchedVariant).toContain('35L');
-    expect(outcome.link.matchedVariant).toContain('ブラックヘアライン');
-  });
-
-  it('A 判定は再確認キューへ積む', async () => {
-    const outcome = await runProduct(
-      makeProduct({ jan: null }),
-      makeCatalog(),
-      deps(),
-    );
-    if (outcome.tier !== 'A') return;
-    expect(outcome.queue.map((q) => q.kind)).toContain('tier-a-recheck');
-  });
-});
-```
 
 ```ts
 // tests/automation-sync-cli.test.ts
@@ -2350,24 +3230,34 @@ import { describe, expect, it } from 'vitest';
 
 const siteDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-const run = (args: string[]) =>
-  execFileSync('npx', ['tsx', 'scripts/automation-sync.ts', ...args], {
+function run(args: string[], env: NodeJS.ProcessEnv = {}) {
+  return execFileSync('npx', ['tsx', 'scripts/automation-sync.ts', ...args], {
     cwd: siteDir,
     encoding: 'utf8',
-    env: { ...process.env, CATALOG_DATASET: 'production' },
+    env: { ...process.env, CATALOG_DATASET: 'production', ...env },
   });
+}
+
+function gitStatus() {
+  return execFileSync('git', ['status', '--short', 'datasets', 'automation'], {
+    cwd: siteDir, encoding: 'utf8',
+  }).trim();
+}
 
 describe('automation:sync CLI', () => {
   it('--apply が無ければ 1 バイトも書かない', () => {
     run(['--mode', 'links', '--offline']);
-    const status = execFileSync('git', ['status', '--short', 'datasets', 'automation'],
-      { cwd: siteDir, encoding: 'utf8' });
-    expect(status.trim()).toBe('');
+    expect(gitStatus()).toBe('');
   });
 
   it('candidates/ を作らない', () => {
     run(['--mode', 'discover', '--offline']);
     expect(fs.existsSync(path.join(siteDir, 'datasets/production/candidates'))).toBe(false);
+  });
+
+  it('AUTOMATION_ENABLED が未設定なら --apply でも書かない', () => {
+    run(['--mode', 'links', '--offline', '--apply'], { AUTOMATION_ENABLED: '' });
+    expect(gitStatus()).toBe('');
   });
 
   it('不正な mode は終了コード 2 で止まる', () => {
@@ -2379,60 +3269,39 @@ describe('automation:sync CLI', () => {
 ### テスト実行コマンド
 
 ```bash
-cd travel-goods-site && npx vitest run tests/automation-pipeline.test.ts tests/automation-sync-cli.test.ts
+cd travel-goods-site && npx vitest run tests/automation-sync-cli.test.ts
 ```
 
 ### 期待する失敗内容
 
 ```
-Error: Failed to load url ../src/lib/automation/sync/pipeline
+Error: Cannot find module 'scripts/automation-sync.ts'
 ```
 
 ### 最小実装
 
-`runProduct` は次の順で `TierInput` を組み立てて `decideTier` に渡す。
-
-1. `normalizeBrand(product.brand)` → `manufacturerId`
-2. `resolveOfficialUrl(product, catalog.sources)` → 失敗なら `officialFetchStatus: 'failed'`
-3. `deps.fetchOfficial(url)` → `officialFetchStatus`
-4. `adapterFor(id).extract(html)` → `extraction`
-5. リコール告知ページの語検査 → `recallStatus`（取得できなければ `'unavailable'`）
-6. `deps.search(keyword)` → `pickBestMatch` → `model` / `jan`
-7. `verifyVariant(product.variant, itemName + itemCaption)` → `variant` と `matchedVariant`
-8. `hasExcludedTerm(...)` → `excludedTerm`
-9. `itemPageUrlFromAffiliateUrl(...)` → `affiliateUrl`
-10. `variant.matched && conflicting.length === 0` → `initialSelection: '6b-inferred'`、それ以外は `'none'`
-11. 既存商品との `brand`+`model`+`variant` 照合 → `duplicate`
-12. 抽出仕様と販売ページ文言の突き合わせ → `officialConsistency`
-13. `queue.json` の `tier-a-recheck` と突き合わせ → `recheck`
-
 CLI は `flag()` / `has()` を既存 `scripts/rakuten-sync.ts` と同じ書き方で実装し、
-ロックファイル（`.preview/automation-sync.lock`）で重複実行を防ぐ。
+`.preview/automation-sync.lock` で重複実行を防ぐ。
+`--apply` が無い場合は `applyWritePlans` を**呼ばない**（引数で分岐せず、呼び出し自体を行わない）。
 
 ### 成功確認コマンド
 
 ```bash
 cd travel-goods-site \
-  && npx vitest run tests/automation-pipeline.test.ts tests/automation-sync-cli.test.ts \
+  && npx vitest run tests/automation-sync-cli.test.ts \
   && CATALOG_DATASET=production npm run automation:sync -- --mode links --offline \
   && git -C .. status --short
 ```
 
-期待: 終了コード 0。`git status --short` が `datasets/` と `automation/` に差分を出さない。
-
 ### コミット
 
 ```
-feat(travel-goods-site): 探索から書き込みまでを結ぶ統合 CLI を追加
+feat(travel-goods-site): 自動運用の CLI と状態ファイル更新を追加
 
-楽天API検索 → brand 正規化 → 公式URL解決 → robots 確認つきの取得 → 仕様抽出 →
-variant 検査 → S/A/B 判定 → 24時間再確認 → 商品・出典・販売先リンク・キュー・
-リンク健全性の更新までを 1 本で通す。既定は dry-run。
-
+Task 13〜16 の部品を結ぶ薄い CLI。既定は dry-run で 1 バイトも書かない。
 datasets/production/candidates/ には書かず、候補は automation/queue.json に持つ。
-楽天商品ページの HTTP 取得と Browser Rendering は行わないため、
-initialSelection は 6b か none のどちらかになる。
-外部通信は注入する関数に閉じ込め、判定は純関数のままにする。
+書き込み前に inspectCatalog を通し、失敗したら中止する。
+月・木に --limit 3 を渡しても週の合計は 3 件を超えない。
 ```
 
 ---
@@ -2455,91 +3324,91 @@ git -C .. diff --name-only main
 
 設計書 `docs/superpowers/specs/2026-09-02-travel-goods-automation-design.md` の
 全 18 節＋付録 2 を、どの計画のどの Task が担当するかの対応表。
-**この表は 4 計画に共通のもので、便宜上ここに置く。**
 
-計画の略記: **F**＝foundation（本計画）／ **A**＝article-automation ／ **W**＝workflows ／ **S**＝shadow-rollout
+計画の略記: **F**＝foundation（本計画・**Task 17**）／ **A**＝article-automation（Task 7）／
+**W**＝workflows（Task 9）／ **S**＝shadow-rollout（Task 7）。**合計 40 Task。**
 
 | 節 | 内容 | 担当 |
 |---|---|---|
 | 1.1 | 目的 | 各計画の Goal（実装対象なし） |
 | 1.2 | 採用する基本案 | 各計画の Architecture（実装対象なし） |
-| 1.3 | **Workers AI の位置づけ** | **S Task 5**（`advisory.ts`。所見から公開可否を導く関数を export しない） |
+| 1.3 | **Workers AI の位置づけ** | **S Task 4**（型と無効実装のみ） |
 | 1.4 | 非目的 | 各計画の「非対象」（実装対象なし） |
 | 2.1 | すでに存在するもの | 全計画が Consumes として参照（実装対象なし） |
-| 2.2 | 現行データの実測 | **F Task 6**（brand 7 種）／**F Task 11**（リンク 15 件）／**A Task 5**（記事 10 本） |
+| 2.2 | 現行データの実測 | **F Task 1**（factory）／**F Task 6**（brand 7 種）／**F Task 7・8**（登録済み Fact との一致）／**F Task 12**（リンク 15 件）／**A Task 1・4**（記事 10 本） |
 | 2.3 | 拡張が必要なもの | **F Task 10**（audit の欠陥）／**F Task 5**（`matchedVariant`）／**A Task 1**（`articleMetaSchema`） |
 | 2.4 | 新規実装が必要なもの | F・A・W・S の全 Task |
-| 2.5 | 設計を左右する外部事実 | **W Task 6**（`GITHUB_TOKEN` の制約）／各計画の Tech Stack |
-| 3.1 | 役割分担 | **W Task 7・7**（Actions が主系）／**S Task 5**（補助） |
-| 3.2 | データの流れ | **S Task 3**（通しの dry-run） |
-| 3.3 | 縮退運転 | **S Task 3・4**（Browser Run は B へ、Workers AI は判定不変） |
-| 4.1 | 信頼境界 | **W Task 3**（変更パス検査）／**S Task 1**（伏せ字検査） |
-| 4.2 | 外部入力の扱い | **F Task 6・6**（本文全体を返さない契約）／**S Task 1**（レポートの伏せ字） |
-| 4.3 | ブロックを迂回しない | **F Task 6**（`allowedHosts`）／**S Task 3**（403/429 を分類だけ記録） |
-| 4.4 | `llmInput` と AI 利用の整合 | **S Task 5**（`input` 型がメーカー本文を受け取れない） |
-| 5.1 | 全体の流れ | **S Task 3** |
-| 5.2 | 対象メーカーとブランド正規化 | **F Task 6** |
-| 5.3 | メーカー取得アダプター | **F Task 6・6・7** |
-| 5.4 | 判定に使う信号 | **F Task 9**（`TierInput`） |
-| 5.5 | **S / A / B 判定** | **F Task 9** |
-| 5.6 | `matchedVariant` の扱い | **F Task 5** |
-| 6.1 | カテゴリ拡張の方針 | **F Task 12**（`isKnownCategory`） |
-| 6.2 | カテゴリ追加 PR の自動作成条件 | **F Task 12**（`evaluateCategoryExpansion`） |
-| 6.3 | カテゴリ追加 PR の扱い | **F Task 12**（判定だけ返し PR を作らない）／**W Task 7**（discover が Draft PR を出す） |
-| 7.1 | 記事の方針 | **A Task 4・6** |
-| 7.2 | 商品数と形式の対応 | **A Task 4** |
-| 7.3 | 記事構成プラグイン | **A Task 3・3** |
-| 7.4 | 初期に有効化する形式 | **A Task 4** |
-| 7.5 | `intentKey` と重複判定 | **A Task 5** |
-| 7.6 | 生成 | **A Task 7** |
-| 7.7 | **記事の自動検査（決定的 14）** | **A Task 6** |
-| 7.8 | 再検査と自動非公開 | **A Task 8** |
-| 7.9 | 旅行先別記事（将来） | **A Task 4**（`destination` の `eligibility` を常に false） |
-| 7.10 | 測定条件に依存する比較軸 | **A Task 3・3** |
+| 2.5 | 設計を左右する外部事実 | **W Task 5**（`GITHUB_TOKEN`）／**W Task 9**（Pages の check run） |
+| 3.1 | 役割分担 | **W Task 6・7**／**S Task 4** |
+| 3.2 | データの流れ | **F Task 13〜17**（統合の 5 単位）／**S Task 2** |
+| 3.3 | 縮退運転 | **F Task 14**（6b のみ）／**S Task 2・4** |
+| 4.1 | 信頼境界 | **W Task 2**／**S Task 1** |
+| 4.2 | 外部入力の扱い | **F Task 6・7・8**（本文全体を返さない）／**F Task 2**（`payload` 制限）／**S Task 1** |
+| 4.3 | ブロックを迂回しない | **F Task 6**（`allowedHosts`）／**F Task 13**（許可ホスト外は取得しない・403/429 の分類）／**S Task 2** |
+| 4.4 | `llmInput` と AI 利用の整合 | **S Task 4** |
+| 5.1 | 全体の流れ | **F Task 13〜17** |
+| 5.2 | 対象メーカーとブランド正規化 | **F Task 6**（`normalizeBrand`）／**F Task 15**（`BRAND_LISTING_TOKENS`） |
+| 5.3 | メーカー取得アダプター | **F Task 6・7・8**／**F Task 13**（`resolveOfficialUrl`・`createOfficialFetcher`） |
+| 5.4 | 判定に使う信号 | **F Task 9**（`TierInput` 13 フィールド） |
+| 5.5 | **S / A / B 判定** | **F Task 9**（17 ブロッカー・table-driven test）／**F Task 13**（`RecallChecker`） |
+| 5.6 | `matchedVariant` の扱い | **F Task 5**／**F Task 14** |
+| 6.1 | カテゴリ拡張の方針 | **F Task 12**（`isKnownCategory`）／**F Task 15**（`CATEGORY_LISTING_KEYWORDS`） |
+| 6.2 | カテゴリ追加 PR の条件 | **F Task 12** |
+| 6.3 | カテゴリ追加 PR の扱い | **F Task 12**／**W Task 6** |
+| 7.1 | 記事の方針 | **A Task 3・6**（JST 週 2 本） |
+| 7.2 | 商品数と形式の対応 | **A Task 3**（形式ごとの選択アルゴリズム・必要な事実・生成不可条件・重複許容軸） |
+| 7.3 | 記事構成プラグイン | **A Task 2・3** |
+| 7.4 | 初期に有効化する形式 | **A Task 3** |
+| 7.5 | `intentKey` と重複判定 | **A Task 4** |
+| 7.6 | 生成 | **A Task 6** |
+| 7.7 | **記事の自動検査（決定的 14）** | **A Task 5** |
+| 7.8 | 再検査と自動非公開 | **A Task 7**（legacy は対象外） |
+| 7.9 | 旅行先別記事（将来） | **A Task 3** |
+| 7.10 | 測定条件に依存する比較軸 | **A Task 2・3** |
 | 8.1 | リンク監視の現行の欠陥 | **F Task 10** |
-| 8.2 | 6 つの信号 | **F Task 1**（`LinkSignals`）／**F Task 10** |
+| 8.2 | 6 つの信号 | **F Task 2**／**F Task 10**／**F Task 14**（`httpStatus` は常に null） |
 | 8.3 | 状態機械 | **F Task 10** |
-| 8.4 | 代替リンクへの交換 | **F Task 10・10** |
-| 9.1 | 状態ファイルの配置 | **F Task 1** |
-| 9.2 | 内容と制約 | **F Task 1・2** |
-| 9.3 | 監査と復元 | **W Task 8**（1 日 1 コミット）／**S Task 7**（runbook） |
+| 8.4 | 代替リンクへの交換 | **F Task 10・12・14** |
+| 9.1 | 状態ファイルの配置 | **F Task 2** |
+| 9.2 | 内容と制約 | **F Task 2・3**／**F Task 17**（変化しなければ書かない） |
+| 9.3 | 監査と復元 | **W Task 7**／**S Task 6** |
 | 10.1 | 公式に確認した上限 | 出典の記録（実装対象なし） |
 | 10.2 | この設計の予算 | **F Task 4**（`DAILY_LIMITS`） |
-| 10.3 | 楽天 30 req/日 の処理能力 | **F Task 4**／**S Task 3**（実測） |
-| 10.4 | 現実的な処理規模 | **S Task 4**（集計で確認） |
-| 10.5 | 補助が使えないときの扱い | **F Task 9**（6a/6b）／**S Task 5**（AI は判定不変） |
-| 11.1 | workflow 構成 | **W Task 7・7・8**／**S Task 6** |
-| 11.2 | スケジュール | **W Task 7** |
-| 11.3 | 1 日の流れ | **W Task 7・7** |
-| 11.4 | 上限と繰越 | **F Task 4**／**W Task 7** |
-| 11.5 | 日次 workflow の競合対策 | **W Task 7**（concurrency・作業ブランチ・push 規則） |
-| 12.1 | 自動反映の流れ | **W Task 8** |
-| 12.2 | 変更パス検査 | **W Task 3** |
-| 12.3 | CI が起動しない問題 | **W Task 6** |
-| 12.4 | 公開後検査と自動 revert | **W Task 10** |
-| 12.5 | 自動 revert の手順 | **W Task 5**（対象の妥当性）／**W Task 9**（revert workflow） |
-| 12.6 | circuit breaker と 2 つの例外 | **W Task 4**（判定）／**W Task 9**（reset workflow）／**W Task 3**（reset 専用検査） |
-| 13.1 | 停止スイッチ | **W Task 1** |
-| 13.2 | 通知 | **W Task 10** |
-| 14.1 | テストの原則 | 全 Task（失敗するテストを先に書く） |
+| 10.3 | 楽天 30 req/日 の処理能力 | **F Task 4・17**／**S Task 2** |
+| 10.4 | 現実的な処理規模 | **F Task 16**（週 3 商品）／**A Task 6**（週 2 記事）／**S Task 3** |
+| 10.5 | 補助が使えないときの扱い | **F Task 9**（6a/6b 同格）／**S Task 4** |
+| 11.1 | workflow 構成 | **W Task 6・7・8**／**S Task 5** |
+| 11.2 | スケジュール | **W Task 6** |
+| 11.3 | 1 日の流れ | **W Task 6・7**／**F Task 17**（呼び出しコマンド） |
+| 11.4 | 上限と繰越 | **F Task 4・16・17**／**W Task 6** |
+| 11.5 | 日次 workflow の競合対策 | **W Task 6・8** |
+| 12.1 | 自動反映の流れ | **W Task 7** |
+| 12.2 | 変更パス検査 | **W Task 2**／**F Task 17**（`candidates/` に書かない） |
+| 12.3 | CI が起動しない問題 | **W Task 5**（`contents: read` を保つ） |
+| 12.4 | 公開後検査と自動 revert | **W Task 9**（bounded polling・別 SHA 誤認防止・タイムアウト） |
+| 12.5 | 自動 revert の手順 | **W Task 4**／**W Task 8**（`revert` job） |
+| 12.6 | circuit breaker と 2 つの例外 | **W Task 3**（`RevertRecord[]`）／**W Task 8**／**W Task 2** |
+| 13.1 | **停止スイッチ** | **W Task 1**（7 スイッチの動作表と table-driven test）／**F Task 16**（書き込み計画への結線） |
+| 13.2 | 通知 | **W Task 9** |
+| 14.1 | テストの原則 | **F Task 1**（fixture factory）／全 Task |
 | 14.2 | 追加する単体テスト | F・A・W の全 Task |
-| 14.3 | **E2E** | **S Task 8** |
-| 14.4 | dry-run | **S Task 3** |
+| 14.3 | **E2E** | **S Task 7** |
+| 14.4 | dry-run | **F Task 17**（既定 dry-run）／**S Task 2** |
 | 15 段階0 | 実装とテスト | F・A・W・S のすべて |
-| 15 段階1 | 7 日間の観察運転 | **S Task 3・3・5**（受け皿のみ。開始は人が別 PR で行う） |
-| 15 段階2 | S 判定のみ自動公開 | **計画外**（有効化操作。`S Task 7` の runbook に手順だけ記載） |
-| 15 段階3 | A 判定・記事・交換 | **計画外**（同上） |
-| 15 段階4 | 本番公開 | **計画外**（同上） |
-| 16 | 人間に残る作業 | **S Task 7**（runbook） |
-| 17.0 | 決定済み事項 | **A Task 1**（自動レビュー契約）／**F Task 9**（`sizeBasis`）／**S Task 5**（AI） |
-| 17.1 | 未解決事項 | **計画外**（人の判断待ち。`S Task 7` の runbook に一覧） |
-| 17.2 | 段階1 で測定する項目 | **S Task 1・2・3**（`ObservationReport` の各フィールド） |
-| 18.1 | 3 段階のロールバック | **S Task 7**（runbook） |
-| 18.2 | ロールバックが成立する前提 | **W Task 3・7**（許可パスと 1 日 1 コミット） |
-| 18.3 | ロールバック後の再開 | **S Task 7**（runbook） |
-| 18.4 | Cloudflare Pages 側のロールバック | **S Task 7**（自動化しない方針を runbook に記載） |
-| 付録A GitHub | Secrets / Variables / 権限 / ブランチ保護 | **W Task 1・5**／**W の「人が行う設定」** |
-| 付録A Cloudflare | Worker・KV・D1・Cron 不要 | **S Task 5**（REST のみ。binding を作らない） |
+| 15 段階1 | 7 日間の観察運転 | **S Task 2・3・5**／**S Task 6**（公開が起きないことの統合テスト） |
+| 15 段階2 | S 判定のみ自動公開 | **計画外**（有効化操作。`RECALL_SOURCES` の承認も含む） |
+| 15 段階3 | A 判定・記事・交換 | **計画外**（Workers AI の実通信もここ） |
+| 15 段階4 | 本番公開 | **計画外** |
+| 16 | 人間に残る作業 | **S Task 6**（runbook） |
+| 17.0 | 決定済み事項 | **A Task 1**（自動レビュー契約・legacy）／**F Task 9**（`sizeBasis`）／**S Task 4** |
+| 17.1 | 未解決事項 | **計画外**（人の判断待ち） |
+| 17.2 | 段階1 で測定する項目 | **S Task 1・2・3** |
+| 18.1 | 3 段階のロールバック | **S Task 6** |
+| 18.2 | ロールバックが成立する前提 | **W Task 2・7** |
+| 18.3 | ロールバック後の再開 | **S Task 6** |
+| 18.4 | Cloudflare Pages 側のロールバック | **S Task 6** |
+| 付録A GitHub | Secrets / Variables / 権限 / ブランチ保護 | **W Task 1・5・9** |
+| 付録A Cloudflare | Worker・KV・D1・Cron 不要 | **S Task 4**／**W Task 9** |
 | 付録A 新規ファイル | 実装時のファイル一覧 | F・A・W・S の Architecture |
 | 付録B | 参照した外部情報 | 出典の記録（実装対象なし） |
 
@@ -2549,9 +3418,20 @@ git -C .. diff --name-only main
 |---|---:|
 | 設計書の節（小節・段階・付録を含む） | **77** |
 | いずれかの Task が担当 | **65** |
-| 実装対象なし（Goal・出典・方針の記述） | **8**（1.1 / 1.2 / 1.4 / 2.1 / 10.1 / 14.1 / 付録B / 付録A 新規ファイル一覧） |
+| 実装対象なし（Goal・出典・方針の記述） | **8** |
 | **計画外（意図的に除外）** | **4**（段階2 / 段階3 / 段階4 / 17.1 未解決事項） |
 
 **未対応の節は 0 件。**
-「計画外」の 4 件は、いずれも**段階2 以降の有効化操作**と**人の判断待ち**であり、
-段階0 の計画に混ぜてはならないものである（手順だけ `S Task 7` の runbook に書く）。
+
+### 今回の改訂（2 回目）で反映した指摘
+
+| 指摘 | 反映先 |
+|---|---|
+| 1. 7 つの停止スイッチを実処理へ結線 | **W Task 1**（動作表・table-driven test・段階1 構成のテスト）／**F Task 16**（`buildWritePlan` が計画そのものを空にする） |
+| 2. 新商品探索経路の具体化 | **F Task 15**（`buildCandidateFromRakutenItem` → `evaluateCandidate` → `promoteCandidate` → `buildProductId`）／**F Task 14**（`runExistingProduct` に分離） |
+| 3. 新商品の週 3 件上限 | **F Task 16**（`remainingProductsThisWeek`。月曜 3 件で木曜 0 件・同日再実行・週跨ぎ・人の登録を数えない・B/A 候補を数えない） |
+| 4. 旧仕様の残存除去 | **F Task 2**（`revertHistory`）／**A Task 6**（8 本で `true`）／**S Task 6**（workflow 6 本）／**W Task 5・8**（`automation-revert.yml` を作らない） |
+| 5. 偽陽性テストと未定義参照 | **F Task 14**（早期 return を廃止し `expect(tier).toBe('A')`）／**A Task 3・4・5・6・7**（import と fixture を各 Task 内に明記） |
+| 6. polling 時間の一致 | **W Task 9**（要素数 23・合計 1,200,000 ms・`POLL_TIMEOUT_MS`・`EXIT_CODE_TIMEOUT`） |
+| 7. リコール確認と Source 関連付け | **F Task 13**（`RecallChecker`・`RECALL_SOURCES`・段階0 は常に `unavailable`／`factSourceIds` で商品の Facts が参照する Source だけを候補にする） |
+| 8. Task 13 の分割 | **F Task 13〜17**（公式解決と取得／既存商品／新規候補／書き込み計画／CLI の 5 単位） |

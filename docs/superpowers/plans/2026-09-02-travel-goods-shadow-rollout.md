@@ -793,7 +793,8 @@ schedule は持たない。段階1 の開始は人が別 PR で行う。
 - [ ] 停止スイッチ既定値のスモークテストを書く（3 分）
 - [ ] `ALLOWED_AUTOMATION_PATHS` が `AUTOMATION_STATE_FILES` の 3 つを含む失敗テストを書く（4 分）
 - [ ] `decideTier` / `runArticleChecks` / `evaluateMergeGate` の結線確認テストを書く（5 分）
-- [ ] `.github/workflows/` の `automation-*` が 7 本ある失敗テストを書く（3 分）
+- [ ] `.github/workflows/` の `automation-*` が **6 本**ある失敗テストを書く（3 分）
+- [ ] `automation-revert.yml` が存在せず、revert が `automation-commit.yml` の job である失敗テストを書く（3 分）
 - [ ] テストを実行し失敗を確認する（1 分）
 - [ ] `automation-runbook.md` を書く（15 分）
 - [ ] テストが成功することを確認する（1 分）
@@ -810,19 +811,30 @@ it('状態ファイル 3 つがすべて許可パスに含まれる', () => {
   }
 });
 
-it('automation workflow は 7 本', () => {
-  const files = fs.readdirSync(path.join(__dirname, '../../.github/workflows'))
-    .filter((f) => f.startsWith('automation-'));
+it('automation workflow は 6 本', () => {
+  const files = fs.readdirSync(
+    path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../.github/workflows'),
+  ).filter((f) => f.startsWith('automation-'));
   expect(files.sort()).toEqual([
-    'automation-articles.yml', 'automation-commit.yml', 'automation-discover.yml',
-    'automation-links.yml', 'automation-observe.yml', 'automation-reset.yml',
-    'automation-revert.yml',
+    'automation-articles.yml',
+    'automation-commit.yml',
+    'automation-discover.yml',
+    'automation-links.yml',
+    'automation-observe.yml',
+    'automation-reset.yml',
   ]);
+});
+
+it('revert は別 workflow ではなく automation-commit の job', () => {
+  const dir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../.github/workflows');
+  expect(fs.existsSync(path.join(dir, 'automation-revert.yml'))).toBe(false);
+  expect(fs.readFileSync(path.join(dir, 'automation-commit.yml'), 'utf8')).toMatch(/^\s{2}revert:/m);
 });
 ```
 
-計画3 が作る 6 本（links / discover / articles / commit / revert / reset）に
-本計画の `automation-observe.yml` を加えて **7 本**になる。
+計画3 が作る **5 本**（links / discover / articles / commit / reset）に
+本計画の `automation-observe.yml` を加えて **6 本**になる。
+revert は `automation-commit.yml` の job であり、独立した workflow ファイルは作らない。
 
 ### テスト実行コマンド
 
@@ -835,7 +847,7 @@ cd travel-goods-site && npx vitest run tests/automation-integration.test.ts
 ```
 Error: Failed to load url ../src/lib/automation/changed-paths
 ```
-（計画3 未完了の場合）または `expected [ 6 items ] to deeply equal [ 7 items ]`（`automation-observe.yml` 未作成の場合）
+（計画3 未完了の場合）または `expected [ 5 items ] to deeply equal [ 6 items ]`（`automation-observe.yml` 未作成の場合）
 
 ### 最小実装
 

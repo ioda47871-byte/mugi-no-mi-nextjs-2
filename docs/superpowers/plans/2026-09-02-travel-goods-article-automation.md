@@ -573,25 +573,120 @@ feat(travel-goods-site): 記事構成プラグイン 6 形式を実装
 ### 最初に失敗するテスト
 
 ```ts
-import { buildIntentKey, triGramJaccard, checkDuplicate, SIMILARITY_THRESHOLD } from '../src/lib/automation/intent';
+// tests/automation-intent.test.ts
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { describe, expect, it } from 'vitest';
+import {
+  SIMILARITY_THRESHOLD,
+  buildIntentKey,
+  checkDuplicate,
+  triGramJaccard,
+} from '../src/lib/automation/intent';
+import { articleMetaSchema } from '../src/lib/catalog/schema';
+import type { ArticleContext } from '../src/lib/article-formats/types';
+import { makeArticle } from './factories';
 
-it('該当しない軸は省略する', () => {
-  expect(buildIntentKey({
-    category: 'suitcases', axis: 'weight', tripNights: null,
-    domestic: null, transport: null, purpose: null,
-  })).toBe('suitcases-weight');
+const here = path.dirname(fileURLToPath(import.meta.url));
+
+/** 既存 10 記事の本文（frontmatter を除いた部分）。 */
+const existingBodies: { slug: string; body: string }[] = fs
+  .readdirSync(path.join(here, '../datasets/production/articles'))
+  .filter((f) => f.endsWith('.md'))
+  .map((f) => ({
+    slug: f.replace(/\.md$/, ''),
+    body: fs.readFileSync(path.join(here, '../datasets/production/articles', f), 'utf8')
+      .replace(/^---[\s\S]*?\n---\n/, ''),
+  }));
+
+const ctx = (over: Partial<ArticleContext> = {}): ArticleContext => ({
+  category: 'suitcases', axis: 'weight',
+  tripNights: null, domestic: null, transport: null, purpose: null,
+  ...over,
 });
 
-it('既存 10 記事は相互に閾値未満（誤検出しない）', () => {
-  for (const a of articles) for (const b of articles) {
-    if (a.slug === b.slug) continue;
-    expect(triGramJaccard(a.body, b.body)).toBeLessThan(SIMILARITY_THRESHOLD);
-  }
+const PRODUCT_IDS = ['fixture-ace-06936', 'fixture-ace-06971'];
+
+describe('intentKey の組み立て', () => {
+  it('該当しない軸は省略する', () => {
+    expect(buildIntentKey(ctx())).toBe('suitcases-weight');
+  });
+
+  it('旅行日数・国内海外・移動手段を含められる', () => {
+    expect(buildIntentKey(ctx({ axis: 'capacity', tripNights: 3, domestic: true, transport: 'air' })))
+      .toBe('suitcases-capacity-3n-domestic-air');
+  });
+
+  it('生成した intentKey がスキーマの正規表現を満たす', () => {
+    const key = buildIntentKey(ctx({ axis: 'capacity', tripNights: 3, domestic: false, transport: 'rail' }));
+    const { body: _body, ...meta } = makeArticle({ intentKey: key });
+    expect(articleMetaSchema.safeParse({ ...meta, formatId: null, formatVersion: null, reviewMethod: null }).success)
+      .toBe(true);
+  });
 });
 
-it('商品が同じでも比較軸が違えば重複でない', () => {
-  const v = checkDuplicate({ intentKey: 'suitcases-capacity', body: '…', productIds: ids, axis: 'capacity' }, existing);
-  expect(v.duplicate).toBe(false);
+describe('類似度', () => {
+  it('同一文字列は 1', () => {
+    expect(triGramJaccard('あいうえお', 'あいうえお')).toBe(1);
+  });
+
+  it('既存 10 記事は相互に閾値未満（誤検出しない）', () => {
+    expect(existingBodies).toHaveLength(10);
+    for (const a of existingBodies) {
+      for (const b of existingBodies) {
+        if (a.slug === b.slug) continue;
+        expect(triGramJaccard(a.body, b.body)).toBeLessThan(SIMILARITY_THRESHOLD);
+      }
+    }
+  });
+});
+
+describe('重複判定', () => {
+  const existing = [
+    makeArticle({
+      slug: 'existing-weight',
+      intentKey: 'suitcases-weight',
+      productIds: PRODUCT_IDS,
+      body: '本体重量は 2900g です。'.repeat(30),
+    }),
+  ];
+
+  it('intentKey が一致したら重複', () => {
+    const v = checkDuplicate(
+      { intentKey: 'suitcases-weight', body: '別の本文です。'.repeat(30), productIds: ['other'], axis: 'weight' },
+      existing,
+    );
+    expect(v).toEqual({ duplicate: true, reason: 'intent-key', against: 'existing-weight' });
+  });
+
+  it('商品集合と比較軸が同一なら重複', () => {
+    const v = checkDuplicate(
+      { intentKey: 'suitcases-weight-air', body: '全く別の文章です。'.repeat(30), productIds: PRODUCT_IDS, axis: 'weight' },
+      existing,
+    );
+    expect(v.duplicate).toBe(true);
+    if (!v.duplicate) return;
+    expect(v.reason).toBe('same-products-and-axis');
+  });
+
+  it('商品が同じでも比較軸が違えば重複でない', () => {
+    const v = checkDuplicate(
+      { intentKey: 'suitcases-capacity', body: '容量を比べます。'.repeat(30), productIds: PRODUCT_IDS, axis: 'capacity' },
+      existing,
+    );
+    expect(v).toEqual({ duplicate: false });
+  });
+
+  it('本文の高類似は拒否する', () => {
+    const v = checkDuplicate(
+      { intentKey: 'suitcases-capacity', body: '本体重量は 2900g です。'.repeat(30), productIds: ['other'], axis: 'capacity' },
+      existing,
+    );
+    expect(v.duplicate).toBe(true);
+    if (!v.duplicate) return;
+    expect(v.reason).toBe('body-similarity');
+  });
 });
 ```
 
@@ -857,9 +952,13 @@ it('自動レビューの reviewer 形式で出力する', () => {
   expect(built.meta.reviewMethod).toBe('derived-from-verified-facts');
 });
 
-it('○選が直近 20 本中 8 本を超えたら抑制する', () => {
-  expect(selectionsShareExceeded(makeRecent(9))).toBe(true);
-  expect(selectionsShareExceeded(makeRecent(8))).toBe(false);
+it('○選が直近 20 本中 8 本以上あれば抑制する', () => {
+  // generated() は本 Task のテスト冒頭で定義した fixture ヘルパー
+  const with8 = [...generated(8, '2026-09-01', 'selections'), ...generated(12, '2026-09-01', 'comparison')];
+  const with7 = [...generated(7, '2026-09-01', 'selections'), ...generated(13, '2026-09-01', 'comparison')];
+  expect(with8).toHaveLength(20);
+  expect(selectionsShareExceeded(with8)).toBe(true);
+  expect(selectionsShareExceeded(with7)).toBe(false);
 });
 ```
 

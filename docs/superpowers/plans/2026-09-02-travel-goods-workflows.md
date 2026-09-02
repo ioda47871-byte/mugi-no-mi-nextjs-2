@@ -136,6 +136,28 @@ travel-goods-site/scripts/
 - **未設定・空文字・未知の値はすべて安全側**（真偽値は `false`、`AUTO_PUBLISH_PRODUCTS` は `'off'`）。
 - `allowsTier('S', 'A')` は `false`、`allowsTier('S,A', 'A')` は `true`、`allowsTier('off', 'S')` は `false`。
 
+### 7 つのスイッチの動作表（実処理への結線）
+
+**`readSwitches()` を定義するだけでは足りない。** 各スイッチが、どの CLI のどの書き込みを
+止めるかをここで定める。実際の分岐は計画1 Task 16（`buildWritePlan`）が行い、
+**書き込み計画そのものを空にする**（「書いてから消す」ではない）。
+
+| スイッチ | 値 | 止まる処理 | 影響する書き込み先 | 代わりに起きること |
+|---|---|---|---|---|
+| `AUTOMATION_ENABLED` | `false` | **全ジョブが即座に正常終了** | すべて | 何もしない（終了コード 0） |
+| `AUTO_DISCOVER_PRODUCTS` | `false` | 新商品探索（`--mode discover`） | `products/`・`sources.json`・`queue.json`（`candidate`） | 楽天API を 1 回も呼ばず正常終了 |
+| `AUTO_PUBLISH_PRODUCTS` | `off` | **S も A も商品の公開書き込み** | `products/`・`sources.json`・`merchants/` | 判定は行い、**S も A も `queue.json` に残す**（`kind: 'candidate'`） |
+| `AUTO_PUBLISH_PRODUCTS` | `S` | A の公開だけ | `products/`（A の `published`） | **S は `published` で書く。A は `tier-a-recheck` キューに積む**（`review` でも書かない） |
+| `AUTO_PUBLISH_PRODUCTS` | `S,A` | なし | — | **S と、再確認済み（`recheck === 'matched-previous-day'`）の A だけ** `published` で書く |
+| `AUTO_AUDIT_LINKS` | `false` | リンク健全性チェック（`--mode links` の audit 部） | `link-health.json`・`merchants/`（非表示化） | 楽天API を audit のために呼ばない |
+| `AUTO_REPLACE_LINKS` | `false` | 代替リンクへの交換 | `merchants/`（`affiliateUrl` の差し替え） | `decideReplacement` の結果を `queue.json` に記録するだけ |
+| `AUTO_GENERATE_ARTICLES` | `false` | 記事候補の生成 | `articles/` | `article:generate` が候補を 1 件も作らず正常終了 |
+| `AUTO_PUBLISH_ARTICLES` | `false` | 記事を `published` で保存 | `articles/`（`status`） | 生成はするが **`status: 'review'` で保存**。14 検査の結果は記録する |
+
+**段階1（観察運転）のスイッチ構成**では、すべて既定値
+（`AUTOMATION_ENABLED=false`、`AUTO_PUBLISH_PRODUCTS=off`、他すべて `false`）である。
+このため**公開書き込みは一切発生しない**。これは計画4 Task 6 の統合テストで固定する。
+
 ### ステップ
 
 - [ ] `SWITCH_NAMES` がちょうど 7 個である失敗テストを書く（2 分）
@@ -143,6 +165,9 @@ travel-goods-site/scripts/
 - [ ] `AUTO_PUBLISH_PRODUCTS='true'` が `'off'` として扱われる（真偽値は無効）失敗テストを書く（3 分）
 - [ ] `AUTO_PUBLISH_PRODUCTS='S,A'` が正しく読める失敗テストを書く（2 分）
 - [ ] `allowsTier` の 6 通り（3 値 × 2 Tier）を検査する失敗テストを書く（4 分）
+- [ ] `AUTOMATION_ENABLED=true` でも各スイッチが `false`/`off` なら
+      対応する書き込みが許可されないことを **table-driven** で検査する失敗テストを書く（8 分）
+- [ ] 段階1 のスイッチ構成（すべて既定値）で**公開書き込みが 1 件も許可されない**失敗テストを書く（4 分）
 - [ ] テストを実行し失敗を確認する（1 分）
 - [ ] `switches.ts` を実装する（6 分）
 - [ ] テストが成功することを確認する（1 分）
@@ -164,6 +189,82 @@ it('S は A を許可しない', () => {
   expect(allowsTier('S', 'A')).toBe(false);
   expect(allowsTier('S,A', 'A')).toBe(true);
   expect(allowsTier('off', 'S')).toBe(false);
+  expect(allowsTier('S', 'S')).toBe(true);
+  expect(allowsTier('S,A', 'S')).toBe(true);
+  expect(allowsTier('off', 'A')).toBe(false);
+});
+
+/**
+ * AUTOMATION_ENABLED=true でも、個別スイッチが false/off なら
+ * 対応する書き込みが許可されないこと。
+ * 実際の書き込み可否は計画1 Task 16 の buildWritePlan が決めるため、
+ * ここでは readSwitches の読み取り結果だけを固定する。
+ */
+const SWITCH_CASES: readonly {
+  name: string;
+  env: NodeJS.ProcessEnv;
+  expect: (s: ReturnType<typeof readSwitches>) => void;
+}[] = [
+  {
+    name: 'AUTO_DISCOVER_PRODUCTS=false なら探索しない',
+    env: { AUTOMATION_ENABLED: 'true', AUTO_DISCOVER_PRODUCTS: 'false' },
+    expect: (s) => expect(s.autoDiscoverProducts).toBe(false),
+  },
+  {
+    name: 'AUTO_PUBLISH_PRODUCTS=off なら S も A も公開しない',
+    env: { AUTOMATION_ENABLED: 'true', AUTO_PUBLISH_PRODUCTS: 'off' },
+    expect: (s) => {
+      expect(allowsTier(s.autoPublishProducts, 'S')).toBe(false);
+      expect(allowsTier(s.autoPublishProducts, 'A')).toBe(false);
+    },
+  },
+  {
+    name: 'AUTO_PUBLISH_PRODUCTS=S なら S だけ公開する',
+    env: { AUTOMATION_ENABLED: 'true', AUTO_PUBLISH_PRODUCTS: 'S' },
+    expect: (s) => {
+      expect(allowsTier(s.autoPublishProducts, 'S')).toBe(true);
+      expect(allowsTier(s.autoPublishProducts, 'A')).toBe(false);
+    },
+  },
+  {
+    name: 'AUTO_AUDIT_LINKS=false なら audit しない',
+    env: { AUTOMATION_ENABLED: 'true', AUTO_AUDIT_LINKS: 'false' },
+    expect: (s) => expect(s.autoAuditLinks).toBe(false),
+  },
+  {
+    name: 'AUTO_REPLACE_LINKS=false なら交換しない',
+    env: { AUTOMATION_ENABLED: 'true', AUTO_REPLACE_LINKS: 'false' },
+    expect: (s) => expect(s.autoReplaceLinks).toBe(false),
+  },
+  {
+    name: 'AUTO_GENERATE_ARTICLES=false なら記事を作らない',
+    env: { AUTOMATION_ENABLED: 'true', AUTO_GENERATE_ARTICLES: 'false' },
+    expect: (s) => expect(s.autoGenerateArticles).toBe(false),
+  },
+  {
+    name: 'AUTO_PUBLISH_ARTICLES=false なら published で保存しない',
+    env: { AUTOMATION_ENABLED: 'true', AUTO_PUBLISH_ARTICLES: 'false' },
+    expect: (s) => expect(s.autoPublishArticles).toBe(false),
+  },
+];
+
+it.each(SWITCH_CASES)('$name', ({ env, expect: check }) => {
+  const switches = readSwitches(env);
+  expect(switches.automationEnabled).toBe(true); // マスターは有効
+  check(switches);
+});
+
+it('段階1 の構成（すべて既定値）では公開書き込みが起きない', () => {
+  const switches = readSwitches({});
+  expect(switches.automationEnabled).toBe(false);
+  expect(switches.autoPublishProducts).toBe('off');
+  expect(allowsTier(switches.autoPublishProducts, 'S')).toBe(false);
+  expect(allowsTier(switches.autoPublishProducts, 'A')).toBe(false);
+  expect(switches.autoDiscoverProducts).toBe(false);
+  expect(switches.autoAuditLinks).toBe(false);
+  expect(switches.autoReplaceLinks).toBe(false);
+  expect(switches.autoGenerateArticles).toBe(false);
+  expect(switches.autoPublishArticles).toBe(false);
 });
 ```
 
@@ -682,7 +783,8 @@ reset PR と人の PR、および既存の auto-revert コミットは対象に�
 - `POST /repos/{owner}/{repo}/statuses/{sha}` に
   `{ state, context: 'automation/verify', description }` を送る。
 - **人の PR** では `travel-goods-ci.yml` の `verify` ジョブが最後にこれを呼ぶ。
-- **自動 PR** では `automation-commit.yml` / `automation-revert.yml` / `automation-reset.yml` が呼ぶ。
+- **自動 PR** では `automation-commit.yml`（`verify-and-merge` job と `revert` job）と
+  `automation-reset.yml` が呼ぶ。**`automation-revert.yml` という workflow は存在しない。**
 - `--dry-run` では HTTP を送らず、送る内容を標準出力に出す（テスト用）。
 - `main` のブランチ保護は必須チェックを **`automation/verify` の 1 つだけ**にする（人が設定する）。
 
@@ -1212,7 +1314,9 @@ reset は workflow_dispatch のみ。理由・revert SHA・確認文字列 RESET
   - `export function readMergeState(pr: { merged: boolean; merge_commit_sha: string | null }): MergeState`
   - `export function readDeployState(checkRuns: readonly CheckRunLike[], expectedSha: string): DeployState`
   - `export type CheckRunLike = { name: string; head_sha: string; status: string; conclusion: string | null }`
-  - `export const POLL_INTERVALS_MS: readonly number[]`（bounded。合計 20 分）
+  - `export const POLL_INTERVALS_MS: readonly number[]`（bounded。**要素数 23・合計 1,200,000 ms＝20 分ちょうど**）
+  - `export const POLL_TIMEOUT_MS = 20 * 60 * 1000`
+  - `export const EXIT_CODE_TIMEOUT = 3`
   - `export const ISSUE_LABELS`（7 個）と `decideNotifications`（従来どおり）
 
 ### 固定待機をやめる（設計書 12.4 の実装方法）
@@ -1238,11 +1342,22 @@ Cloudflare Pages は GitHub 連携で**check run**としてビルド結果を返
 ### bounded polling とタイムアウト
 
 ```ts
-/** 合計 20 分。最初は短く、あとは 60 秒間隔。 */
+/**
+ * 合計ちょうど 20 分（1,200,000 ms）。要素数 23。
+ * 最初の 4 回は 15 秒（マージ直後を素早く拾う）、以降 19 回は 60 秒。
+ *   15_000 × 4  =    60_000
+ *   60_000 × 19 = 1_140_000
+ *   合計        = 1_200_000
+ */
 export const POLL_INTERVALS_MS: readonly number[] = [
-  15_000, 15_000, 30_000, 30_000, 60_000, 60_000, 60_000, 60_000, 60_000, 60_000,
+  15_000, 15_000, 15_000, 15_000,
   60_000, 60_000, 60_000, 60_000, 60_000, 60_000, 60_000, 60_000, 60_000, 60_000,
+  60_000, 60_000, 60_000, 60_000, 60_000, 60_000, 60_000, 60_000, 60_000,
 ];
+
+export const POLL_TIMEOUT_MS = 20 * 60 * 1000;
+/** マージ・デプロイのタイムアウト。公開後検査の失敗（1）と分ける。 */
+export const EXIT_CODE_TIMEOUT = 3;
 ```
 
 | 状況 | 扱い |
@@ -1261,7 +1376,9 @@ export const POLL_INTERVALS_MS: readonly number[] = [
 - [ ] `readDeployState` が期待 SHA と異なる check run を無視する失敗テストを書く（5 分）
 - [ ] `readDeployState` が Pages 以外の check run（`verify` など）を無視する失敗テストを書く（4 分）
 - [ ] `readDeployState` が `pending` / `failure` / `absent` を区別する失敗テストを書く（4 分）
-- [ ] `POLL_INTERVALS_MS` の合計が 20 分ちょうどである失敗テストを書く（3 分）
+- [ ] `POLL_INTERVALS_MS` の**要素数が 23**、**合計が 1,200,000 ms** である失敗テストを書く（3 分）
+- [ ] `POLL_TIMEOUT_MS` が合計と一致する失敗テストを書く（2 分）
+- [ ] タイムアウトの終了コードが公開後検査の失敗と別である失敗テストを書く（2 分）
 - [ ] `ISSUE_LABELS` が 7 個で、何も起きていなければ通知が空になる失敗テストを書く（4 分）
 - [ ] 6 日連続失敗では通知せず 7 日で通知する失敗テストを書く（4 分）
 - [ ] 保留 9 件で通知せず 10 件で通知する失敗テストを書く（3 分）
@@ -1277,7 +1394,9 @@ export const POLL_INTERVALS_MS: readonly number[] = [
 // tests/automation-deploy-gate.test.ts
 import { describe, expect, it } from 'vitest';
 import {
+  EXIT_CODE_TIMEOUT,
   POLL_INTERVALS_MS,
+  POLL_TIMEOUT_MS,
   readDeployState,
   readMergeState,
   type CheckRunLike,
@@ -1342,13 +1461,18 @@ describe('デプロイ確認', () => {
 });
 
 describe('bounded polling', () => {
-  it('待ち時間の合計は 20 分', () => {
-    const total = POLL_INTERVALS_MS.reduce((a, b) => a + b, 0);
-    expect(total).toBe(20 * 60 * 1000);
+  it('要素数は 23、合計は 1,200,000 ms（20 分ちょうど）', () => {
+    expect(POLL_INTERVALS_MS).toHaveLength(23);
+    expect(POLL_INTERVALS_MS.reduce((a, b) => a + b, 0)).toBe(1_200_000);
   });
 
-  it('無限に待たない', () => {
-    expect(POLL_INTERVALS_MS.length).toBeLessThanOrEqual(30);
+  it('宣言したタイムアウトと配列の合計が一致する', () => {
+    expect(POLL_INTERVALS_MS.reduce((a, b) => a + b, 0)).toBe(POLL_TIMEOUT_MS);
+  });
+
+  it('タイムアウトの終了コードは公開後検査の失敗と別', () => {
+    expect(EXIT_CODE_TIMEOUT).toBe(3);
+    expect(EXIT_CODE_TIMEOUT).not.toBe(1);
   });
 });
 ```
