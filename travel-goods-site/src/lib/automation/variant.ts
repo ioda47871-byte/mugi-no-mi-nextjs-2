@@ -82,35 +82,31 @@ function normalizeVariantText(value: string): string {
  * 解析状態は 3 つを区別する。
  *   - `absent`:    その種類の表記が元から無い（色だけの variant など）
  *   - `valid`:     厳密な文法で解析できた
- *   - `malformed`: 単位・容量・セット数らしい表記があるのに解析できない
+ *   - `malformed`: 単位・容量・セット数・サイズらしい表記があるのに解析できない
  * 「抽出対象ではない」と「不正な構造化表記」を混同しないための区別で、
  * `malformed` は色が一致していても variant 全体を不一致にする。
  *
- * 走査の規則:
- *   1. サイズ（`2XL|XL|S|M|L` ＋ `サイズ`）を先に読む。前が ASCII 英数字なら
- *      独立したサイズではないので採らない（`LLサイズ` `XSサイズ` `2Mサイズ`）。
- *   2. 単位（`L` / `MAH` / `個セット`）を見つけたら、その直前の連なりを 2 通りに測る。
- *      - **region**: ASCII 英数字を含む広い連なり。数字が 1 つも無ければ、
- *        単位に見える文字は別の語の一部（`BLACK` の `L`）なので候補にしない。
- *      - **number**: 数字と区切り・演算記号だけの連なり。ここから数値を取り出す。
- *   3. 数値の直前、または単位の直後が ASCII 英数字なら **malformed**。
- *      `A30L` `30L2` `500ML` は型番や別単位の一部であって容量ではない。
- *   4. 取り出した数値**全体**を単位ごとの文法で検査する。一部分だけを採らない。
- *      `18 / / 24L` から `24L` を、`30＋5L` から `5L` を切り出さない。
- *
- * 連なりの探索は直前に読み終えた位置（`consumedEnd`）より前へは戻らない。
- * これにより `30L / 40L` の 2 つ目が 1 つ目を巻き込まない。
+ * **単位から英単語や空白を無制限に逆走しない。** 単位に見える文字の直前に
+ * 隣接した字句だけを見る。`MODEL` `TRAVEL` `SPECIAL` `BLACK` の `L` は
+ * 英単語の一部であって単位ではないので、`2024 MODEL 30L` の `2024` まで
+ * 探しに戻ってはいけない。
  */
 
-/** 数値の連なりを構成しうる文字。数字・小数点・区切り・演算/範囲記号。 */
-const NUMBER_CHAR = /[0-9.,\s/+＋\-−–—~〜～ーから]/;
 /**
- * NUMBER_CHAR に ASCII 英字を加えたもの。「構造化表記らしさ」だけを見る。
- * ここに数字が無ければ、単位に見える文字は語の一部であって単位ではない。
+ * 数値の連なりを構成しうる文字。数字・小数点・区切り・演算/範囲記号。
+ * **ASCII 英字は含めない。** 英字を含めると英単語を越えて数字を拾ってしまう。
  */
-const REGION_CHAR = /[0-9A-Za-z.,\s/+＋\-−–—~〜～ーから]/;
+const NUMBER_CHAR = /[0-9.,\s/+＋\-−–—~〜～ーから]/;
 const ASCII_ALNUM = /[0-9A-Za-z]/;
+const ASCII_LETTER = /[A-Za-z]/;
 const DIGIT = /[0-9]/;
+const WHITESPACE = /\s/;
+/**
+ * 前後に空白を持つときだけ「商品名とスペックの区切り」として働く記号。
+ * `商品名 - 30L` の `-` は数値の一部ではないので、ここで走査を止める。
+ * 数値に直接接続した `30-35L` の `-` は区切りではないので止めない。
+ */
+const TITLE_DASH = /[-–—−－]/;
 
 /** 容量(L)。`18/24` のような拡張表記だけを許す。 */
 const VALID_CAPACITY_L = /^\d+(?:\.\d+)?(?:\s*\/\s*\d+(?:\.\d+)?)*$/;
@@ -119,8 +115,8 @@ const VALID_CAPACITY_MAH = /^\d+(?:\.\d+)?$/;
 /** セット数。小数も区切りも許さない。 */
 const VALID_SET_COUNT = /^\d+$/;
 
-/** 長いものから見る。`2XL` を `XL` に縮めない。 */
-const SIZE_LABELS: readonly string[] = ['2XL', 'XL', 'S', 'M', 'L'];
+/** サポートするサイズラベル。これ以外は `サイズ` が付いていても読まない。 */
+const SIZE_LABELS: readonly string[] = ['S', 'M', 'L', 'XL', '2XL'];
 const SIZE_SUFFIX = 'サイズ';
 
 type UnitKind = 'capacityL' | 'capacityMah' | 'setCount';
@@ -145,13 +141,6 @@ function charIs(pattern: RegExp, char: string | undefined): boolean {
   return char !== undefined && pattern.test(char);
 }
 
-function sizeLabelAt(text: string, index: number): string | null {
-  for (const label of SIZE_LABELS) {
-    if (text.startsWith(`${label}${SIZE_SUFFIX}`, index)) return label;
-  }
-  return null;
-}
-
 function unitAt(text: string, index: number): { text: string; kind: UnitKind } | null {
   for (const unit of UNITS) {
     if (text.startsWith(unit.text, index)) return unit;
@@ -165,6 +154,22 @@ function isValidNumber(kind: UnitKind, numberPart: string): boolean {
   return VALID_SET_COUNT.test(numberPart);
 }
 
+/** 前後を空白に挟まれた区切り記号か。ここより前は商品名なので数値に含めない。 */
+function isTitleSeparator(text: string, at: number): boolean {
+  return (
+    charIs(TITLE_DASH, text[at]) &&
+    charIs(WHITESPACE, text[at - 1]) &&
+    charIs(WHITESPACE, text[at + 1])
+  );
+}
+
+/** ASCII 英字が直前に連なっている範囲の先頭。 */
+function letterRunStart(text: string, end: number, floor: number): number {
+  let start = end;
+  while (start > floor && charIs(ASCII_LETTER, text[start - 1])) start -= 1;
+  return start;
+}
+
 function scanStructured(text: string): StructuredScan {
   const sizes: string[] = [];
   const capacities: string[] = [];
@@ -175,11 +180,27 @@ function scanStructured(text: string): StructuredScan {
   let index = 0;
 
   while (index < text.length) {
-    const label = sizeLabelAt(text, index);
-    if (label !== null && !charIs(ASCII_ALNUM, text[index - 1])) {
-      sizes.push(`${label}${SIZE_SUFFIX}`);
-      index += label.length + SIZE_SUFFIX.length;
-      consumedEnd = index;
+    // --- サイズ表記。接尾辞「サイズ」を起点に、直前の ASCII 英数字の連なりを見る ---
+    if (text.startsWith(SIZE_SUFFIX, index)) {
+      const suffixEnd = index + SIZE_SUFFIX.length;
+      let labelStart = index;
+      while (labelStart > consumedEnd && charIs(ASCII_ALNUM, text[labelStart - 1])) labelStart -= 1;
+      const label = text.slice(labelStart, index);
+
+      if (label === '') {
+        // 「本体サイズ」「フリーサイズ」など、ラベルの無い日本語。候補ではない。
+        index = suffixEnd;
+        consumedEnd = suffixEnd;
+        continue;
+      }
+      // ラベルが付いているのにサポート対象外、または直後に英数字が続く（`Lサイズ2`）
+      if (!SIZE_LABELS.includes(label) || charIs(ASCII_ALNUM, text[suffixEnd])) {
+        malformed = true;
+      } else {
+        sizes.push(`${label}${SIZE_SUFFIX}`);
+      }
+      index = suffixEnd;
+      consumedEnd = suffixEnd;
       continue;
     }
 
@@ -190,25 +211,61 @@ function scanStructured(text: string): StructuredScan {
     }
     const unitEnd = index + unit.text.length;
 
-    let regionStart = index;
-    while (regionStart > consumedEnd && charIs(REGION_CHAR, text[regionStart - 1])) regionStart -= 1;
-    if (!DIGIT.test(text.slice(regionStart, index))) {
-      // 数字が無い。単位に見える文字は別の語の一部（`BLACK` の `L`）。
+    // `Lサイズ` の `L` は単位ではない。サイズ表記の一部なので接尾辞側で読む。
+    let afterUnit = unitEnd;
+    while (charIs(ASCII_ALNUM, text[afterUnit])) afterUnit += 1;
+    if (text.startsWith(SIZE_SUFFIX, afterUnit)) {
+      index += 1;
+      continue;
+    }
+
+    const previous = text[index - 1];
+    if (charIs(ASCII_LETTER, previous)) {
+      // 単位に見える文字へ英字が直結している。
+      // その英字の連なりの前が数字なら構造化表記（`500ML`）、
+      // そうでなければ英単語の一部（`MODEL` `BLACK` `TRAVEL`）なので候補にしない。
+      const wordStart = letterRunStart(text, index, consumedEnd);
+      if (charIs(DIGIT, text[wordStart - 1])) malformed = true;
       index = unitEnd;
       consumedEnd = unitEnd;
       continue;
     }
 
+    // 単位の直前に隣接した数値の連なりだけを見る。区切りより前へは戻らない。
+    //
+    // 空白は数値の一部になりうるが、無条件に越えると隣の数値まで巻き込む
+    // （`2025 30L` を `2025 30` として読んでしまう）。次の 2 つだけ認める。
+    //   - 単位の直前の余白（`30 L`）
+    //   - `/` に隣接する区切り（`18 / 24L` の拡張容量）
     let numberStart = index;
-    while (numberStart > consumedEnd && charIs(NUMBER_CHAR, text[numberStart - 1])) numberStart -= 1;
-    // 先頭の区切り（`商品名 - 30L` の `- `）は数値の一部ではない
+    let onlyWhitespace = true;
+    while (numberStart > consumedEnd) {
+      const previousChar = text[numberStart - 1];
+      if (!charIs(NUMBER_CHAR, previousChar)) break;
+      if (isTitleSeparator(text, numberStart - 1)) break;
+      if (charIs(WHITESPACE, previousChar)) {
+        const nextToSlash =
+          text[numberStart - 2] === '/' || text[numberStart] === '/';
+        if (!onlyWhitespace && !nextToSlash) break;
+      } else {
+        onlyWhitespace = false;
+      }
+      numberStart -= 1;
+    }
+    // 先頭の区切り（`- 30L` の `- `）は数値の一部ではない
     while (numberStart < index && !charIs(DIGIT, text[numberStart])) numberStart += 1;
+    if (numberStart === index) {
+      // 隣接した数値が無い。単位に見える文字は別の語の一部。
+      index = unitEnd;
+      consumedEnd = unitEnd;
+      continue;
+    }
 
     const numberPart = text.slice(numberStart, index).trim();
     const attachedBefore = charIs(ASCII_ALNUM, text[numberStart - 1]);
     const attachedAfter = charIs(ASCII_ALNUM, text[unitEnd]);
 
-    if (numberPart === '' || attachedBefore || attachedAfter || !isValidNumber(unit.kind, numberPart)) {
+    if (attachedBefore || attachedAfter || !isValidNumber(unit.kind, numberPart)) {
       malformed = true;
     } else if (unit.kind === 'capacityL') {
       // 「18/24L」は 18L と 24L の 2 つに分ける

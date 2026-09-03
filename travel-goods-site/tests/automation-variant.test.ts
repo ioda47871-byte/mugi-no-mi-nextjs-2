@@ -1,4 +1,7 @@
 // tests/automation-variant.test.ts
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   EXCLUDED_LISTING_TERMS,
@@ -586,5 +589,137 @@ describe('数値式・範囲らしい表記の一部分だけを採用しない'
     expect(scanVariant('商品名 - 30L').presence).toBe('valid');
     expect(scanVariant('18/24L').capacities).toEqual(['18L', '24L']);
     expect(verifyVariant('30L / ブラック', 'リュック - 30L ブラック').matched).toBe(true);
+  });
+});
+
+describe('英単語中の L を離れた数字と結び付けない', () => {
+  it('2024 MODEL 30L は 30L を valid として読む', () => {
+    expect(scanVariant('2024 MODEL 30L ブラック')).toMatchObject({
+      capacities: ['30L'],
+      presence: 'valid',
+    });
+    expect(verifyVariant('30L / ブラック', '2024 MODEL 30L ブラック').matched).toBe(true);
+  });
+
+  it('型番・年・英単語・容量が同時にあるタイトルでも読める', () => {
+    expect(verifyVariant('30L / ブラック', '型番2024 MODEL 30L ブラック').matched).toBe(true);
+    expect(verifyVariant('30L / ブラック', 'TRAVEL BACKPACK 30L ブラック').matched).toBe(true);
+    expect(verifyVariant('30L / ブラック', '【SPECIAL PRICE】 2025 30L ブラック').matched).toBe(true);
+    expect(scanVariant('2024 MODEL 30L ブラック').presence).toBe('valid');
+    expect(scanVariant('TRAVEL BACKPACK 30L ブラック').presence).toBe('valid');
+  });
+
+  it('BLACK の L を単位にしない（既存条件の維持）', () => {
+    expect(scanVariant('BLACK ポーチ').presence).toBe('absent');
+    expect(scanVariant('BLACK 30L').capacities).toEqual(['30L']);
+    expect(scanVariant('BLACK 30L').presence).toBe('valid');
+  });
+
+  it('数字に直結した英字は引き続き malformed', () => {
+    for (const text of ['A30L', '500ML', '30L2', 'A10000mAh', 'A3個セット']) {
+      expect(scanVariant(text).presence).toBe('malformed');
+    }
+  });
+});
+
+describe('明確な区切りを越えて商品名側の数字を巻き込まない', () => {
+  it('タイトル区切りの前の数字を numberPart に含めない', () => {
+    expect(scanVariant('2024 - 30L ブラック')).toMatchObject({
+      capacities: ['30L'],
+      presence: 'valid',
+    });
+    expect(scanVariant('2024 – 30L ブラック').capacities).toEqual(['30L']);
+    expect(scanVariant('2024 — 30L ブラック').capacities).toEqual(['30L']);
+    expect(verifyVariant('30L / ブラック', '商品123 - 30L ブラック').matched).toBe(true);
+    expect(verifyVariant('30L / ブラック', '商品名 - 30L ブラック').matched).toBe(true);
+  });
+
+  it('数値に直接接続した演算・範囲記号は引き続き malformed', () => {
+    for (const text of ['30-35L', '30〜35L', '30＋5L', '30から35L']) {
+      const scan = scanVariant(text);
+      expect(scan.presence).toBe('malformed');
+      expect(scan.capacities).toEqual([]);
+    }
+  });
+
+  it('正常な拡張容量は維持する', () => {
+    expect(scanVariant('18/24L').capacities).toEqual(['18L', '24L']);
+    expect(scanVariant('18 / 24L').capacities).toEqual(['18L', '24L']);
+    expect(scanVariant('18 / / 24L').presence).toBe('malformed');
+  });
+});
+
+describe('サイズ表記も absent / valid / malformed 契約へ含める', () => {
+  it('サポート対象外のラベル＋サイズは malformed', () => {
+    for (const variant of [
+      'LLサイズ / ブラック',
+      'XSサイズ / ブラック',
+      '2Mサイズ / ブラック',
+      'SLサイズ / ブラック',
+      'Lサイズ2 / ブラック',
+    ]) {
+      const result = verifyVariant(variant, 'ポーチ ブラック');
+      expect(result.matched).toBe(false);
+      expect(result.matchedVariantLabel).toBeNull();
+      expect(scanVariant(variant).presence).toBe('malformed');
+    }
+  });
+
+  it('サイズ表記の直後が ASCII 英数字なら malformed', () => {
+    expect(scanVariant('Lサイズ2').presence).toBe('malformed');
+    expect(scanVariant('XLサイズ2').presence).toBe('malformed');
+    expect(scanVariant('Lサイズ2').sizes).toEqual([]);
+  });
+
+  it('listing 側の malformed なサイズも一致を止める', () => {
+    const v = verifyVariant('Lサイズ / ブラック', 'ポーチ LLサイズ ブラック');
+    expect(v.matched).toBe(false);
+    expect(v.matchedVariantLabel).toBeNull();
+    expect(scanVariant('ポーチ LLサイズ ブラック').presence).toBe('malformed');
+  });
+
+  it('サポート対象のサイズは valid のまま', () => {
+    for (const text of ['Sサイズ', 'Mサイズ', 'Lサイズ', 'XLサイズ', '2XLサイズ']) {
+      expect(scanVariant(text).presence).toBe('valid');
+      expect(scanVariant(text).sizes).toEqual([text]);
+    }
+    expect(scanVariant('Ｌサイズ').sizes).toEqual(['Lサイズ']);
+    expect(scanVariant('２XLサイズ').sizes).toEqual(['2XLサイズ']);
+  });
+
+  it('サイズ表記が元から無ければ absent（日本語の「サイズ」を巻き込まない）', () => {
+    expect(scanVariant('ブラック').presence).toBe('absent');
+    expect(scanVariant('本体サイズ ブラック').presence).toBe('absent');
+    expect(scanVariant('フリーサイズ ブラック').presence).toBe('absent');
+    expect(verifyVariant('ブラック', 'ポーチ ブラック').matched).toBe(true);
+  });
+});
+
+describe('現行 23 商品の variant 回帰', () => {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const files = ['backpacks', 'pouches', 'power-banks', 'suitcases'];
+  const variants: string[] = files.flatMap(
+    (f) =>
+      (
+        JSON.parse(
+          fs.readFileSync(path.join(here, `../datasets/production/products/${f}.json`), 'utf8'),
+        ) as { variant: string }[]
+      ).map((p) => p.variant),
+  );
+
+  it('現行データを 23 件読み込む', () => {
+    expect(variants).toHaveLength(23);
+  });
+
+  it('現行 variant に malformed は 1 件も無い', () => {
+    const malformed = variants.filter((v) => scanVariant(v).presence === 'malformed');
+    expect(malformed).toEqual([]);
+  });
+
+  it('現行 variant は同じ文言の listing と一致する', () => {
+    for (const variant of variants) {
+      const listing = `商品 ${variant.replace(/ \/ /g, ' ')} 送料無料`;
+      expect(verifyVariant(variant, listing).matched).toBe(true);
+    }
   });
 });
