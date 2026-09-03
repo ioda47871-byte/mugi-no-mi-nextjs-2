@@ -118,8 +118,21 @@ const RANGE_WORD = 'から';
  *   `30 - 35L`                                  … 範囲（malformed）
  * 前後に空白を持つ場合だけ、左隣のトークンを見て区別する。
  * 空白の無いダッシュ（`30-35L`）は式の一部として読み、文法検査で落とす。
+ *
+ * 半角・全角・全角マイナス・長音符まで**同じ 1 つの集合**で持つ。
+ * 容量側とサイズ側で別々に書くと Unicode 同等記号の定義がずれ、
+ * `SーMサイズ` のような並びを見落とす。
  */
 const DASH = /[-–—−－ー]/;
+/** 列挙の区切り。ダッシュ・範囲記号と合わせてサイズラベルの並びを見る。 */
+const ENUMERATION = /[/・、,]/;
+/**
+ * サイズラベルを並べる記号。容量側の集合（`DASH` `RANGE_OPERATOR`）を
+ * そのまま流用し、列挙記号だけを足す。
+ */
+const SIZE_SEPARATOR = new RegExp(
+  `${DASH.source}|${RANGE_OPERATOR.source}|${ENUMERATION.source}`,
+);
 
 /** 容量(L)。`18/24` のような拡張表記だけを許す。 */
 const VALID_CAPACITY_L = /^\d+(?:\.\d+)?(?:\s*\/\s*\d+(?:\.\d+)?)*$/;
@@ -131,18 +144,6 @@ const VALID_SET_COUNT = /^\d+$/;
 /** サポートするサイズラベル。これ以外は `サイズ` が付いていても読まない。 */
 const SIZE_LABELS: readonly string[] = ['S', 'M', 'L', 'XL', '2XL'];
 const SIZE_SUFFIX = 'サイズ';
-/**
- * サイズラベル式を構成しうる文字。
- * 空白形（`L サイズ`）と、複数・範囲の省略形（`S/M/Lサイズ` `S・M・Lサイズ`
- * `S M Lサイズ` `S〜Lサイズ`）をまとめて 1 つの式として捉えるために、
- * 区切り記号と空白も式の一部として読む。読んだ結果が単一のサポート対象
- * ラベルでなければ malformed に倒す。
- *
- * `ー`（長音符）は入れない。`フリーサイズ` を式として拾ってしまうため。
- */
-const SIZE_EXPRESSION_CHAR = /[0-9A-Za-z\s/・〜～~+＋,\-–—]/;
-/** 式の先頭に来た区切り。ラベルの一部ではない（`30L / Lサイズ` の `/ `）。 */
-const SIZE_EXPRESSION_LEAD = /^[\s/・〜～~+＋,\-–—]+/;
 
 type UnitKind = 'capacityL' | 'capacityMah' | 'setCount';
 /** 正規化後（大文字化後）の綴りで持つ。 */
@@ -180,15 +181,38 @@ function isValidNumber(kind: UnitKind, numberPart: string): boolean {
 }
 
 /**
- * この位置から右がサイズラベル式（`… サイズ`）の途中か。
+ * この位置から右がサイズラベル（`…サイズ` / `… サイズ`）の途中か。
  *
  * `2XL サイズ` の `L` は単位でも `500ML` 型の接続でもなく、サイズラベルの一部。
- * 空白形を許すため、ここだけは区切り・空白も越えて `サイズ` を探す。
+ * 空白形を許すため英数字と空白だけを越えて `サイズ` を探す。
  */
-function isInsideSizeExpression(text: string, from: number): boolean {
+function isInsideSizeLabel(text: string, from: number): boolean {
   let at = from;
-  while (charIs(SIZE_EXPRESSION_CHAR, text[at])) at += 1;
+  while (charIs(ASCII_ALNUM, text[at]) || charIs(WHITESPACE, text[at])) at += 1;
   return text.startsWith(SIZE_SUFFIX, at);
+}
+
+/** ASCII 英数字が直前に連なっている範囲の先頭。 */
+function asciiTokenStart(text: string, end: number, floor: number): number {
+  let start = end;
+  while (start > floor && charIs(ASCII_ALNUM, text[start - 1])) start -= 1;
+  return start;
+}
+
+/**
+ * ラベルの左隣にもサイズラベルが並んでいるか。
+ *
+ * 区切り（`S/M/Lサイズ` `S−Mサイズ`）でも空白（`S M Lサイズ`）でも、
+ * **左隣のトークンもサポート対象ラベルのときだけ**「複数・範囲の省略形」とみなす。
+ * 商品名・ブランド名・型番・年（`BAG Lサイズ` `MODEL 2024 Lサイズ` `ACE Lサイズ`）は
+ * ここで false になり、サイズ式は「サイズ」の直前 1 つに閉じる。
+ */
+function hasSizeLabelLeftOf(text: string, labelStart: number, floor: number): boolean {
+  let at = skipWhitespaceLeft(text, labelStart, floor);
+  if (at > floor && charIs(SIZE_SEPARATOR, text[at - 1])) {
+    at = skipWhitespaceLeft(text, at - 1, floor);
+  }
+  return SIZE_LABELS.includes(text.slice(asciiTokenStart(text, at, floor), at));
 }
 
 /** ASCII 英字が直前に連なっている範囲の先頭。 */
@@ -223,13 +247,22 @@ function wordLeftOf(text: string, at: number, floor: number): string {
   return text.slice(start, end);
 }
 
+/** 数字・小数点・カンマだけで構成されているか。**文法の正誤は問わない。** */
+const NUMERIC_LOOKING = /^[0-9.,]+$/;
+/** 区切りの無い、正確に 4 桁の数字。年とみなして商品名側に置く。 */
+const YEAR = /^\d{4}$/;
+
 /**
  * ダッシュが範囲を表しているか。
- * 左隣が純粋な数値なら範囲（`30 - 35L`）。ただし 4 桁は年とみなし、
- * 商品名の一部（`2024 - 30L`）として扱う。数値以外なら商品名との区切り。
+ *
+ * 左隣が**数値らしい**なら範囲とみなす（`30 - 35L`）。
+ * 「正常な数値のときだけ」にすると、`1,000 - 30L` `30,0 - 35L` `30. - 35L` の
+ * 不正な左辺を商品名と誤認し、後半の `30L` `35L` だけを採用してしまう。
+ * 例外は区切りの無い正確な 4 桁（年）だけで、`2024 - 30L` は `30L` として読む。
+ * 数値らしくなければ商品名との区切り（`商品123 - 30L` `商品名 - 30L`）。
  */
 function isRangeDash(word: string): boolean {
-  return /^\d+(?:\.\d+)?$/.test(word) && !/^\d{4}$/.test(word);
+  return NUMERIC_LOOKING.test(word) && !YEAR.test(word);
 }
 
 type NumberExpression =
@@ -308,17 +341,10 @@ function scanStructured(text: string): StructuredScan {
     // --- サイズ表記。接尾辞「サイズ」を起点に、直前のラベル式を 1 つとして読む ---
     if (text.startsWith(SIZE_SUFFIX, index)) {
       const suffixEnd = index + SIZE_SUFFIX.length;
-      let expressionStart = index;
-      while (
-        expressionStart > consumedEnd &&
-        charIs(SIZE_EXPRESSION_CHAR, text[expressionStart - 1])
-      ) {
-        expressionStart -= 1;
-      }
-      const label = text
-        .slice(expressionStart, index)
-        .replace(SIZE_EXPRESSION_LEAD, '')
-        .trim();
+      // 接尾辞の直前だけを局所的に読む。空白を飛ばして ASCII ラベルを 1 つ。
+      const labelEnd = skipWhitespaceLeft(text, index, consumedEnd);
+      const labelStart = asciiTokenStart(text, labelEnd, consumedEnd);
+      const label = text.slice(labelStart, labelEnd);
 
       if (label === '') {
         // 「本体サイズ」「フリーサイズ」など、ラベルの無い日本語。候補ではない。
@@ -326,9 +352,15 @@ function scanStructured(text: string): StructuredScan {
         consumedEnd = suffixEnd;
         continue;
       }
-      // 単一のサポート対象ラベルでない（`LL` `S/M/L` `S M L`）、
-      // または直後に英数字が続く（`Lサイズ2`）
-      if (!SIZE_LABELS.includes(label) || charIs(ASCII_ALNUM, text[suffixEnd])) {
+      // 次のいずれかなら読めなかったものとして扱う。
+      //   - サポート対象外のラベル（`LL` `XS` `2M` `SL` `16L`）
+      //   - 左隣もサイズラベル＝複数・範囲の省略形（`S/M/L` `S−M` `S M L`）
+      //   - 接尾辞の直後が ASCII 英数字（`Lサイズ2`）
+      if (
+        !SIZE_LABELS.includes(label) ||
+        hasSizeLabelLeftOf(text, labelStart, consumedEnd) ||
+        charIs(ASCII_ALNUM, text[suffixEnd])
+      ) {
         malformed = true;
       } else {
         sizes.push(`${label}${SIZE_SUFFIX}`);
@@ -359,7 +391,7 @@ function scanStructured(text: string): StructuredScan {
       // その英字の連なりの前が数字なら構造化表記（`500ML`）、
       // そうでなければ英単語の一部（`MODEL` `BLACK` `TRAVEL`）なので候補にしない。
       const wordStart = letterRunStart(text, index, consumedEnd);
-      if (!isInsideSizeExpression(text, unitEnd) && charIs(DIGIT, text[wordStart - 1])) {
+      if (!isInsideSizeLabel(text, unitEnd) && charIs(DIGIT, text[wordStart - 1])) {
         malformed = true;
         consumedEnd = unitEnd;
       }
