@@ -21,6 +21,8 @@ import type {
   Source,
 } from '../../src/lib/catalog/types';
 import type { CatalogInput } from '../../src/lib/catalog/validate';
+import type { TierInput } from '../../src/lib/automation/tier';
+import type { LinkHealthEntry, LinkSignals } from '../../src/lib/automation/state/schema';
 import type { RakutenItem } from '../../src/lib/rakuten/types';
 
 const CHECKED_AT = '2026-08-31';
@@ -216,5 +218,63 @@ export function readSeededDataset(rootDir: string): CatalogInput {
     sources: readJson(path.join(rootDir, 'sources.json')),
     merchantLinks: readJsonArrayDir(path.join(rootDir, 'merchants')),
     articles: [],
+  };
+}
+
+/** S の 9 条件をすべて満たす既定値。テストはここから 1 項目ずつ崩す。 */
+export function makeTierInput(over: Partial<TierInput> = {}): TierInput {
+  return {
+    manufacturerId: 'ace',
+    officialFetchStatus: 'ok',
+    extraction: {
+      ok: true,
+      rangeHash: 'a'.repeat(64),
+      spec: {
+        weightG: 2900,
+        outerSizeMm: [350, 550, 250],
+        capacityL: 35,
+        sizeBasis: 'with-handle-and-wheels',
+        measurementState: 'normal',
+        specs: {},
+      },
+    },
+    recallStatus: 'clear',
+    jan: 'published-and-matched',
+    model: 'exact',
+    variant: 'matched',
+    initialSelection: '6b-inferred',
+    affiliateUrl: 'valid-item-page',
+    duplicate: 'unique',
+    excludedTerm: 'clean',
+    officialConsistency: 'consistent',
+    recheck: 'matched-previous-day',
+    ...over,
+  };
+}
+
+export function makeLinkSignals(over: Partial<LinkSignals> = {}): LinkSignals {
+  return {
+    observationStatus: 'ok',
+    itemCodeAlive: true,
+    availability: 1,
+    affiliateTargetChanged: false,
+    httpStatus: null,
+    identifierMatch: 'strong',
+    variantMatch: true,
+    ...over,
+  };
+}
+
+export function makeLinkHealthEntry(over: Partial<LinkHealthEntry> = {}): LinkHealthEntry {
+  return {
+    productId: 'fixture-ace-06936',
+    merchant: 'rakuten',
+    externalProductId: 'testshop:test-item-001',
+    signals: makeLinkSignals(),
+    consecutiveFailures: 0,
+    consecutiveOutOfStock: 0,
+    lastHealthyAt: '2026-09-01',
+    state: 'healthy',
+    ...over,
   };
 }

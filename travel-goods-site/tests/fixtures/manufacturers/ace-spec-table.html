@@ -1,0 +1,33 @@
+<!--
+  テスト用の合成 HTML。実サイトの HTML ではない（設計書 4.2）。
+
+  値は datasets/production/products/suitcases.json の
+  ace-cresta2-06936-35l-black-hairline に登録済みの確認済み値だけを使う。
+
+    weightG      2900          → 2.9kg
+    outerSizeMm  [350,550,250] → W35×H55×D25cm
+    capacityL    35            → 35L
+    sizeBasis    with-handle-and-wheels → 「ハンドル・キャスターを含む」
+
+  推測値は書かない。抽出結果が登録済みの Fact.value と一致することを
+  tests/manufacturers-ace.test.ts で固定する。
+-->
+<html>
+  <body>
+    <h1>テスト用スーツケース</h1>
+    <table class="spec">
+      <tr>
+        <th>本体重量</th>
+        <td>2.9kg</td>
+      </tr>
+      <tr>
+        <th>外寸</th>
+        <td>W35×H55×D25cm（ハンドル・キャスターを含む）</td>
+      </tr>
+      <tr>
+        <th>容量</th>
+        <td>35L</td>
+      </tr>
+    </table>
+  </body>
+</html>

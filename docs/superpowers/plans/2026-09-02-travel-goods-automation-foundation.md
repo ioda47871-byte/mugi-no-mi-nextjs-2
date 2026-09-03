@@ -645,8 +645,10 @@ export type BudgetFile = {
 };
 
 export type LinkSignals = {
+  /** その日の観測が成立したか。'unavailable' は API 障害であり、商品の状態を意味しない。 */
+  observationStatus: 'ok' | 'unavailable';
   itemCodeAlive: boolean;
-  availability: 0 | 1 | null;      // null = 取得できなかった
+  availability: 0 | 1 | null;      // null = 在庫情報を取れなかった
   affiliateTargetChanged: boolean;
   httpStatus: number | null;       // 規約確認が済むまで常に null
   identifierMatch: 'strong' | 'weak' | 'none';
@@ -1099,8 +1101,19 @@ feat(travel-goods-site): 日次予算の判定と繰越キューを追加
 
 ### 仕様（設計書 5.5 条件4・5、5.6、8.4 に対応）
 
-- `matched === true` の条件: `colors`/`sizes`/`capacities`/`setCounts` の**全トークン**が
-  正規化済み `listingText` に出現し、かつ `conflicting` が空。
+- `scanVariant(text)` は 1 回の走査でトークンと**解析状態**を返す。状態は 3 つを区別し、
+  容量・mAh・セット数だけでなく**サイズの malformed も含めて**決定する。
+  - `absent`: その種類の表記が元から無い（色だけの variant、`本体サイズ` など）
+  - `valid`: 厳密な文法で解析できた
+  - `malformed`: 単位・容量・セット数・サイズらしい表記があるのに解析できない
+- `matched === true` の条件は**次のすべて**。
+  1. target の `presence` が `malformed` でない
+  2. listing の `presence` が `malformed` でない
+  3. `colors`/`sizes`/`capacities`/`setCounts` の**全トークン**が listing 側の同じ経路で取れる
+  4. `conflicting` が空
+  5. 有効な variant トークンが少なくとも 1 つある
+- target 側だけを検査しない。**listing 側の解析不能な表記も必ず一致を止める**
+  （`30L 40.5.6L`・`18L 24//30L` を「30L / 18L が書いてある」と読まない）。
 - `conflicting`: 対象と異なる容量（`\d+L`）・サイズ（`S|M|L|XL`）・セット数（`\d+個セット`）の表記が
   `listingText` に現れたもの。
 - `matchedVariantLabel`: `matched === true` のとき、抽出したトークンを
@@ -1112,6 +1125,24 @@ feat(travel-goods-site): 日次予算の判定と繰越キューを追加
 - [ ] `verifyVariant('30L / ブラック', '旅行リュック 30L ブラック 大容量')` が `matched: true` を返す失敗テストを書く（3 分）
 - [ ] `verifyVariant('30L / ブラック', '旅行リュック 30L/40L 選べる2サイズ ブラック')` が `matched: false` かつ `conflicting` に `'40L'` を含む失敗テストを書く（4 分）
 - [ ] 色が出てこない場合に `missing` に色が入る失敗テストを書く（3 分）
+- [ ] 「ブラックフライデー」「ホワイトニング」を色として拾わない失敗テストを書く（4 分）
+- [ ] `Lサイズ` が `LLサイズ` に、`Sサイズ` が `XSサイズ` に一致しない失敗テストを書く（4 分）
+- [ ] `30.5.6L` から `5.6L` を、`1.3個セット` から `3個セット` を切り出さない失敗テストを書く（4 分）
+- [ ] 解釈できない構造化表記を含む variant を、色が一致しても `matched: false` にする失敗テストを書く（4 分）
+- [ ] `scanVariant` が `absent` / `valid` / `malformed` を区別する失敗テストを書く（4 分）
+- [ ] listing 側の `malformed`（`30L 40.5.6L`・`18L 24//30L`）でも一致にしない失敗テストを書く（4 分）
+- [ ] `30L2` `A30L` などを「不存在」ではなく `malformed` にする失敗テストを書く（4 分）
+- [ ] `30＋5L` から `5L` を切り出さない失敗テストを書く（3 分）
+- [ ] `2024 MODEL 30L` の `MODEL` の `L` を単位として読まない失敗テストを書く（4 分）
+- [ ] `商品123 - 30L` が区切りより前の数字を巻き込まない失敗テストを書く（3 分）
+- [ ] `LLサイズ` `Lサイズ2` などを malformed にする失敗テストを書く（4 分）
+- [ ] 現行 23 商品の variant に malformed が 0 件である回帰テストを書く（3 分）
+- [ ] `30 - 35L` `30 ＋ 5L` `30 から 35L` の後半だけを採用しない失敗テストを書く（4 分）
+- [ ] `L サイズ` を valid、`LL サイズ` `S/M/Lサイズ` を malformed にする失敗テストを書く（4 分）
+- [ ] `S−Mサイズ` `SーMサイズ` `S、Mサイズ` を malformed にする失敗テストを書く（3 分）
+- [ ] `1,000 - 30L` `30. - 35L` の後半だけを採用しない失敗テストを書く（3 分）
+- [ ] `BAG Lサイズ` `MODEL 2024 Lサイズ` を `Lサイズ` として読む失敗テストを書く（4 分）
+- [ ] `LL/Lサイズ` `3XL/Lサイズ` を複数サイズ表記として malformed にする失敗テストを書く（3 分）
 - [ ] `hasExcludedTerm('【中古】スーツケース')` が `true` を返す失敗テストを書く（2 分）
 - [ ] `matched: false` のとき `matchedVariantLabel` が `null` である失敗テストを書く（2 分）
 - [ ] テストを実行し失敗を確認する（1 分）
@@ -1158,9 +1189,121 @@ Error: Failed to load url ../src/lib/automation/variant
 ### 最小実装
 
 色は既知の色名辞書（`ブラック` `ホワイト` `ネイビー` `シルバー` `ガンメタリック` `ターコイズ` `ブルーグリーン` など、
-現行 23 商品の `variant` に実在する語）との照合。容量は `/(\d+(?:\.\d+)?)L/g`、
-サイズは `/\b(S|M|L|XL|2XL)サイズ\b/g`、セット数は `/(\d+)個セット/g`。
-照合は `normalizeForMatch` を通した文字列同士で行う。
+現行 23 商品の `variant` に実在する語）との照合。
+**substring では拾わない。** 色名の直前・直後がカタカナ（長音符を含み、中黒は除く）なら
+より長い語の一部なので色として扱わない。これで「ブラックフライデー」「ホワイトニング」
+「ミッドナイトネイビー」を色指定と誤認しない。販売ページ側にも同じ規則を使う。
+判定できない書き方は一致させない（false-negative 側へ倒す）。
+サイズは `/(?<![0-9A-Za-z])(2XL|XL|S|M|L)サイズ/g`。
+
+**サイズ・容量・mAh・セット数は 1 つの字句解析器（`scanStructured`）だけで読む。**
+抽出用と「読めなかったか」の判定用に別々の正規表現を持たない。曖昧な規則が 2 つあると、
+一方が読めた値をもう一方が壊れていると見なす（またはその逆）ずれが起き、
+壊れた表記の一部分だけを採用してしまう。`scanStructured` は
+`{ sizes, capacities, setCounts, presence }` を一度に返し、`scanVariant` を通じて
+`extractVariantTokens` と `verifyVariant` がこの 1 つの結果を共有する。
+`verifyVariant` は target と listing を**各 1 回だけ**走査する。
+
+走査は左から 1 回。位置ごとに次の順で読む。
+
+1. **サイズ**。接尾辞 `サイズ` の**直前だけを局所的に**読む。商品名や年を越えて
+   左へ無制限に逆走しない。
+   1. 直前の空白を飛ばす
+   2. ASCII ラベルを 1 つだけ読む（英数字の連なり）
+   3. ラベルを分類する
+      - 空（`本体サイズ` `フリーサイズ` のような日本語）→ 候補ではない（`absent`）
+      - `S|M|L|XL|2XL` → サポート対象
+      - それ以外（`LL` `XS` `2M` `SL` `16L` `2`）→ **malformed**
+   4. さらに左へ広げるのは、**区切りまたは空白の左隣も「サイズらしいラベル」**の
+      ときだけ。その場合は複数・範囲の省略形なので **malformed**
+      （`S/M/Lサイズ` `S・M・Lサイズ` `S M Lサイズ` `S〜Lサイズ` `M/Lサイズ`
+      `S−Mサイズ` `S－Mサイズ` `SーMサイズ` `S、Mサイズ`）。
+      **左隣がサポート対象かどうかでは判定しない。** `LL` `XS` `2M` `SL` `3XL` は
+      単独では読めないが、`LL/Lサイズ` `3XL/Lサイズ` のように並んでいれば
+      複数サイズ表記であり、右側の `L` だけを採用してはいけない。
+      「サイズらしい」は任意の英単語を巻き込まないよう形を限定する
+      （数字 0〜2 文字＋`S`/`M`/`L`/`X` だけからなる短い ASCII ラベル）。
+      `BAG` `ACE` `MODEL` `2024` は size-like にしない
+   5. 任意の英単語・型番・年に到達したらそこで止め、直前のラベルだけを読む
+      （`BAG Lサイズ` `TRAVEL BAG L サイズ` `MODEL 2024 Lサイズ` `ACE Lサイズ`
+      `型番ABC Lサイズ` はいずれも `Lサイズ`）
+   6. 接尾辞の直後が ASCII 英数字なら **malformed**（`Lサイズ2` `L サイズ2`）
+
+   空白形（`L サイズ` `2XL サイズ`）は空白なしと同じ `valid`。
+   区切り記号は**容量側と同じ Unicode 集合**（`DASH` と範囲記号）を流用し、
+   列挙記号（`/` `・` `、` `,`）だけを足す。別々に定義すると
+   `SーMサイズ` のような並びを見落とす。長音符 `ー` も同じ集合に含まれるが、
+   ラベルは ASCII だけを読むので `フリーサイズ` は `absent` のままになる。
+2. **単位**（`L` / `MAH` / `個セット`）。ただし単位の後ろが `…サイズ` ならサイズ表記の
+   一部なので単位として読まない（`Lサイズ` の `L`、`2XL サイズ` の `L`）。
+3. 単位の直前が ASCII 英字なら、その英字の連なりの前を見る。
+   - 数字なら**構造化表記が英字に接続している**ので malformed（`500ML`）
+   - それ以外なら**英単語の一部**なので候補にしない（`MODEL` `TRAVEL` `SPECIAL` `BLACK`）
+4. そうでなければ、単位の直前の数値式を、左へ「数値トークン」と「結合子」を交互に読む。
+   **英字・空白を越えて無制限に逆走しない。** 結合子として認めた記号だけを越える。
+   結合子は次の 3 つに**明示的に分類**する。
+   - **拡張容量の区切り** `/` → 左にもう 1 つ数値トークンを要求する（`18/24L` `18 / 24L`）。
+     無ければ malformed（`18 / / 24L`）
+   - **式・範囲の記号** `+` `＋` `〜` `～` `~` `から` → **前後の空白の有無にかかわらず**
+     malformed。空白で走査を止めると `30 ＋ 5L` の後半 `5L` だけを採用してしまう
+   - **ダッシュ** `-` `–` `—` `−` → 曖昧なので左隣のトークンで区別する
+     - 前後に空白があり、左隣が**数値らしい**（数字・小数点・カンマだけで構成される。
+       文法の正誤は問わない）→ 範囲なので malformed。例外は**区切りの無い正確な 4 桁**
+       （年）だけ。`30 - 35L` `1,000 - 30L` `30,0 - 35L` `30. - 35L` `20240 - 30L` は
+       malformed、`2024 - 30L` は `30L`。
+       「正常な数値のときだけ」にすると不正な左辺を商品名と誤認し、
+       後半の `30L` `35L` だけを採用してしまう
+     - 前後に空白があり、左隣がそれ以外 → **商品名との区切り**なので走査を止める
+       （`商品名 - 30L` `商品123 - 30L` はいずれも `30L`）
+     - 空白が無ければ式の一部として読み込み、文法検査で落とす（`30-35L`）
+   - 上記以外（英字・かな・漢字・別の数値）→ 式の終わり。`2025 30L` は `30L`、
+     `2024 MODEL 30L` は `30L`
+   - 数値トークンが隣接していなければ候補にしない
+5. 数値の直前、または単位の直後が ASCII 英数字なら **malformed**（`A30L` `30L2`）。
+6. 取り出した数値**全体**を単位ごとの文法へ照らす。
+   - `L`: `^\d+(?:\.\d+)?(?:\s*\/\s*\d+(?:\.\d+)?)*$`（`18/24L` のような拡張容量を許可）
+   - `mAh`: `^\d+(?:\.\d+)?$`
+   - `個セット`: `^\d+$`
+   形に合わなければ**トークンを 1 つも作らず** malformed。
+
+連なりの探索は直前に**読み終えた**位置より前へ戻らない。`30L / 40L` の 2 つ目が 1 つ目を
+巻き込まないのはこのため。候補にしなかった単位ではこの位置を進めない
+（`L サイズ` の `L` をサイズラベル式から外さないため）。
+
+**境界から外した表記を「不存在」にしない。** `A30L` `30L2` `A10000mAh` `10000mAh2`
+`A3個セット` `3個セット2` `500ML` は型番・別単位の一部であってトークンではないが、
+**構造化表記を書こうとした箇所**ではある。トークンにせず、かつ `malformed` を立てる。
+サイズも同じで、`サイズ` という接尾辞があるのに直前のラベルがサポート対象外なら malformed。
+複数・範囲の省略形（`S/M/Lサイズ` `S−Mサイズ` `LL/Lサイズ`）は最後のサイズだけを
+採用せず、並び全体を読めなかったものとして扱う。左隣がサポート対象外のサイズ
+（`LL` `XS` `2M` `SL` `3XL`）でも、並んでいれば複数サイズ表記である。一方で、左隣がサイズラベルでない語
+（商品名・ブランド名・型番・年）はサイズ式に含めず、直前のラベルだけを読む。
+「抽出対象ではない」（`35L / 01 ブラックヘアライン` の `01`、色だけの `ブラック`、
+`本体サイズ` のような日本語）とは別の状態として扱う。
+
+**数値式・範囲らしい表記は一部分も採用しない。** `30＋5L` `30-5L` `30〜35L` `30から35L`
+も、空白を挟んだ `30 ＋ 5L` `30 - 35L` `30 〜 35L` `30 から 35L` も、`5L` や `35L` を
+切り出さず malformed にする。空白で走査を止める実装だと式の後半だけを正常な容量として
+採用してしまうので、結合子は空白を読み飛ばしてから分類する。前後に空白を持つ商品名区切り
+（`商品名 - 30L`）だけは別の字句として扱い、そこで走査を止める。判断が付かない場合は
+false-negative 側（不一致）へ倒す。
+
+**壊れた拡張容量は一部分も採用しない。** `18 / / 24L` `１８ ／ ／ ２４L` は
+`L` 候補として拾われるが `VALID_CAPACITY_L` に合わないので、
+`18L` も `24L` もトークンにせず `malformed` になる。
+
+**書いてあるのに読めなかった variant は一致させない。** target・listing の
+どちらかが `malformed` なら、色が一致していても `matched: false`、
+`matchedVariantLabel: null` にする。色だけで別容量の商品にリンクさせないため。
+**「読めなかった」と「その種類の表記が元から無い」を区別する**（色だけの variant は
+従来どおり扱う）。現行データの `35L / 01 ブラックヘアライン` の `01` は
+直後に単位が無いので候補にならず、2 桁カラーコードを不正扱いしない。
+**サイズは前が英数字なら拾わない。** `LLサイズ`・`XSサイズ`・`2Mサイズ`・`SLサイズ` を
+`Lサイズ`・`Sサイズ`・`Mサイズ` と誤認しないため（`2XL` は選択肢の先頭に置く）。
+
+**照合は substring では行わない。** 販売ページ側も同じ規則でトークン化し、
+集合として突き合わせる。色は表記ゆれを潰すと辞書に当たらなくなるので生文字列から、
+サイズ・容量・セット数は `normalizeForMatch` を通した文字列から取り出す。
 
 ### 成功確認コマンド
 
@@ -1221,9 +1364,13 @@ feat(travel-goods-site): variant トークンの抽出と販売ページ文言�
 1. **`knownSources` に、その商品の仕様出典として既に登録された URL があればそれを使う**
    （`basis: 'existing-source'`）。既存 23 商品はすべてこれで解決する。
 2. 無ければ、メーカーごとの**決定的な規則**が適用できるときだけ導く（`basis: 'deterministic-rule'`）。
-   - ACE 系: `model` から `/(\d{5})/` で 5 桁品番、`variant` から `/(?:^|\/\s*)(\d{2})\s/` で
-     2 桁カラーコードを取り、両方取れたときだけ `https://store.ace.jp/shop/g/g{品番}-{カラー}/` を返す。
+   - ACE 系: `model` から `/(?<!\d)(\d{5})(?!\d)/g` で**数字列として独立した**5 桁品番、
+     `variant` から `/(?:^|\/\s*)(\d{2})\s/` で 2 桁カラーコードを取り、
+     両方取れたときだけ `https://store.ace.jp/shop/g/g{品番}-{カラー}/` を返す。
      **どちらか欠ければ `{ ok: false, reason: 'variant-code-missing' }`。**
+     **6 桁以上の数字列から 5 桁を切り出さない。** `/(\d{5})/` のままだと
+     「123456」から `12345`、「1069360」から `10693` を取り出して実在しない URL を作る。
+     5 桁品番が 2 つ以上あるときも、どれか決められないので導かない。
    - ELECOM: `model` が `/^[A-Z0-9-]{6,}$/` のときだけ `https://www.elecom.co.jp/products/{model}.html`。
    - **Anker: 規則が無いため常に `{ ok: false, reason: 'model-shape-unsupported' }` を返す。**
 3. 1 も 2 も成立しなければ `{ ok: false, ... }`。**公式検索は段階0 では行わない**
@@ -1259,6 +1406,7 @@ ACE・PROTECA・World Traveler は `store.ace.jp` を共有するが、
 - [ ] `ace`/`proteca`/`world-traveler` の `manufacturerId` が互いに異なる失敗テストを書く（3 分）
 - [ ] `findProductUrl` が既存 `Source` を第一候補にする失敗テストを書く（4 分）
 - [ ] ACE で variant にカラーコードが無いと `'variant-code-missing'` を返す失敗テストを書く（4 分）
+- [ ] 6 桁以上の数字列（`123456`・`1069360`）から 5 桁を切り出さない失敗テストを書く（4 分）
 - [ ] Anker が常に `'model-shape-unsupported'` を返す失敗テストを書く（3 分）
 - [ ] どのアダプターも `basis: 'official-search'` を返さない失敗テストを書く（3 分）
 - [ ] テストを実行し失敗を確認する（1 分）
@@ -1504,6 +1652,65 @@ Error: Failed to load url ../src/lib/manufacturers/ace
 
 `<table class="spec">` の `<tr>` を走査し、`<th>` のラベル（`本体重量` / `外寸` / `容量`）で分岐する。
 `kg` → `g` は `Math.round(value * 1000)`、`cm` → `mm` は `Math.round(value * 10)`。
+**数値は `[\d.]+` で読まない。** `.`・`1.2.3`・`0` を通してしまい、`Number()` が
+`NaN` や `0` を返しても成功扱いになる。`\d+(?:\.\d+)?` に完全一致させ、
+`Number.isFinite(value)` かつ `value > 0` を確かめる共通の厳密パーサを使う。
+**入力の検査だけでは足りない。** `0.0001kg`（×1000 → 丸めて 0）、
+`W0.01cm`（×10 → 丸めて 0）、`1e307kg`（×1000 → `Infinity`）はいずれも
+入力は正の有限値なので、**換算・丸めの後の最終値にも同じ検査を通す**。
+
+**寸法はラベルを 1 つずつ拾わず、受理できる表記の全体を文法として検証する。**
+個別に拾うと、数値の直後にある未対応の文字（`インチ` `センチ` `㎝` `"` など）を
+読み飛ばして「単位なし」と誤判定し、離れた場所の `cm` を全要素へ適用してしまう。
+
+受理するのは次の 2 形式だけ。
+
+  A. グループ全体の単位が最後に 1 つ付く（`W35×H55×D25cm`）
+  B. 3 要素すべてに同じ単位が直接付く（`W35cm×H55cm×D25cm`）
+
+次はすべて `null` に倒す。
+
+  - 数値の直後が区切り（`×`）・単位（`mm`/`cm`）・終端以外
+    （`in` `kg` `インチ` `センチ` `㎝` `"` `%` など未対応・不明な単位を含む）
+  - 一部だけに単位が付き、それがグループ末尾ではない（`W35cm×H55×D25`）
+  - `mm` と `cm` の混在
+  - 単位が 1 つも無い（「W35×H55×D25（梱包サイズは80cm）」の `80cm` を借りない）
+  - 単位の直後に英数字が続く（`cm2` `mmX`）
+  - **単位の直後に Unicode 文字・単位記号が直結する**（`cm²` `cmセンチ` `cm㎝`）。
+    受理する寸法部分の直後は、終端・空白・注記の開始記号（`（` `(` `［` `[` `【` `※` `、` `,` `。`）だけ
+  - **単位の直後の `/` `、` `,` `。`**（`cm/㎝` `cm、mm` `cm。mm`）。区切り記号を
+    注記の開始として認めない。後に別の単位・数値・寸法表記が続く形は注記ではなく
+    曖昧・混在であり、先頭側だけを採用すると書かれていない解釈を選んでしまう
+  - **寸法表記の後ろに、注記として認められない文字列が残っている**
+    （`cm mm` `cm ㎝` `cm ㎜` `cm インチ` `cm センチ` `cm 25cm`）。
+    境界の 1 文字を見るだけでは空白の後に続く単位を止められないので、
+    残り文字列そのものを検証する。認めるのは「空白」「**入れ子を含まない**
+    対応の取れた括弧の注記」「`※` で始まる注記」だけで、括弧の中身は読まない。
+    入れ子の括弧（`（外寸（実測）80cm）`）は曖昧として `null` に倒す（入れ子対応はしない）。
+    `W35×H55×D25cm`・`W35cm×H55cm×D25cm`・`W35×H55×D25cm（キャスター含む）`・
+    `W35×H55×D25cm（梱包サイズは80cm）`・`W35×H55×D25cm ※実測値` は従来どおり受理する
+  - W/H/D の組が 1 つでない（寸法セットが複数、ラベル欠落、範囲表記）
+
+**入力は「不正表記を削除してから解析」しない。許可された文法を検証してから正規化する。**
+`replace(/約/g,'')` や `replace(/,/g,'')` のように落とすだけだと、壊れた表記を
+正常値へ「直して」しまう（`3約0L` → `30L`、`1,2,5,0g` → `1250g`）。
+「約」は入力全体の**先頭**にある場合だけ許可し、数字の途中にあれば `null`。
+カンマは 3 桁区切りだけ許可する。
+**検査は整数部・小数点・小数部を含む数値全体を 1 つの文法として行う。**
+走査を `[\d,]+` にすると小数点で数値が分断され、`1.2,345` が `1` と `2,345` の
+2 つの正しい数値に見えてしまう。カンマを落とした `1.2345` は元の入力に無い値で、
+丸めれば `1` になり成功扱いになる（不正な文字を削除して別の正常値を作らない）。
+走査は `/[\d.,]+/g`、検証は `/^\d{1,3}(?:,\d{3})*(?:\.\d+)?$/`。
+  - 許可: `1250` `1250.5` `1,250` `1,250.5` `1,000,000`
+  - `null`: `1.2,345` `12.3,000` `12,000.0,001` `1,2,5,0` `12,50` `1,,250`
+この検証は重量・容量・mAh・出力・寸法のすべての経路が通り、各経路をテストする。
+
+**接頭辞は文法の一部として、先頭に 1 回だけ認める。** 出力の `最大` も「約」と同じ規則で、
+`replace(/最大/g,'')` の全置換はしない。全置換は壊れた表記を正常値へ「直して」しまう
+（`6最大5W` → 65、`最大最大65W` → 65、`65W最大` → 65）。
+`最大65W` と `65W` は 65、上の 3 つはすべて `null`。
+W/H/D のどれか 1 つでも不正なら**寸法全体を `null`** にし、
+`mm` と `cm` が混在した表記は尺度を決められないので推定せず `null` にする。
 `W35×H55×D25cm` は `/W([\d.]+)×H([\d.]+)×D([\d.]+)cm/` で取り、**登録順（幅・高さ・奥行）のまま**返す。
 `extractedRangeHash` は `html.match(/<table class="spec">[\s\S]*?<\/table>/)?.[0]` に
 `crypto.createHash('sha256')` を適用する。
@@ -1665,6 +1872,11 @@ ELECOM は定義リスト（`<dt>` / `<dd>`）、Anker は表を走査する。
 `1,090g` のカンマ除去、`約W300×D160×H480mm` の接頭辞除去を行う。
 `requiredFields` をアダプターごとに定数として持ち、`extract` がそれを見て
 `required-field-missing` を返すか決める。
+
+任意項目（Anker の `capacityMah` / `maxOutputW`）は次のように扱う。
+**行そのものが無い**なら公表なしとして `specs` に作らない（`ratedWh` がこれ）。
+**行はあるが単位を読めない**なら黙って捨てず `{ ok: false, reason: 'unit-unparseable' }`
+を返す。捨てると「公表されていない」と「読めなかった」が区別できなくなる。
 
 > **注記**: 現行 ELECOM の 4 出典は `automatedFetch: 'unverified'` である。
 > アダプターは実装するが、**Global Constraints 4 により段階0 では取得対象にならない**。
@@ -2059,18 +2271,52 @@ S と A の必要条件を設計書 5.5 どおり 1 つずつ明示的に要求�
 
 ### 仕様（設計書 8.3・8.4 に対応）
 
-| 入力 | 次の状態 |
-|---|---|
-| `itemCodeAlive && availability === 1 && identifierMatch !== 'none' && variantMatch` | `healthy`。`consecutiveFailures = 0` |
-| `availability === null`（API エラー・判定材料不足） | `uncertain`。**`consecutiveFailures` を増やさない** |
-| `itemCodeAlive && availability === 0` | 表示維持。`consecutiveOutOfStock` を +1。14 日で `hidden` |
-| `!itemCodeAlive` が 3 日連続 | `hidden` |
-| `!itemCodeAlive` が 7 日連続 | `replace` |
-| `identifierMatch === 'weak' && !variantMatch` | `manual-hold` |
+**「API が応答しなかった」と「API は答えたが商品が無い」を別の軸で持つ。**
+`availability === null` だけで両方を表すと、単純に判定順を入れ替えたときに
+API 障害を商品消失として数えてしまう。そこで `observationStatus` を先に見る。
 
-`decideReplacement`:
+| 入力 | 次の状態 | カウンタ | `lastHealthyAt` |
+|---|---|---|---|
+| `observationStatus === 'unavailable'`（API 障害） | 前日が `healthy` なら `uncertain`。**それ以外は前日の状態を維持**（`uncertain`/`hidden`/`replace`/`manual-hold`） | **全カウンタ据え置き** | 更新しない |
+| `observationStatus === 'ok'` かつ `!itemCodeAlive` | `consecutiveFailures` を +1（`availability` が `null` でも数える） | `consecutiveOutOfStock` は 0 | 更新しない |
+| 上の連続が 3 日 | `hidden` | — | 更新しない |
+| 上の連続が 7 日 | `replace` | — | 更新しない |
+| `observationStatus === 'ok'` かつ `itemCodeAlive && availability === 0` | 表示維持（`healthy`）。14 日で `hidden` | `consecutiveOutOfStock` を +1、`consecutiveFailures` は 0 | **更新しない**（在庫を確認できていない） |
+| `observationStatus === 'ok'` かつ `itemCodeAlive && availability === null` | **`uncertain`**（在庫の判断材料が無いので `healthy` にしない） | `consecutiveFailures` は 0（itemCode の存在は確認できた）。**`consecutiveOutOfStock` は据え置く**（在庫が戻った証拠が無いので 0 へ戻さない） | 更新しない |
+| `affiliateTargetChanged === true` | **`manual-hold`**。自動交換もしない | `consecutiveFailures` を増やさない | 更新しない |
+| `identifierMatch === 'weak' && !variantMatch` | `manual-hold` | — | 更新しない |
+| `itemCodeAlive && availability === 1 && identifierMatch !== 'none' && variantMatch` かつ遷移先が変わっていない | `healthy` | `consecutiveFailures = 0`、`consecutiveOutOfStock = 0` | 更新する |
 
-- `isHumanVerifiedLink(link)` が `true` → `state === 'replace'` でも `{ action: 'pr-only', reason: 'human-verified' }`
+**観測不能日に確定済みの制限状態を解除しない。** 「観測できなかった」は
+「以前確定した異常が解消した」を意味しない。`hidden` / `replace` / `manual-hold` は
+API 障害が何日続いても据え置き、緩和するのは `healthy` → `uncertain` だけ。
+
+**`availability === null`（在庫情報だけ取れなかった）は `healthy` にしない。**
+在庫の判断材料が無い日なので `uncertain` にする。
+一方 `availability === 0`（在庫切れと確認できた）は、しきい値に達するまで
+`state` を `healthy` のままにして CTA の表示を維持する。両者を混同しない。
+
+**`lastHealthyAt` を進めるのは `availability === 1` を確認できた日だけ。**
+在庫切れの日は 14 日目まで `state` が `healthy` のままなので、`state` だけを見ると
+在庫切れの日まで健全だったことになってしまう。`state === 'healthy'` に加えて
+`itemCodeAlive && availability === 1` を条件にする。
+
+> `state` と `lastHealthyAt` は別の問いに答える。
+> `state` は「いま CTA を出してよいか」、`lastHealthyAt` は「最後に在庫を確認できたのはいつか」。
+> 在庫切れの 13 日目は前者が `healthy`、後者は据え置き、という状態があり得る。
+
+**`affiliateTargetChanged` は保存するだけにしない。** 紹介URLの `pc` 遷移先が
+変わったリンクは別商品へ飛びうるので、他の信号が正常でも `healthy` にしない。
+ただし商品が消えたわけではないので、連続失敗日数は増やさず自動交換にも進めない。
+
+**`itemCode` の不在は `manual-hold` より優先する。** 消えたリンクは
+遷移先の変化や識別子の弱さに関わらず `hidden` → `replace` へ進む。
+
+`decideReplacement` — **状態を先に見る**:
+
+- `state !== 'replace'` → **必ず** `{ action: 'hold', reason: ... }`
+  （目視確認済みかどうかを先に見ると、正常なリンクまで PR へ出てしまう）
+- `state === 'replace'` かつ `isHumanVerifiedLink(link)` → `{ action: 'pr-only', reason: 'human-verified' }`
 - `state === 'replace'` かつ `candidateTier === 'S'` → `{ action: 'replace-now' }`
 - `state === 'replace'` かつ `candidateTier === 'A'` → `{ action: 'replace-after-recheck' }`
 - それ以外 → `{ action: 'hold', reason: ... }`
@@ -2078,18 +2324,26 @@ S と A の必要条件を設計書 5.5 どおり 1 つずつ明示的に要求�
 ### ステップ
 
 - [ ] `healthy` の入力で `consecutiveFailures` が 0 にリセットされる失敗テストを書く（3 分）
-- [ ] `availability === null` のとき `uncertain` になり `consecutiveFailures` が**増えない**失敗テストを書く（4 分）
+- [ ] `observationStatus === 'unavailable'` が 30 日続いても全カウンタが据え置かれる失敗テストを書く（4 分）
+- [ ] `observationStatus === 'ok'` かつ `!itemCodeAlive` なら `availability` が `null` でも数える失敗テストを書く（4 分）
+- [ ] `itemCodeAlive` かつ `availability === null` で `healthy` にせず、`consecutiveOutOfStock` を据え置く失敗テストを書く（4 分）
+- [ ] `hidden` / `replace` / `manual-hold` が API 障害で解除されない失敗テストを書く（4 分）
+- [ ] 在庫切れが 13 日続いても `lastHealthyAt` が変わらない失敗テストを書く（3 分）
 - [ ] `!itemCodeAlive` を 3 日連続で与えると 3 日目に `hidden` になる失敗テストを書く（4 分）
+- [ ] `affiliateTargetChanged` が `true` なら `healthy` にせず `manual-hold` にする失敗テストを書く（4 分）
+- [ ] 遷移先が変わっても連続失敗日数を増やさず `lastHealthyAt` を更新しない失敗テストを書く（3 分）
 - [ ] 7 日連続で `replace` になる失敗テストを書く（3 分）
 - [ ] `availability === 0` を 13 日続けても `hidden` にならず、14 日目に `hidden` になる失敗テストを書く（4 分）
 - [ ] `identifierMatch: 'weak'` かつ `variantMatch: false` で `manual-hold` になる失敗テストを書く（3 分）
 - [ ] `verified`+`visual` のリンクは `replace` でも `pr-only` になる失敗テストを書く（4 分）
+- [ ] `verified`+`visual` でも `replace` 以外の 4 状態はすべて `hold` になる失敗テストを書く（3 分）
 - [ ] `replace` + 候補 S で `replace-now`、候補 A で `replace-after-recheck` になる失敗テストを書く（4 分）
 - [ ] テストを実行し失敗を確認する（1 分）
-- [ ] `LINK_THRESHOLDS` と `uncertain` の判定（連続日数を増やさない）を実装する（4 分）
+- [ ] `LINK_THRESHOLDS` と `observationStatus === 'unavailable'` の据え置きを実装する（4 分）
+- [ ] `affiliateTargetChanged` を状態判定へ結線する（3 分）
 - [ ] `itemCodeAlive` の連続不在日数から `hidden` / `replace` を決める（5 分）
 - [ ] `consecutiveOutOfStock` と `manual-hold` を実装する（4 分）
-- [ ] `decideReplacement`（目視確認済みの保護を含む）を実装する（4 分）
+- [ ] `decideReplacement`（状態を先に見てから目視確認済みの保護）を実装する（4 分）
 - [ ] テストが成功することを確認する（1 分）
 
 ### 最初に失敗するテスト
@@ -2221,9 +2475,13 @@ Error: Failed to load url ../src/lib/automation/link-state
 
 ### 最小実装
 
-`nextLinkState` は `signals.availability === null` を最初に判定して `uncertain` を返し、
-`consecutiveFailures` を据え置く。それ以外は `itemCodeAlive` の連続不在日数と
-`consecutiveOutOfStock` を更新してから、しきい値と比較して状態を決める。
+`nextLinkState` は `signals.observationStatus === 'unavailable'` を最初に判定し、
+**全カウンタと `lastHealthyAt` を据え置いたまま**、前日が `healthy` のときだけ
+`uncertain` へ落とす（それ以外は前日の状態をそのまま返す）。それ以外（API は正常に応答した日）は
+`itemCodeAlive` の連続不在日数と `consecutiveOutOfStock` を更新してから、
+しきい値と比較して状態を決める。`availability === null` だけでは
+`uncertain` に落とさない（商品が消えていれば在庫情報も返らないため）。
+`decideReplacement` は `state !== 'replace'` を最初に判定して `hold` を返す。
 
 ### 成功確認コマンド
 
