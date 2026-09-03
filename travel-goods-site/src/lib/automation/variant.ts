@@ -184,11 +184,19 @@ function isValidNumber(kind: UnitKind, numberPart: string): boolean {
  * この位置から右がサイズラベル（`…サイズ` / `… サイズ`）の途中か。
  *
  * `2XL サイズ` の `L` は単位でも `500ML` 型の接続でもなく、サイズラベルの一部。
- * 空白形を許すため英数字と空白だけを越えて `サイズ` を探す。
+ * 空白形（`2XL サイズ`）と並び（`3XL/Lサイズ`）を許すため、英数字・空白・
+ * サイズの区切り記号を越えて `サイズ` を探す。ここで true になったラベルは
+ * 接尾辞側で 1 つの並びとして判定される。
  */
 function isInsideSizeLabel(text: string, from: number): boolean {
   let at = from;
-  while (charIs(ASCII_ALNUM, text[at]) || charIs(WHITESPACE, text[at])) at += 1;
+  while (
+    charIs(ASCII_ALNUM, text[at]) ||
+    charIs(WHITESPACE, text[at]) ||
+    charIs(SIZE_SEPARATOR, text[at])
+  ) {
+    at += 1;
+  }
   return text.startsWith(SIZE_SUFFIX, at);
 }
 
@@ -200,19 +208,32 @@ function asciiTokenStart(text: string, end: number, floor: number): number {
 }
 
 /**
- * ラベルの左隣にもサイズラベルが並んでいるか。
+ * サイズラベルらしい短い ASCII トークンか。
  *
- * 区切り（`S/M/Lサイズ` `S−Mサイズ`）でも空白（`S M Lサイズ`）でも、
- * **左隣のトークンもサポート対象ラベルのときだけ**「複数・範囲の省略形」とみなす。
+ * **サポート対象かどうかでは判定しない。** `LL` `XS` `2M` `SL` `3XL` は
+ * 単独では読めない（malformed）が、`LL/Lサイズ` のように並んでいれば
+ * それは複数サイズ表記なので、右側の `L` だけを採用してはいけない。
+ *
+ * 一方で任意の英単語を巻き込まないよう、形は限定する。
+ * 数字 0〜2 文字＋`S`/`M`/`L`/`X` だけからなる短いラベルに限る。
+ * `BAG` `ACE` `MODEL` `2024` はここで false になり、商品名として切り離される。
+ */
+const SIZE_LIKE_LABEL = /^\d{0,2}[SMLX]{1,3}$/;
+
+/**
+ * ラベルの左隣にもサイズらしいラベルが並んでいるか。
+ *
+ * 区切り（`S/M/Lサイズ` `S−Mサイズ` `LL/Lサイズ`）でも空白（`S M Lサイズ`）でも、
+ * 左隣が**サイズらしい**なら「複数・範囲の省略形」とみなす。
  * 商品名・ブランド名・型番・年（`BAG Lサイズ` `MODEL 2024 Lサイズ` `ACE Lサイズ`）は
- * ここで false になり、サイズ式は「サイズ」の直前 1 つに閉じる。
+ * false になり、サイズ式は「サイズ」の直前 1 つに閉じる。
  */
 function hasSizeLabelLeftOf(text: string, labelStart: number, floor: number): boolean {
   let at = skipWhitespaceLeft(text, labelStart, floor);
   if (at > floor && charIs(SIZE_SEPARATOR, text[at - 1])) {
     at = skipWhitespaceLeft(text, at - 1, floor);
   }
-  return SIZE_LABELS.includes(text.slice(asciiTokenStart(text, at, floor), at));
+  return SIZE_LIKE_LABEL.test(text.slice(asciiTokenStart(text, at, floor), at));
 }
 
 /** ASCII 英字が直前に連なっている範囲の先頭。 */

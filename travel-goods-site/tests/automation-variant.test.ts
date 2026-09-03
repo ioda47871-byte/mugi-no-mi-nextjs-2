@@ -927,3 +927,50 @@ describe('英字の商品名・ブランド名をサイズラベル式に巻き�
     expect(scanVariant('フリーサイズ').presence).toBe('absent');
   });
 });
+
+describe('未対応サイズとの複数表記で最後のサイズだけを採用しない', () => {
+  const enumerated = ['LL/Lサイズ', 'XS/Lサイズ', '2M/Lサイズ', '3XL/Lサイズ', 'LL Lサイズ'];
+
+  it('左隣が未対応サイズでも複数サイズ表記として malformed', () => {
+    for (const text of enumerated) {
+      const scan = scanVariant(`${text} ブラック`);
+      expect(scan.presence).toBe('malformed');
+      expect(scan.sizes).toEqual([]);
+    }
+  });
+
+  it('target・listing のどちらにあっても一致を止める', () => {
+    for (const text of enumerated) {
+      const asListing = verifyVariant('Lサイズ / ブラック', `${text} ブラック`);
+      expect(asListing.matched).toBe(false);
+      expect(asListing.matchedVariantLabel).toBeNull();
+      const asTarget = verifyVariant(`${text} / ブラック`, 'ポーチ Lサイズ ブラック');
+      expect(asTarget.matched).toBe(false);
+      expect(asTarget.matchedVariantLabel).toBeNull();
+    }
+  });
+
+  it('英単語・年は size-like にしない（商品名として切り離す）', () => {
+    for (const text of ['BAG Lサイズ', 'ACE Lサイズ', 'MODEL 2024 Lサイズ', '2024 Lサイズ']) {
+      const scan = scanVariant(`${text} ブラック`);
+      expect(scan.sizes).toEqual(['Lサイズ']);
+      expect(scan.presence).toBe('valid');
+      expect(verifyVariant('Lサイズ / ブラック', `${text} ブラック`).matched).toBe(true);
+    }
+  });
+
+  it('既存の malformed 条件を維持する', () => {
+    for (const text of ['S/M/Lサイズ', 'S・M・Lサイズ', 'S M Lサイズ', 'S〜Lサイズ', 'M/Lサイズ',
+      'S−Mサイズ', 'SーMサイズ', 'S、Mサイズ', 'LL サイズ', 'XS サイズ', 'Lサイズ2']) {
+      expect(scanVariant(text).presence).toBe('malformed');
+    }
+  });
+
+  it('単独のサポート対象サイズと absent は変わらない', () => {
+    for (const text of ['Sサイズ', 'Mサイズ', 'Lサイズ', 'XLサイズ', '2XLサイズ', 'L サイズ']) {
+      expect(scanVariant(text).presence).toBe('valid');
+    }
+    expect(scanVariant('本体サイズ').presence).toBe('absent');
+    expect(scanVariant('フリーサイズ').presence).toBe('absent');
+  });
+});
