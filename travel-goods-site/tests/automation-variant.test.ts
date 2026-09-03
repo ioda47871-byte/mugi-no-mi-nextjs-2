@@ -723,3 +723,104 @@ describe('現行 23 商品の variant 回帰', () => {
     }
   });
 });
+
+describe('空白を含む数値式・範囲の後半だけを採用しない', () => {
+  it('空白付きの演算・範囲記号は malformed', () => {
+    for (const text of ['30 〜 35L', '30 ～ 35L', '30 ＋ 5L', '30 + 5L', '30 から 35L']) {
+      const scan = scanVariant(text);
+      expect(scan.presence).toBe('malformed');
+      expect(scan.capacities).toEqual([]);
+    }
+  });
+
+  it('空白付きダッシュは左隣のトークンで区別する（純粋な数値なら範囲）', () => {
+    const scan = scanVariant('30 - 35L / ブラック');
+    expect(scan.presence).toBe('malformed');
+    expect(scan.capacities).toEqual([]);
+    const v = verifyVariant('35L / ブラック', '30 - 35L / ブラック');
+    expect(v.matched).toBe(false);
+    expect(v.matchedVariantLabel).toBeNull();
+  });
+
+  it('商品名区切り・年は従来どおり valid', () => {
+    for (const text of ['商品名 - 30L', '商品123 - 30L', '2024 - 30L', '2024 – 30L', '2024 — 30L']) {
+      expect(scanVariant(text)).toMatchObject({ capacities: ['30L'], presence: 'valid' });
+    }
+  });
+
+  it('空白なしの式・範囲は引き続き malformed', () => {
+    for (const text of ['30-35L', '30〜35L', '30＋5L', '30から35L', '30−5L']) {
+      expect(scanVariant(text).presence).toBe('malformed');
+      expect(scanVariant(text).capacities).toEqual([]);
+    }
+  });
+
+  it('拡張容量は引き続き valid', () => {
+    expect(scanVariant('18/24L').capacities).toEqual(['18L', '24L']);
+    expect(scanVariant('18 / 24L').capacities).toEqual(['18L', '24L']);
+    expect(scanVariant('18 / / 24L').presence).toBe('malformed');
+    expect(scanVariant('リュック 30L/40L').capacities).toEqual(['30L', '40L']);
+  });
+});
+
+describe('サイズの空白形・複数省略形も解析状態へ含める', () => {
+  const spaced: readonly (readonly [string, string])[] = [
+    ['S サイズ', 'Sサイズ'],
+    ['M サイズ', 'Mサイズ'],
+    ['L サイズ', 'Lサイズ'],
+    ['XL サイズ', 'XLサイズ'],
+    ['2XL サイズ', '2XLサイズ'],
+  ];
+
+  it('空白形のサポート対象は空白なしと同じ valid', () => {
+    for (const [text, label] of spaced) {
+      const scan = scanVariant(text);
+      expect(scan.presence).toBe('valid');
+      expect(scan.sizes).toEqual([label]);
+    }
+  });
+
+  it('空白形のサポート対象外・直後の英数字は malformed', () => {
+    for (const text of ['LL サイズ', 'XS サイズ', '2M サイズ', 'SL サイズ', 'L サイズ2', 'XL サイズ2']) {
+      const scan = scanVariant(text);
+      expect(scan.presence).toBe('malformed');
+      expect(scan.sizes).toEqual([]);
+    }
+  });
+
+  it('複数・範囲を省略した表記は malformed', () => {
+    for (const text of ['S/M/Lサイズ', 'S・M・Lサイズ', 'S M Lサイズ', 'S〜Lサイズ', 'M/Lサイズ']) {
+      const scan = scanVariant(text);
+      expect(scan.presence).toBe('malformed');
+      expect(scan.sizes).toEqual([]);
+    }
+  });
+
+  it('空白形の target を色だけで通さない', () => {
+    for (const variant of ['L サイズ / ブラック', 'LL サイズ / ブラック']) {
+      const v = verifyVariant(variant, 'ポーチ ブラック');
+      expect(v.matched).toBe(false);
+      expect(v.matchedVariantLabel).toBeNull();
+    }
+  });
+
+  it('listing の複数サイズ省略形で最後のサイズだけを通さない', () => {
+    for (const listing of ['S/M/Lサイズ / ブラック', 'S・M・Lサイズ / ブラック', 'M/Lサイズ / ブラック']) {
+      const v = verifyVariant('Lサイズ / ブラック', listing);
+      expect(v.matched).toBe(false);
+      expect(v.matchedVariantLabel).toBeNull();
+    }
+  });
+
+  it('サイズ表記が元から無いものは absent のまま', () => {
+    expect(scanVariant('本体サイズ ブラック').presence).toBe('absent');
+    expect(scanVariant('フリーサイズ ブラック').presence).toBe('absent');
+    expect(scanVariant('ブラック').presence).toBe('absent');
+    expect(verifyVariant('ブラック', 'ポーチ ブラック').matched).toBe(true);
+  });
+
+  it('先頭の区切りはラベルの一部ではない', () => {
+    expect(scanVariant('リュック 30L / Lサイズ').sizes).toEqual(['Lサイズ']);
+    expect(scanVariant('リュック 30L / Lサイズ').presence).toBe('valid');
+  });
+});
