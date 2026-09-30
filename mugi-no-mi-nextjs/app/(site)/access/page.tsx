@@ -98,25 +98,28 @@ export default async function AccessPage() {
 
       <section className="px-8 pb-24 max-[640px]:px-5 max-[640px]:pb-16">
         <div className="mx-auto grid max-w-container grid-cols-2 items-stretch gap-8 max-[860px]:grid-cols-1">
-          <div className="relative overflow-hidden rounded-[10px] border border-line bg-white p-8">
+          <div className="relative overflow-hidden rounded-[10px] border border-line bg-white p-8 max-[640px]:p-6">
             <WillowDecoration
               variant="sprig"
               flip
               className="pointer-events-none absolute -bottom-5 -right-5 h-32 w-14 text-gold/30"
             />
-            <div className="relative flex items-start gap-5">
+            <div className="relative flex items-start gap-5 max-[640px]:gap-4">
               <ParkingIcon />
-              <div>
+              <div className="min-w-0">
                 <span className="eyebrow">Parking</span>
-                <h2 className="mt-3 text-2xl">駐車場について</h2>
+                <h2 className="mt-3 text-2xl max-[640px]:text-xl">駐車場について</h2>
                 <p className="mt-4 max-w-sm text-[14.5px] leading-loose text-kura">{siteContent.parking.value}</p>
               </div>
             </div>
           </div>
 
-          <div className="rounded-[10px] border border-line bg-white p-8">
+          <div className="rounded-[10px] border border-line bg-white p-8 max-[640px]:p-6">
             <span className="eyebrow">地図</span>
-            <h2 className="mt-3 text-2xl">金山駅からのアクセスマップ</h2>
+            {/* 狭い幅では「金山駅からの / アクセスマップ」の位置でだけ改行させる */}
+            <h2 className="mt-3 break-keep text-2xl max-[640px]:text-xl">
+              金山駅からの<wbr />アクセスマップ
+            </h2>
             <div className="mt-6 overflow-hidden rounded-[6px] border border-line">
               <iframe
                 title={`${siteContent.brandName.value} 地図`}

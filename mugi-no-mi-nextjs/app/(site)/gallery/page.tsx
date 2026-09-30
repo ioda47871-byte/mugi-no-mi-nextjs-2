@@ -104,7 +104,7 @@ export default async function GalleryPage() {
             {GALLERY_ITEMS.map((item, index) => {
               const photo = photos[item.slot];
               return (
-                <RevealOnScroll key={item.slot} className={item.wide ? 'col-span-2' : ''}>
+                <RevealOnScroll key={item.slot} className={item.wide ? 'min-[641px]:col-span-2' : ''}>
                   <PhotoBlock
                     src={photo.url}
                     alt={photo.alt}

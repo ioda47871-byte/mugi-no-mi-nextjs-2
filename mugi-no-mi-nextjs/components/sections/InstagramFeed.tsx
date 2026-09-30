@@ -64,7 +64,7 @@ export async function InstagramFeed() {
             href={siteContent.instagramUrl.value}
             className="mb-14 flex flex-col items-center justify-between gap-4 rounded-2xl border border-brand/40 bg-white px-8 py-6 text-center transition-colors hover:border-brand max-[640px]:px-6 sm:flex-row sm:text-left"
           >
-            <div>
+            <div className="min-w-0 max-[640px]:w-full">
               <p className="font-display text-lg">最新情報はこちら</p>
               <p className="mt-1.5 text-[13.5px] text-kura">今日焼いたパンや、売り切れ状況をリアルタイムでお知らせしています。</p>
             </div>
